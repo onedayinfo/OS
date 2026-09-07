@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { TicketsService } from './tickets.service.js';
 import { TicketNumberService } from './ticket-number.service.js';
 import { TicketEventsService } from './ticket-events.service.js';
+import { TicketStatusService } from './ticket-status.service.js';
 
 const HOUR = 3600_000;
 
@@ -38,6 +39,7 @@ function makeDeps() {
     new TicketNumberService(),
     sla as any,
     new TicketEventsService(),
+    new TicketStatusService(),
     notifier as any,
   );
   return { service, prisma, sla, notifier, events };

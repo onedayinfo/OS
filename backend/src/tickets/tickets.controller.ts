@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { CurrentUser, CurrentUserData } from '../common/current-user.decorator.js';
 import { Roles } from '../common/roles.decorator.js';
 import { TicketsService } from './tickets.service.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { ListTicketsDto } from './dto/list-tickets.dto.js';
+import { ChangeStatusDto } from './dto/ticket-mutations.dto.js';
 
 @Controller('tickets')
 export class TicketsController {
@@ -24,5 +25,15 @@ export class TicketsController {
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() actor: CurrentUserData) {
     return this.tickets.findOne(id, actor);
+  }
+
+  @Patch(':id/status')
+  @Roles('ADMIN', 'AGENT')
+  changeStatus(
+    @Param('id') id: string,
+    @Body() dto: ChangeStatusDto,
+    @CurrentUser() actor: CurrentUserData,
+  ) {
+    return this.tickets.changeStatus(id, dto.status, actor);
   }
 }

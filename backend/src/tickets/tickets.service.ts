@@ -11,12 +11,14 @@ import type {
   TicketEventType,
   TicketOrigin,
   TicketPriority,
+  TicketStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SlaService } from '../sla/sla.service.js';
 import { publicUser } from '../users/user-view.js';
 import { TicketNumberService } from './ticket-number.service.js';
 import { TicketEventsService } from './ticket-events.service.js';
+import { TicketStatusService } from './ticket-status.service.js';
 import type { TicketNotifier } from './ticket-notifier.js';
 import type { ListTicketsDto } from './dto/list-tickets.dto.js';
 
@@ -53,6 +55,7 @@ export class TicketsService {
     private readonly ticketNumber: TicketNumberService,
     private readonly sla: SlaService,
     private readonly events: TicketEventsService,
+    private readonly statusRules: TicketStatusService,
     @Inject('TicketNotifier') private readonly notifier: TicketNotifier,
   ) {}
 
@@ -186,5 +189,47 @@ export class TicketsService {
         ? ticket.events.filter((e) => !INTERNAL_EVENT_TYPES.has(e.type))
         : ticket.events,
     };
+  }
+
+  /** Muda o status aplicando a tabela de transições e os efeitos colaterais. */
+  async changeStatus(id: string, next: TicketStatus, actor?: Actor): Promise<Ticket> {
+    const ticket = await this.prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) throw new NotFoundException('Chamado não encontrado.');
+
+    this.statusRules.assertTransition(ticket.status, next);
+
+    const data: Prisma.TicketUpdateInput = { status: next };
+    if (next === 'RESOLVED') data.resolvedAt = new Date();
+    if (next === 'CLOSED') data.closedAt = new Date();
+    if (next === 'OPEN' && (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED')) {
+      data.resolvedAt = null;
+      data.closedAt = null;
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.ticket.update({ where: { id }, data });
+      await this.events.record(
+        tx,
+        id,
+        'STATUS_CHANGED',
+        { from: ticket.status, to: next },
+        actor?.id,
+      );
+      return u;
+    });
+
+    if (next === 'RESOLVED') await this.notify((n) => n.resolved(updated), updated);
+    return updated;
+  }
+
+  /** Dispara notificação sem deixar a falha abortar a operação. */
+  private async notify(fn: (n: TicketNotifier) => Promise<void>, ticket: Ticket): Promise<void> {
+    try {
+      await fn(this.notifier);
+    } catch (err) {
+      this.logger.warn(
+        `notificação falhou para ${ticket.number}: ${(err as Error).message}`,
+      );
+    }
   }
 }

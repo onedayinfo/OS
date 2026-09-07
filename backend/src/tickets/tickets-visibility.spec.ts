@@ -74,7 +74,14 @@ describe('TicketsService.findAll — escopo por papel', () => {
 function serviceWithTicket(ticket: any) {
   const findUnique = vi.fn().mockResolvedValue(ticket);
   const prisma = { ticket: { findUnique } };
-  const service = new TicketsService(prisma as any, {} as any, {} as any, {} as any, {} as any);
+  const service = new TicketsService(
+    prisma as any,
+    {} as any,
+    {} as any,
+    {} as any,
+    {} as any,
+    {} as any,
+  );
   return { service, findUnique };
 }
 
