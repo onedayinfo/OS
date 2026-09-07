@@ -7,3 +7,4 @@ uploads/
 *.log
 *.tsbuildinfo
 .superpowers/
+.claude/settings.local.json
