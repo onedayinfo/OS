@@ -15,5 +15,12 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
+    // Mantém os defaults do vitest e tira os alvos que exigem Postgres no ar.
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/*.integration.spec.ts',
+      '**/*.e2e-spec.ts',
+    ],
   },
 });

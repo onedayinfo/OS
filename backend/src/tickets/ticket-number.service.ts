@@ -10,7 +10,8 @@ export class TicketNumberService {
    */
   async next(
     tx: Prisma.TransactionClient,
-    year: number = new Date().getUTCFullYear(),
+    // ponytail: ano local — produto é pt-BR/BRT; contador é por ano, sem colisão na virada
+    year: number = new Date().getFullYear(),
   ): Promise<string> {
     const counter = await tx.counter.upsert({
       where: { year },
