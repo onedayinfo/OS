@@ -6,13 +6,25 @@ import { LoginDto } from './dto/login.dto.js';
 
 const REFRESH_COOKIE = 'refreshToken';
 
+// ponytail: default dev = lax/secure=false (funciona em http://localhost).
+// Produção cross-origin: COOKIE_SAMESITE=none + COOKIE_SECURE=true — o navegador
+// recusa SameSite=None sem Secure, então 'none' força secure=true aqui.
+const rawSameSite = (process.env.COOKIE_SAMESITE ?? 'lax').toLowerCase();
+const sameSite: CookieOptions['sameSite'] = (['lax', 'none', 'strict'].includes(rawSameSite)
+  ? rawSameSite
+  : 'lax') as CookieOptions['sameSite'];
+const secure = process.env.COOKIE_SECURE === 'true' || sameSite === 'none';
+
 const refreshCookieOptions: CookieOptions = {
   httpOnly: true,
-  sameSite: 'lax',
-  secure: false, // ponytail: dev; ligar via env quando houver HTTPS
+  sameSite,
+  secure,
   path: '/api/auth',
   maxAge: 30 * 24 * 60 * 60 * 1000,
 };
+
+// clearCookie precisa dos mesmos path/sameSite/secure, senão o navegador não casa o cookie.
+const clearCookieOptions: CookieOptions = { path: '/api/auth', sameSite, secure };
 
 @Controller('auth')
 export class AuthController {
@@ -50,7 +62,7 @@ export class AuthController {
   @Post('logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.auth.logout((req.cookies?.[REFRESH_COOKIE] as string | undefined) ?? '');
-    res.clearCookie(REFRESH_COOKIE, { path: '/api/auth' });
+    res.clearCookie(REFRESH_COOKIE, clearCookieOptions);
     return { ok: true };
   }
 }

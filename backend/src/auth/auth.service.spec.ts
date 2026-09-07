@@ -56,6 +56,18 @@ describe('AuthService.issueTokens', () => {
     expect(data.userId).toBe('u1');
     expect(data.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
+
+  it('assina o access token com claims e TTL travados', async () => {
+    process.env.JWT_ACCESS_SECRET = 'test-access-secret';
+    jwtStub.signAsync.mockClear();
+    const prisma = { refreshToken: { create: vi.fn() } } as any;
+    const s = new AuthService(prisma, jwtStub);
+    await s.issueTokens({ id: 'u9', type: 'INTERNAL', role: 'MANAGER', clientId: 'c42' });
+    expect(jwtStub.signAsync).toHaveBeenCalledWith(
+      { sub: 'u9', type: 'INTERNAL', role: 'MANAGER', clientId: 'c42' },
+      expect.objectContaining({ secret: 'test-access-secret', expiresIn: '15m' }),
+    );
+  });
 });
 
 describe('AuthService.rotateRefresh', () => {
