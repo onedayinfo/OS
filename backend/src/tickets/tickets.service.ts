@@ -230,8 +230,12 @@ export class TicketsService {
         requester: true,
         assignee: true,
         category: true,
-        comments: { orderBy: { createdAt: 'asc' } },
+        comments: {
+          orderBy: { createdAt: 'asc' },
+          include: { attachments: true },
+        },
         events: { orderBy: { createdAt: 'asc' } },
+        attachments: { orderBy: { createdAt: 'asc' } },
       },
     });
     if (!ticket || !this.inScope(ticket, actor)) {
