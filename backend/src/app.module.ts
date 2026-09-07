@@ -9,6 +9,7 @@ import { CommonModule } from './common/common.module.js';
 import { ClientsModule } from './clients/clients.module.js';
 import { CategoriesModule } from './categories/categories.module.js';
 import { UsersModule } from './users/users.module.js';
+import { SlaModule } from './sla/sla.module.js';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { UsersModule } from './users/users.module.js';
     ClientsModule,
     CategoriesModule,
     UsersModule,
+    SlaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
