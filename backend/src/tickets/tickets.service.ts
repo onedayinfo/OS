@@ -36,6 +36,31 @@ const NON_TERMINAL_ONLY: Prisma.TicketWhereInput['status'] = {
 
 export type Actor = { id: string; type?: string; role?: string; clientId?: string | null };
 
+/**
+ * Allowlist do anexo exposto em respostas de API. Nunca inclui `storedPath`
+ * (caminho absoluto no FS) nem `uploadedById` — o download lê o `storedPath`
+ * direto do banco, não da resposta.
+ */
+export function publicAttachment(a: {
+  id: string;
+  filename: string;
+  mime: string;
+  size: number;
+  createdAt: Date;
+  ticketId: string | null;
+  commentId: string | null;
+}) {
+  return {
+    id: a.id,
+    filename: a.filename,
+    mime: a.mime,
+    size: a.size,
+    createdAt: a.createdAt,
+    ticketId: a.ticketId,
+    commentId: a.commentId,
+  };
+}
+
 /** Escopo de visibilidade derivado de `type` + `role`. */
 type Scope =
   | { kind: 'all' } // sem restrição (interno ADMIN/AGENT)
@@ -243,13 +268,18 @@ export class TicketsService {
     }
 
     const isClientSide = actor.type === 'CLIENT';
+    const visibleComments = isClientSide
+      ? ticket.comments.filter((c) => c.visibility !== 'INTERNAL')
+      : ticket.comments;
     return {
       ...ticket,
       requester: ticket.requester ? publicUser(ticket.requester) : null,
       assignee: ticket.assignee ? publicUser(ticket.assignee) : null,
-      comments: isClientSide
-        ? ticket.comments.filter((c) => c.visibility !== 'INTERNAL')
-        : ticket.comments,
+      attachments: (ticket.attachments ?? []).map(publicAttachment),
+      comments: visibleComments.map((c) => ({
+        ...c,
+        attachments: (c.attachments ?? []).map(publicAttachment),
+      })),
       // ponytail: cliente não vê nenhum evento COMMENT — o comentário público já
       // vai no array `comments`; assim a nota interna não vaza (existência/hora/
       // actorId) pela timeline via evento COMMENT com data.visibility=INTERNAL.

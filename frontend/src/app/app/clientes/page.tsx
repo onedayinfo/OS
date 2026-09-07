@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -22,12 +22,20 @@ export default function ClientsPage() {
   const router = useRouter();
   const qc = useQueryClient();
   const [q, setQ] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
   const [creating, setCreating] = useState(false);
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['clients', 'list', q],
+    queryKey: ['clients', 'list', debouncedQ],
     queryFn: () =>
-      api<Paged<Client>>(`/clients?pageSize=100${q ? `&q=${encodeURIComponent(q)}` : ''}`),
+      api<Paged<Client>>(
+        `/clients?pageSize=100${debouncedQ ? `&q=${encodeURIComponent(debouncedQ)}` : ''}`,
+      ),
   });
 
   const create = useMutation({

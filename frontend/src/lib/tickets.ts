@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -171,6 +172,7 @@ export function useTickets(filters: TicketFilters) {
   return useQuery({
     queryKey: ['tickets', filters],
     queryFn: () => api<Paged<TicketListItem>>(`/tickets?${toQuery(filters)}`),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -184,9 +186,9 @@ export function useTicket(id: string) {
 
 // --- Mutations ------------------------------------------------------------
 
-function useTicketMutation<TArgs>(
+function useTicketMutation<TArgs, TData = unknown>(
   id: string,
-  fn: (args: TArgs) => Promise<unknown>,
+  fn: (args: TArgs) => Promise<TData>,
 ) {
   const qc = useQueryClient();
   return useMutation({
@@ -228,7 +230,7 @@ export function useAddComment(id: string) {
   return useTicketMutation(
     id,
     (input: { body: string; visibility: CommentVisibility }) =>
-      api(`/tickets/${id}/comments`, { method: 'POST', body: input }),
+      api<TicketComment>(`/tickets/${id}/comments`, { method: 'POST', body: input }),
   );
 }
 
@@ -251,5 +253,7 @@ export async function downloadAttachment(id: string, filename: string): Promise<
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // revoga fora da pilha atual: alguns navegadores abortam o download se a URL
+  // some sincronamente logo após o click().
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

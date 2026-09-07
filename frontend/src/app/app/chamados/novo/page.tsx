@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
 import {
@@ -24,6 +24,7 @@ interface Category {
 
 export default function NewTicketPage() {
   const router = useRouter();
+  const qc = useQueryClient();
   const [clientId, setClientId] = useState('');
   const [requesterId, setRequesterId] = useState('');
   const [title, setTitle] = useState('');
@@ -68,6 +69,7 @@ export default function NewTicketPage() {
         },
       });
       toast.success('Chamado criado.');
+      await qc.invalidateQueries({ queryKey: ['tickets'] });
       router.replace(`/app/chamados/${ticket.id}`);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Falha ao criar o chamado.');

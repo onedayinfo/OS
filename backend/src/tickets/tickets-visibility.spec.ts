@@ -200,4 +200,42 @@ describe('TicketsService.findOne — guarda de acesso', () => {
       service.findOne('t1', { id: 'mgr', type: 'CLIENT', role: 'MANAGER', clientId: 'cli-Y' }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('findOne → anexos allowlistados: sem storedPath/uploadedById, com id/filename/mime/size (ticket e comentário, viewer AGENT)', async () => {
+    const raw = {
+      id: 'att-t',
+      filename: 'nota.pdf',
+      mime: 'application/pdf',
+      size: 123,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      ticketId: 't1',
+      commentId: null,
+      storedPath: '/abs/uploads/segredo.pdf',
+      uploadedById: 'u-secret',
+    };
+    const t = fullTicket();
+    (t as any).attachments = [raw];
+    t.comments = [
+      {
+        id: 'c1',
+        visibility: 'PUBLIC',
+        body: 'oi',
+        attachments: [{ ...raw, id: 'att-c', ticketId: null, commentId: 'c1' }],
+      },
+    ] as any;
+    const { service } = serviceWithTicket(t);
+    const res = await service.findOne('t1', {
+      id: 'ag', type: 'INTERNAL', role: 'AGENT', clientId: null,
+    });
+    for (const a of [res.attachments[0], (res.comments[0] as any).attachments[0]]) {
+      expect(a).not.toHaveProperty('storedPath');
+      expect(a).not.toHaveProperty('uploadedById');
+      expect(a).toMatchObject({
+        id: expect.any(String),
+        filename: 'nota.pdf',
+        mime: 'application/pdf',
+        size: 123,
+      });
+    }
+  });
 });

@@ -22,11 +22,13 @@ export function CommentBox({ ticketId }: { ticketId: string }) {
     if (!body.trim()) return;
     setBusy(true);
     try {
-      await addComment.mutateAsync({ body: body.trim(), visibility });
+      const created = await addComment.mutateAsync({ body: body.trim(), visibility });
       for (const file of files) {
         const fd = new FormData();
         fd.append('file', file);
-        await api(`/tickets/${ticketId}/attachments`, { method: 'POST', body: fd });
+        // Anexo vinculado ao comentário (herda o escopo de visibilidade da nota),
+        // não ao ticket — senão uma nota INTERNAL vaza o anexo pro cliente.
+        await api(`/comments/${created.id}/attachments`, { method: 'POST', body: fd });
       }
       qc.invalidateQueries({ queryKey: ['ticket', ticketId] });
       setBody('');
