@@ -1,33 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
 import type { Ticket, TicketComment } from '@prisma/client';
 
 /**
  * Porta de notificação de chamados. Consumida por `TicketsService` e
  * `CommentsService`. Registrada com `provide: 'TicketNotifier'`.
+ * Impl real: `NotificationsService` (Fase 8). `slaBreached` é usado pela Fase 10.
  */
 export interface TicketNotifier {
   created(ticket: Ticket): Promise<void>;
   resolved(ticket: Ticket): Promise<void>;
   assigned(ticket: Ticket): Promise<void>;
   publicComment(ticket: Ticket, comment: TicketComment): Promise<void>;
-}
-
-// ponytail: impl temporária da Fase 5 — só loga. A Fase 8 troca pelo
-// NotificationsService mantendo o token 'TicketNotifier'.
-@Injectable()
-export class LoggerTicketNotifier implements TicketNotifier {
-  private readonly logger = new Logger('TicketNotifier');
-
-  async created(ticket: Ticket): Promise<void> {
-    this.logger.log(`chamado criado ${ticket.number}`);
-  }
-  async resolved(ticket: Ticket): Promise<void> {
-    this.logger.log(`chamado resolvido ${ticket.number}`);
-  }
-  async assigned(ticket: Ticket): Promise<void> {
-    this.logger.log(`chamado atribuído ${ticket.number} -> ${ticket.assigneeId ?? 'ninguém'}`);
-  }
-  async publicComment(ticket: Ticket, comment: TicketComment): Promise<void> {
-    this.logger.log(`comentário público em ${ticket.number} (${comment.id})`);
-  }
+  slaBreached(ticket: Ticket): Promise<void>;
 }
