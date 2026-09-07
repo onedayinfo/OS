@@ -1,6 +1,8 @@
-import { Body, Controller, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
 import type { CookieOptions, Request, Response } from 'express';
 import { Public } from '../common/public.decorator.js';
+import { CurrentUser } from '../common/current-user.decorator.js';
+import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { UsersService } from '../users/users.service.js';
@@ -53,6 +55,12 @@ export class AuthController {
         clientId: user.clientId,
       },
     };
+  }
+
+  // Sem @Public: exige o access token. Devolve o usuário logado (allowlist publicUser).
+  @Get('me')
+  me(@CurrentUser() actor: CurrentUserData) {
+    return this.users.getPublicById(actor.id);
   }
 
   @Public()

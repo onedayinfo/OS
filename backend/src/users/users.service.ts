@@ -23,6 +23,13 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { email } });
   }
 
+  /** Usado por `GET /api/auth/me` — hidrata o usuário logado (allowlist). */
+  async getPublicById(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Usuário não encontrado.');
+    return publicUser(user);
+  }
+
   async findAll(params: { type?: string; clientId?: string }) {
     const list = await this.prisma.user.findMany({
       where: {
@@ -62,7 +69,7 @@ export class UsersService {
         inviteSentAt: new Date(),
       },
     });
-    const link = `${process.env.PORTAL_URL}/definir-senha?token=${inviteToken}`;
+    const link = `${process.env.PORTAL_URL}/portal/definir-senha?token=${inviteToken}`;
     await this.mail.sendInvite(user, link);
     return publicUser(user);
   }
@@ -80,7 +87,10 @@ export class UsersService {
       where: { id: user.id },
       data: { inviteToken, inviteSentAt: new Date() },
     });
-    const base = user.type === 'INTERNAL' ? process.env.APP_URL : process.env.PORTAL_URL;
+    const base =
+      user.type === 'INTERNAL'
+        ? `${process.env.APP_URL}/app`
+        : `${process.env.PORTAL_URL}/portal`;
     await this.mail.sendInvite(user, `${base}/definir-senha?token=${inviteToken}`);
   }
 

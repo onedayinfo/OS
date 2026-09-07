@@ -140,7 +140,7 @@ describe('UsersService.createContact', () => {
     expect(data.inviteSentAt).toBeInstanceOf(Date);
     expect(mail.sendInvite).toHaveBeenCalledWith(
       expect.objectContaining({ email: 'c@acme.com' }),
-      expect.stringContaining('http://portal.local/definir-senha?token='),
+      expect.stringContaining('http://portal.local/portal/definir-senha?token='),
     );
   });
 });
@@ -173,7 +173,7 @@ describe('UsersService.forgotPassword', () => {
     expect(data.inviteSentAt).toBeInstanceOf(Date);
     expect(mail.sendInvite).toHaveBeenCalledWith(
       expect.objectContaining({ email: 'c@acme.com' }),
-      expect.stringContaining('http://portal.local/definir-senha?token='),
+      expect.stringContaining('http://portal.local/portal/definir-senha?token='),
     );
   });
 
@@ -183,7 +183,7 @@ describe('UsersService.forgotPassword', () => {
     await service.forgotPassword('a@x.com');
     expect(mail.sendInvite).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining('http://app.local/definir-senha?token='),
+      expect.stringContaining('http://app.local/app/definir-senha?token='),
     );
   });
 });
