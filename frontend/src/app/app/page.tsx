@@ -1,9 +1,18 @@
-// ponytail: placeholder — a Fila de chamados é a Fase 12.
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { TicketTable } from '@/components/ticket-table';
+import { Button } from '@/components/ui/button';
+
 export default function AppQueuePage() {
+  const router = useRouter();
   return (
-    <div>
-      <h1 className="text-lg font-semibold">Fila de chamados</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Em construção (Fase 12).</p>
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold">Fila de chamados</h1>
+        <Button onClick={() => router.push('/app/chamados/novo')}>Novo chamado</Button>
+      </div>
+      <TicketTable />
     </div>
   );
 }
