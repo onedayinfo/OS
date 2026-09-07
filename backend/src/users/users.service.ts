@@ -67,6 +67,23 @@ export class UsersService {
     return publicUser(user);
   }
 
+  /**
+   * "Esqueci a senha": se o e-mail existe, gera novo `inviteToken`/`inviteSentAt`
+   * e reenvia o convite. Reusa o fluxo de token do convite (`setPassword`).
+   * O controller sempre responde 204 — não revela se o e-mail existe.
+   */
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) return;
+    const inviteToken = randomBytes(32).toString('hex');
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { inviteToken, inviteSentAt: new Date() },
+    });
+    const base = user.type === 'INTERNAL' ? process.env.APP_URL : process.env.PORTAL_URL;
+    await this.mail.sendInvite(user, `${base}/definir-senha?token=${inviteToken}`);
+  }
+
   async setPassword(token: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { inviteToken: token } });
     if (!user || !user.inviteSentAt) {

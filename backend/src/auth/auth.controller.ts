@@ -1,10 +1,11 @@
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, Res } from '@nestjs/common';
 import type { CookieOptions, Request, Response } from 'express';
 import { Public } from '../common/public.decorator.js';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { UsersService } from '../users/users.service.js';
 import { SetPasswordDto } from '../users/dto/set-password.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 
 const REFRESH_COOKIE = 'refreshToken';
 
@@ -68,6 +69,13 @@ export class AuthController {
   async setPassword(@Body() dto: SetPasswordDto) {
     await this.users.setPassword(dto.token, dto.password);
     return { ok: true };
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(204)
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.users.forgotPassword(dto.email);
   }
 
   @Public()

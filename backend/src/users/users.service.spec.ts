@@ -145,6 +145,49 @@ describe('UsersService.createContact', () => {
   });
 });
 
+describe('UsersService.forgotPassword', () => {
+  const build = (user: unknown) => {
+    const prisma = {
+      user: {
+        findUnique: vi.fn().mockResolvedValue(user),
+        update: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'u1', ...data })),
+      },
+    };
+    const mail = { sendInvite: vi.fn().mockResolvedValue(undefined) };
+    return { prisma, mail, service: new UsersService(prisma as any, mail as any) };
+  };
+
+  it('e-mail inexistente: 204 sem gerar token nem enviar', async () => {
+    const { prisma, mail, service } = build(null);
+    await expect(service.forgotPassword('nao@existe.com')).resolves.toBeUndefined();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(mail.sendInvite).not.toHaveBeenCalled();
+  });
+
+  it('CLIENT existente: novo token + link no PORTAL_URL', async () => {
+    process.env.PORTAL_URL = 'http://portal.local';
+    const { prisma, mail, service } = build({ id: 'u1', email: 'c@acme.com', type: 'CLIENT' });
+    await service.forgotPassword('c@acme.com');
+    const data = prisma.user.update.mock.calls[0][0].data;
+    expect(data.inviteToken).toMatch(/^[a-f0-9]{64}$/);
+    expect(data.inviteSentAt).toBeInstanceOf(Date);
+    expect(mail.sendInvite).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'c@acme.com' }),
+      expect.stringContaining('http://portal.local/definir-senha?token='),
+    );
+  });
+
+  it('INTERNAL existente: link no APP_URL', async () => {
+    process.env.APP_URL = 'http://app.local';
+    const { mail, service } = build({ id: 'u1', email: 'a@x.com', type: 'INTERNAL' });
+    await service.forgotPassword('a@x.com');
+    expect(mail.sendInvite).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('http://app.local/definir-senha?token='),
+    );
+  });
+});
+
 describe('UsersService.setPassword', () => {
   const build = (user: unknown) => {
     const prisma = {
