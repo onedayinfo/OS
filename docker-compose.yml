@@ -1,0 +1,65 @@
+name: os
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: os
+      POSTGRES_PASSWORD: os
+      POSTGRES_DB: os
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U os -d os"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - os-net
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: "postgresql://os:os@postgres:5432/os?schema=public"
+      PORT: "3001"
+      APP_URL: http://localhost:3000
+      PORTAL_URL: http://localhost:3000
+      JWT_ACCESS_SECRET: dev-access
+      JWT_REFRESH_SECRET: dev-refresh
+      RESEND_API_KEY: ""
+      RESEND_INBOUND_SECRET: dev-inbound
+      MAIL_FROM: "suporte@exemplo.com.br"
+      STORAGE_PATH: /app/uploads
+      SEED_ADMIN_EMAIL: admin@exemplo.com.br
+      SEED_ADMIN_PASSWORD: admin123
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - os-net
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - os-net
+
+volumes:
+  pg_data:
+  uploads:
+
+networks:
+  os-net:
