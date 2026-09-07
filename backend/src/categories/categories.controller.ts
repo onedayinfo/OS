@@ -1,7 +1,5 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
-import { CurrentUser } from '../common/current-user.decorator.js';
-import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { CategoriesService } from './categories.service.js';
 import { CreateCategoryDto } from './dto/create-category.dto.js';
 import { UpdateCategoryDto } from './dto/update-category.dto.js';
@@ -16,10 +14,12 @@ export class CategoriesController {
     return this.categories.create(dto);
   }
 
-  /** Qualquer usuário interno autenticado (o `JwtAuthGuard` global já exige o login). */
+  /**
+   * Qualquer usuário autenticado (o `JwtAuthGuard` global já exige login).
+   * O portal do cliente precisa listar categorias para o form de abrir chamado.
+   */
   @Get()
-  findAll(@CurrentUser() user: CurrentUserData) {
-    if (user.type !== 'INTERNAL') throw new ForbiddenException();
+  findAll() {
     return this.categories.findAll();
   }
 

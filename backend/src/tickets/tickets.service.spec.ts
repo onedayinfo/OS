@@ -73,4 +73,46 @@ describe('TicketsService.create', () => {
 
     expect(notifier.created).toHaveBeenCalledTimes(1);
   });
+
+  it('actor CLIENT: origin=PORTAL, clientId/requesterId derivados do token', async () => {
+    const { service } = makeDeps();
+    const ticket = await service.create({ title: 't', description: 'd' } as any, {
+      id: 'contact-1',
+      type: 'CLIENT',
+      role: 'CONTACT',
+      clientId: 'client-9',
+    });
+    expect(ticket.origin).toBe('PORTAL');
+    expect(ticket.clientId).toBe('client-9');
+    expect(ticket.requesterId).toBe('contact-1');
+  });
+
+  it('actor CLIENT: clientId/requesterId do body são ignorados (o do token vence)', async () => {
+    const { service } = makeDeps();
+    const ticket = await service.create(
+      {
+        title: 't',
+        description: 'd',
+        clientId: 'outro-cliente',
+        requesterId: 'outro-solicitante',
+        origin: 'MANUAL',
+      } as any,
+      { id: 'contact-1', type: 'CLIENT', role: 'CONTACT', clientId: 'client-9' },
+    );
+    expect(ticket.clientId).toBe('client-9');
+    expect(ticket.requesterId).toBe('contact-1');
+    expect(ticket.origin).toBe('PORTAL');
+  });
+
+  it('actor CLIENT sem clientId no token → BadRequestException', async () => {
+    const { service } = makeDeps();
+    await expect(
+      service.create({ title: 't', description: 'd' } as any, {
+        id: 'contact-1',
+        type: 'CLIENT',
+        role: 'CONTACT',
+        clientId: null,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
 });

@@ -106,7 +106,8 @@ export type CreateTicketInput = {
   requesterId?: string | null;
   categoryId?: string | null;
   priority?: TicketPriority;
-  origin: TicketOrigin;
+  /** Ausente → derivado do `actor`: CLIENT ⇒ PORTAL, caso contrário MANUAL. */
+  origin?: TicketOrigin;
   equipment?: string | null;
 };
 
@@ -125,14 +126,22 @@ export class TicketsService {
 
   async create(input: CreateTicketInput, actor?: Actor): Promise<Ticket> {
     const priority: TicketPriority = input.priority ?? 'MEDIUM';
-    const hasParties = Boolean(input.clientId && input.requesterId);
 
-    if ((input.origin === 'PORTAL' || input.origin === 'MANUAL') && !hasParties) {
+    // Abertura pelo portal: cliente/solicitante/origin vêm do token, não do body
+    // (tentativa de forjar cliente alheio é ignorada — o do token vence).
+    const fromPortal = actor?.type === 'CLIENT';
+    const origin: TicketOrigin = fromPortal ? 'PORTAL' : input.origin ?? 'MANUAL';
+    const clientId = fromPortal ? actor!.clientId ?? null : input.clientId ?? null;
+    const requesterId = fromPortal ? actor!.id : input.requesterId ?? null;
+
+    const hasParties = Boolean(clientId && requesterId);
+
+    if ((origin === 'PORTAL' || origin === 'MANUAL') && !hasParties) {
       throw new BadRequestException(
         'clientId e requesterId são obrigatórios para chamados de portal ou manuais.',
       );
     }
-    const needsTriage = input.origin === 'EMAIL' && !hasParties;
+    const needsTriage = origin === 'EMAIL' && !hasParties;
 
     // read-only, pode ficar fora da transação
     const slaDueAt = await this.sla.dueAt(priority, new Date());
@@ -144,12 +153,12 @@ export class TicketsService {
           number,
           title: input.title,
           description: input.description,
-          clientId: input.clientId ?? null,
-          requesterId: input.requesterId ?? null,
+          clientId,
+          requesterId,
           categoryId: input.categoryId ?? null,
           priority,
           status: 'OPEN',
-          origin: input.origin,
+          origin,
           equipment: input.equipment ?? null,
           needsTriage,
           slaDueAt,

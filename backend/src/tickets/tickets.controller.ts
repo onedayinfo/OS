@@ -16,10 +16,12 @@ import {
 export class TicketsController {
   constructor(private readonly tickets: TicketsService) {}
 
+  // Sem @Roles: interno (ADMIN/AGENT) cria manual; CLIENT abre pelo portal.
+  // O service ramifica por `actor.type` — no portal, cliente/solicitante/origin
+  // vêm do token e os campos correspondentes do body são ignorados.
   @Post()
-  @Roles('ADMIN', 'AGENT')
   create(@Body() dto: CreateTicketDto, @CurrentUser() actor: CurrentUserData) {
-    return this.tickets.create({ ...dto, origin: 'MANUAL' }, actor);
+    return this.tickets.create(dto, actor);
   }
 
   // Sem @Roles: qualquer autenticado; o escopo por papel é aplicado no service.
