@@ -17,3 +17,11 @@ export class ChangePriorityDto {
   @IsIn(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
   priority!: TicketPriority;
 }
+
+export class TriageDto {
+  @IsString()
+  clientId!: string;
+
+  @IsString()
+  requesterId!: string;
+}

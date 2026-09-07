@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { TicketsService } from './tickets.service.js';
 import { TicketEventsService } from './ticket-events.service.js';
 import { TicketStatusService } from './ticket-status.service.js';
@@ -90,5 +91,101 @@ describe('TicketsService.assign', () => {
 
     expect(events[0]).toMatchObject({ type: 'ASSIGNED', data: { from: 'u-1', to: null } });
     expect(notifier.assigned).not.toHaveBeenCalled();
+  });
+});
+
+describe('TicketsService.triage', () => {
+  function makeTriage(over: {
+    ticket?: any;
+    client?: any;
+    requester?: any;
+  } = {}) {
+    const comments: any[] = [];
+    const events: any[] = [];
+    const tx = {
+      ticket: {
+        update: vi.fn().mockImplementation(({ data }: any) =>
+          Promise.resolve({ id: 't1', number: '2026-0001', ...data }),
+        ),
+      },
+      ticketComment: {
+        create: vi.fn().mockImplementation(({ data }: any) => {
+          comments.push(data);
+          return Promise.resolve({ id: 'c1', ...data });
+        }),
+      },
+      ticketEvent: {
+        create: vi.fn().mockImplementation(({ data }: any) => {
+          events.push(data);
+          return Promise.resolve(data);
+        }),
+      },
+    };
+    const prisma = {
+      ticket: {
+        findUnique: vi.fn().mockResolvedValue(
+          over.ticket ?? { id: 't1', number: '2026-0001', needsTriage: true },
+        ),
+      },
+      client: {
+        findUnique: vi.fn().mockResolvedValue(over.client ?? { id: 'cli1', name: 'ACME' }),
+      },
+      user: {
+        findUnique: vi.fn().mockResolvedValue(
+          over.requester ?? { id: 'r1', type: 'CLIENT', clientId: 'cli1' },
+        ),
+      },
+      $transaction: vi.fn().mockImplementation((cb: any) => cb(tx)),
+    };
+    const service = new TicketsService(
+      prisma as any,
+      {} as any,
+      {} as any,
+      new TicketEventsService(),
+      new TicketStatusService(),
+      {} as any,
+    );
+    return { service, prisma, tx, comments, events };
+  }
+
+  const actor = { id: 'ag1', type: 'INTERNAL', role: 'AGENT', clientId: null };
+
+  it('ticket sem needsTriage → BadRequestException', async () => {
+    const { service } = makeTriage({
+      ticket: { id: 't1', number: '2026-0001', needsTriage: false },
+    });
+    await expect(
+      service.triage('t1', { clientId: 'cli1', requesterId: 'r1' }, actor),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('requesterId de outro cliente → BadRequestException', async () => {
+    const { service } = makeTriage({
+      requester: { id: 'r1', type: 'CLIENT', clientId: 'OUTRO' },
+    });
+    await expect(
+      service.triage('t1', { clientId: 'cli1', requesterId: 'r1' }, actor),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('triagem válida → vincula, baixa needsTriage e grava comentário INTERNAL', async () => {
+    const { service, tx, comments } = makeTriage();
+    const updated = await service.triage('t1', { clientId: 'cli1', requesterId: 'r1' }, actor);
+
+    expect(tx.ticket.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 't1' },
+        data: { clientId: 'cli1', requesterId: 'r1', needsTriage: false },
+      }),
+    );
+    expect(updated.needsTriage).toBe(false);
+    expect(comments).toEqual([
+      expect.objectContaining({
+        ticketId: 't1',
+        authorId: 'ag1',
+        visibility: 'INTERNAL',
+        body: 'Chamado vinculado ao cliente ACME.',
+      }),
+    ]);
   });
 });

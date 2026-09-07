@@ -153,6 +153,7 @@ export class TicketsService {
     if (query.clientId) where.clientId = query.clientId;
     if (query.assigneeId) where.assigneeId = query.assigneeId;
     if (query.categoryId) where.categoryId = query.categoryId;
+    if (query.needsTriage !== undefined) where.needsTriage = query.needsTriage;
 
     if (query.overdue) {
       where.slaDueAt = { lt: new Date() };
@@ -328,6 +329,52 @@ export class TicketsService {
       const u = await tx.ticket.update({ where: { id }, data });
       await this.events.record(tx, id, 'PRIORITY_CHANGED', { from, to: priority }, actor?.id);
       return u;
+    });
+  }
+
+  /**
+   * Vincula um chamado de e-mail da fila de triagem a um cliente + solicitante.
+   * Só age se `needsTriage`; valida que o solicitante pertence ao cliente.
+   * Grava um comentário INTERNAL automático de vínculo (autor = quem triou).
+   */
+  async triage(
+    id: string,
+    input: { clientId: string; requesterId: string },
+    actor: Actor,
+  ): Promise<Ticket> {
+    const ticket = await this.prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) throw new NotFoundException('Chamado não encontrado.');
+    if (!ticket.needsTriage) {
+      throw new BadRequestException('Chamado não está na fila de triagem.');
+    }
+
+    const client = await this.prisma.client.findUnique({ where: { id: input.clientId } });
+    if (!client) throw new BadRequestException('Cliente inválido.');
+
+    const requester = await this.prisma.user.findUnique({ where: { id: input.requesterId } });
+    if (!requester || requester.type !== 'CLIENT' || requester.clientId !== input.clientId) {
+      throw new BadRequestException('Solicitante não pertence ao cliente informado.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.ticket.update({
+        where: { id },
+        data: {
+          clientId: input.clientId,
+          requesterId: input.requesterId,
+          needsTriage: false,
+        },
+      });
+      await tx.ticketComment.create({
+        data: {
+          ticketId: id,
+          authorId: actor.id,
+          body: `Chamado vinculado ao cliente ${client.name}.`,
+          visibility: 'INTERNAL',
+        },
+      });
+      await this.events.record(tx, id, 'COMMENT', { visibility: 'INTERNAL' }, actor.id);
+      return updated;
     });
   }
 

@@ -9,6 +9,7 @@ import {
   AssignDto,
   ChangePriorityDto,
   ChangeStatusDto,
+  TriageDto,
 } from './dto/ticket-mutations.dto.js';
 
 @Controller('tickets')
@@ -60,5 +61,15 @@ export class TicketsController {
     @CurrentUser() actor: CurrentUserData,
   ) {
     return this.tickets.changePriority(id, dto.priority, actor);
+  }
+
+  @Patch(':id/triage')
+  @Roles('ADMIN', 'AGENT')
+  triage(
+    @Param('id') id: string,
+    @Body() dto: TriageDto,
+    @CurrentUser() actor: CurrentUserData,
+  ) {
+    return this.tickets.triage(id, dto, actor);
   }
 }

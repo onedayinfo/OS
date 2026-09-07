@@ -34,4 +34,10 @@ export class ListTicketsDto extends PaginationDto {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   overdue?: boolean;
+
+  // Fila de triagem (chamados de e-mail sem cliente).
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  needsTriage?: boolean;
 }
