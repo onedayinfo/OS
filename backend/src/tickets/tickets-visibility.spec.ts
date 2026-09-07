@@ -48,6 +48,36 @@ describe('TicketsService.findAll — escopo por papel', () => {
     expect(where.status.notIn).toEqual(['RESOLVED', 'CLOSED', 'CANCELLED']);
   });
 
+  it('MANAGER sem clientId → escopo vazio (não casa clientId=null de triagem)', async () => {
+    const { service, findMany } = makeService();
+    await service.findAll({} as any, { id: 'u-mgr', type: 'CLIENT', role: 'MANAGER', clientId: null });
+    const where = whereOf(findMany);
+    expect(where.id).toBe('__no_access__');
+    expect(where.clientId).toBeUndefined();
+  });
+
+  it('overdue + ?status=OPEN → combina em vez de sobrescrever', async () => {
+    const { service, findMany } = makeService();
+    await service.findAll({ overdue: true, status: 'OPEN' } as any, {
+      id: 'a', type: 'INTERNAL', role: 'AGENT', clientId: null,
+    });
+    const where = whereOf(findMany);
+    expect(where.status).toEqual({ equals: 'OPEN', notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'] });
+    expect(where.slaDueAt.lt).toBeInstanceOf(Date);
+  });
+
+  it('type=INTERNAL mas role=CONTACT (divergente) → escopo vazio (fail-closed)', async () => {
+    const { service, findMany } = makeService();
+    await service.findAll({} as any, { id: 'u', type: 'INTERNAL', role: 'CONTACT', clientId: null });
+    expect(whereOf(findMany).id).toBe('__no_access__');
+  });
+
+  it('type=CLIENT mas role=AGENT (divergente) → tratado como CONTACT', async () => {
+    const { service, findMany } = makeService();
+    await service.findAll({} as any, { id: 'u-x', type: 'CLIENT', role: 'AGENT', clientId: 'cli' });
+    expect(whereOf(findMany)).toMatchObject({ requesterId: 'u-x' });
+  });
+
   it('q → OR em number/title, insensitive', async () => {
     const { service, findMany } = makeService();
     await service.findAll({ q: 'abc' } as any, { id: 'a', type: 'INTERNAL', role: 'AGENT', clientId: null });
@@ -138,5 +168,20 @@ describe('TicketsService.findOne — guarda de acesso', () => {
     });
     expect(res.comments).toHaveLength(2);
     expect(res.events).toHaveLength(5);
+  });
+
+  it('MANAGER sem clientId → NotFoundException mesmo em chamado de triagem (clientId=null)', async () => {
+    const triage = { ...fullTicket(), clientId: null };
+    const { service } = serviceWithTicket(triage);
+    await expect(
+      service.findOne('t1', { id: 'mgr', type: 'CLIENT', role: 'MANAGER', clientId: null }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('MANAGER de outro cliente → NotFoundException (não compara null===null)', async () => {
+    const { service } = serviceWithTicket(fullTicket()); // clientId cli-X
+    await expect(
+      service.findOne('t1', { id: 'mgr', type: 'CLIENT', role: 'MANAGER', clientId: 'cli-Y' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

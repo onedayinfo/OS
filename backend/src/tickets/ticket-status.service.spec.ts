@@ -1,4 +1,3 @@
-import { BadRequestException } from '@nestjs/common';
 import { TicketsService } from './tickets.service.js';
 import { TicketEventsService } from './ticket-events.service.js';
 import { TicketStatusService, resolveClientReply } from './ticket-status.service.js';
@@ -47,11 +46,28 @@ describe('TicketsService.changeStatus', () => {
     ]);
   });
 
-  it('RESOLVED→IN_PROGRESS → BadRequestException (só OPEN a partir de RESOLVED)', async () => {
-    const { service } = makeService({ status: 'RESOLVED' });
-    await expect(service.changeStatus('t1', 'IN_PROGRESS', { id: 'ag' })).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+  it('RESOLVED→IN_PROGRESS → permitido (RESOLVED não é terminal, spec §5.2)', async () => {
+    const { service, events } = makeService({ status: 'RESOLVED', resolvedAt: new Date() });
+    const res = await service.changeStatus('t1', 'IN_PROGRESS', { id: 'ag' });
+    expect(res.status).toBe('IN_PROGRESS');
+    expect(events).toEqual([
+      expect.objectContaining({ type: 'STATUS_CHANGED', data: { from: 'RESOLVED', to: 'IN_PROGRESS' } }),
+    ]);
+  });
+
+  it('RESOLVED→CLOSED → seta closedAt, preserva resolvedAt, evento {RESOLVED→CLOSED}', async () => {
+    const resolvedAt = new Date('2026-09-01T00:00:00Z');
+    const { service, events, tx } = makeService({ status: 'RESOLVED', resolvedAt });
+    const res = await service.changeStatus('t1', 'CLOSED', { id: 'ag' });
+
+    const data = tx.ticket.update.mock.calls[0][0].data;
+    expect(data.closedAt).toBeInstanceOf(Date);
+    expect(data).not.toHaveProperty('resolvedAt'); // não é tocado → preservado
+    expect(res.status).toBe('CLOSED');
+    expect(res.resolvedAt).toEqual(resolvedAt);
+    expect(events).toEqual([
+      expect.objectContaining({ type: 'STATUS_CHANGED', data: { from: 'RESOLVED', to: 'CLOSED' }, actorId: 'ag' }),
+    ]);
   });
 
   it('RESOLVED→OPEN limpa resolvedAt/closedAt', async () => {

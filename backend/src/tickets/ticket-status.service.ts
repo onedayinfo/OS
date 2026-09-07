@@ -5,14 +5,15 @@ import type { PrismaService } from '../prisma/prisma.service.js';
 type PrismaLike = PrismaService | Prisma.TransactionClient;
 
 /**
- * Transições permitidas. Sair de RESOLVED/CLOSED/CANCELLED só volta para OPEN
- * (reabertura); demais status circulam livremente entre si.
+ * Transições permitidas (spec §5.2): livre qualquer→qualquer, exceto sair de
+ * CANCELLED/CLOSED, que só voltam para OPEN (reabertura). RESOLVED não é
+ * terminal — circula livremente, inclusive para CLOSED e de volta a IN_PROGRESS.
  */
 export const TICKET_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
   OPEN: ['IN_PROGRESS', 'WAITING_CLIENT', 'RESOLVED', 'CLOSED', 'CANCELLED'],
   IN_PROGRESS: ['OPEN', 'WAITING_CLIENT', 'RESOLVED', 'CLOSED', 'CANCELLED'],
   WAITING_CLIENT: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'CANCELLED'],
-  RESOLVED: ['OPEN'],
+  RESOLVED: ['OPEN', 'IN_PROGRESS', 'WAITING_CLIENT', 'CLOSED', 'CANCELLED'],
   CLOSED: ['OPEN'],
   CANCELLED: ['OPEN'],
 };

@@ -29,11 +29,50 @@ const INTERNAL_EVENT_TYPES = new Set<TicketEventType>([
   'EMAIL_OUT',
 ]);
 
+const TERMINAL_STATUSES: TicketStatus[] = ['RESOLVED', 'CLOSED', 'CANCELLED'];
 const NON_TERMINAL_ONLY: Prisma.TicketWhereInput['status'] = {
-  notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'],
+  notIn: TERMINAL_STATUSES,
 };
 
 type Actor = { id: string; type?: string; role?: string; clientId?: string | null };
+
+/** Escopo de visibilidade derivado de `type` + `role`. */
+type Scope =
+  | { kind: 'all' } // sem restrição (interno ADMIN/AGENT)
+  | { kind: 'none' } // nenhum chamado visível (dado inconsistente ou sem cliente)
+  | { kind: 'requester'; id: string } // só os próprios chamados
+  | { kind: 'client'; id: string }; // todos os chamados de um cliente
+
+// Sentinela impossível: força resultado vazio no `where` sem depender de outros filtros.
+const NO_ACCESS_SENTINEL = '__no_access__';
+
+/**
+ * Traduz `actor` em escopo de visibilidade. Fail-closed: se `type` e `role`
+ * divergem, cai na opção mais restritiva ou nega o acesso — nunca "sem restrição".
+ */
+function roleScope(actor: Actor): Scope {
+  if (actor.type === 'CLIENT') {
+    // Lado do cliente: MANAGER enxerga o cliente inteiro; qualquer outro papel
+    // (inclusive inconsistente) é tratado como CONTACT — só os próprios.
+    if (actor.role === 'MANAGER') {
+      return actor.clientId ? { kind: 'client', id: actor.clientId } : { kind: 'none' };
+    }
+    return { kind: 'requester', id: actor.id };
+  }
+  if (actor.type === 'INTERNAL') {
+    // Interno só vê tudo se for ADMIN/AGENT; caso contrário, sem acesso.
+    return actor.role === 'ADMIN' || actor.role === 'AGENT'
+      ? { kind: 'all' }
+      : { kind: 'none' };
+  }
+  // `type` ausente/desconhecido: decide pelo papel, ainda fail-closed.
+  if (actor.role === 'CONTACT') return { kind: 'requester', id: actor.id };
+  if (actor.role === 'MANAGER') {
+    return actor.clientId ? { kind: 'client', id: actor.clientId } : { kind: 'none' };
+  }
+  if (actor.role === 'ADMIN' || actor.role === 'AGENT') return { kind: 'all' };
+  return { kind: 'none' };
+}
 
 export type CreateTicketInput = {
   title: string;
@@ -117,7 +156,10 @@ export class TicketsService {
 
     if (query.overdue) {
       where.slaDueAt = { lt: new Date() };
-      where.status = NON_TERMINAL_ONLY;
+      // Combina com um `?status=` explícito em vez de sobrescrevê-lo.
+      where.status = query.status
+        ? { equals: query.status, notIn: TERMINAL_STATUSES }
+        : NON_TERMINAL_ONLY;
     }
 
     if (query.q) {
@@ -128,11 +170,10 @@ export class TicketsService {
     }
 
     // Escopo por papel — aplicado por último, vence filtros conflitantes do query.
-    if (actor.role === 'CONTACT') {
-      where.requesterId = actor.id;
-    } else if (actor.role === 'MANAGER') {
-      where.clientId = actor.clientId ?? '__no_client__';
-    }
+    const scope = roleScope(actor);
+    if (scope.kind === 'requester') where.requesterId = scope.id;
+    else if (scope.kind === 'client') where.clientId = scope.id;
+    else if (scope.kind === 'none') where.id = NO_ACCESS_SENTINEL;
 
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
@@ -150,14 +191,20 @@ export class TicketsService {
     return { data, total, page, pageSize };
   }
 
-  /** `true` se o `actor` pode enxergar o chamado. INTERNAL sempre pode. */
+  /**
+   * `true` se o `actor` pode enxergar o chamado. Usa o mesmo `roleScope` do
+   * `findAll` para não divergirem. Nunca compara `null === null`: os escopos
+   * `requester`/`client` só casam com um id concreto.
+   */
   private inScope(
     ticket: { requesterId: string | null; clientId: string | null },
     actor: Actor,
   ): boolean {
-    if (actor.role === 'CONTACT') return ticket.requesterId === actor.id;
-    if (actor.role === 'MANAGER') return ticket.clientId === (actor.clientId ?? null);
-    return true;
+    const scope = roleScope(actor);
+    if (scope.kind === 'all') return true;
+    if (scope.kind === 'none') return false;
+    if (scope.kind === 'requester') return ticket.requesterId === scope.id;
+    return ticket.clientId === scope.id;
   }
 
   /** Detalhe com timeline. Fora do escopo → `NotFoundException` (não vaza existência). */
