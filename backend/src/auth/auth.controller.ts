@@ -3,6 +3,8 @@ import type { CookieOptions, Request, Response } from 'express';
 import { Public } from '../common/public.decorator.js';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
+import { UsersService } from '../users/users.service.js';
+import { SetPasswordDto } from '../users/dto/set-password.dto.js';
 
 const REFRESH_COOKIE = 'refreshToken';
 
@@ -28,7 +30,10 @@ const clearCookieOptions: CookieOptions = { path: '/api/auth', sameSite, secure 
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly users: UsersService,
+  ) {}
 
   @Public()
   @Post('login')
@@ -56,6 +61,12 @@ export class AuthController {
     const { accessToken, refreshToken } = await this.auth.rotateRefresh(raw);
     res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions);
     return { accessToken };
+  }
+
+  @Public()
+  @Post('set-password')
+  setPassword(@Body() dto: SetPasswordDto) {
+    return this.users.setPassword(dto.token, dto.password);
   }
 
   @Public()

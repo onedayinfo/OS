@@ -6,6 +6,9 @@ import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CommonModule } from './common/common.module.js';
+import { ClientsModule } from './clients/clients.module.js';
+import { CategoriesModule } from './categories/categories.module.js';
+import { UsersModule } from './users/users.module.js';
 
 @Module({
   imports: [
@@ -14,6 +17,9 @@ import { CommonModule } from './common/common.module.js';
     PrismaModule,
     AuthModule,
     CommonModule,
+    ClientsModule,
+    CategoriesModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
