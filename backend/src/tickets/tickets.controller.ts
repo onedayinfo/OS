@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { CurrentUser, CurrentUserData } from '../common/current-user.decorator.js';
 import { Roles } from '../common/roles.decorator.js';
 import { TicketsService } from './tickets.service.js';
@@ -19,5 +19,10 @@ export class TicketsController {
   @Get()
   findAll(@Query() query: ListTicketsDto, @CurrentUser() actor: CurrentUserData) {
     return this.tickets.findAll(query, actor);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string, @CurrentUser() actor: CurrentUserData) {
+    return this.tickets.findOne(id, actor);
   }
 }

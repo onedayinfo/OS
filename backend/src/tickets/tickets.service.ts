@@ -1,11 +1,31 @@
-import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
-import type { Prisma, Ticket, TicketOrigin, TicketPriority } from '@prisma/client';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import type {
+  Prisma,
+  Ticket,
+  TicketEventType,
+  TicketOrigin,
+  TicketPriority,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SlaService } from '../sla/sla.service.js';
+import { publicUser } from '../users/user-view.js';
 import { TicketNumberService } from './ticket-number.service.js';
 import { TicketEventsService } from './ticket-events.service.js';
 import type { TicketNotifier } from './ticket-notifier.js';
 import type { ListTicketsDto } from './dto/list-tickets.dto.js';
+
+// Eventos ocultados de quem é do lado do cliente.
+const INTERNAL_EVENT_TYPES = new Set<TicketEventType>([
+  'ASSIGNED',
+  'PRIORITY_CHANGED',
+  'EMAIL_OUT',
+]);
 
 const NON_TERMINAL_ONLY: Prisma.TicketWhereInput['status'] = {
   notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'],
@@ -125,5 +145,46 @@ export class TicketsService {
     ]);
 
     return { data, total, page, pageSize };
+  }
+
+  /** `true` se o `actor` pode enxergar o chamado. INTERNAL sempre pode. */
+  private inScope(
+    ticket: { requesterId: string | null; clientId: string | null },
+    actor: Actor,
+  ): boolean {
+    if (actor.role === 'CONTACT') return ticket.requesterId === actor.id;
+    if (actor.role === 'MANAGER') return ticket.clientId === (actor.clientId ?? null);
+    return true;
+  }
+
+  /** Detalhe com timeline. Fora do escopo → `NotFoundException` (não vaza existência). */
+  async findOne(id: string, actor: Actor) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id },
+      include: {
+        client: true,
+        requester: true,
+        assignee: true,
+        category: true,
+        comments: { orderBy: { createdAt: 'asc' } },
+        events: { orderBy: { createdAt: 'asc' } },
+      },
+    });
+    if (!ticket || !this.inScope(ticket, actor)) {
+      throw new NotFoundException('Chamado não encontrado.');
+    }
+
+    const isClientSide = actor.type === 'CLIENT';
+    return {
+      ...ticket,
+      requester: ticket.requester ? publicUser(ticket.requester) : null,
+      assignee: ticket.assignee ? publicUser(ticket.assignee) : null,
+      comments: isClientSide
+        ? ticket.comments.filter((c) => c.visibility !== 'INTERNAL')
+        : ticket.comments,
+      events: isClientSide
+        ? ticket.events.filter((e) => !INTERNAL_EVENT_TYPES.has(e.type))
+        : ticket.events,
+    };
   }
 }
