@@ -1,12 +1,13 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import type { Prisma, UserType } from '@prisma/client';
+import type { UserType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { hashPassword } from '../auth/password.util.js';
 import type { MailSender } from './mail-sender.js';
 import { CreateInternalDto } from './dto/create-internal.dto.js';
 import { CreateContactDto } from './dto/create-contact.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import { publicUser, publicUsers } from './user-view.js';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -17,23 +18,24 @@ export class UsersService {
     @Inject('MailSender') private readonly mail: MailSender,
   ) {}
 
-  /** Usado pelo inbound de e-mail (Fase 9). */
+  /** Uso interno pelo inbound de e-mail (Fase 9) — NÃO é rota; devolve o registro cru. */
   findByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
   }
 
-  findAll(params: { type?: string; clientId?: string }) {
-    return this.prisma.user.findMany({
+  async findAll(params: { type?: string; clientId?: string }) {
+    const list = await this.prisma.user.findMany({
       where: {
         type: params.type ? (params.type as UserType) : undefined,
         clientId: params.clientId,
       },
       orderBy: { name: 'asc' },
     });
+    return publicUsers(list);
   }
 
   async createInternal(dto: CreateInternalDto) {
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         name: dto.name,
         email: dto.email,
@@ -43,6 +45,7 @@ export class UsersService {
         active: true,
       },
     });
+    return publicUser(user);
   }
 
   async createContact(clientId: string, dto: CreateContactDto) {
@@ -61,7 +64,7 @@ export class UsersService {
     });
     const link = `${process.env.PORTAL_URL}/definir-senha?token=${inviteToken}`;
     await this.mail.sendInvite(user, link);
-    return user;
+    return publicUser(user);
   }
 
   async setPassword(token: string, password: string) {
@@ -72,7 +75,7 @@ export class UsersService {
     if (Date.now() - user.inviteSentAt.getTime() > INVITE_TTL_MS) {
       throw new BadRequestException('Convite expirado.');
     }
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         passwordHash: await hashPassword(password),
@@ -81,11 +84,16 @@ export class UsersService {
         inviteSentAt: null,
       },
     });
+    return publicUser(updated);
   }
 
   async update(id: string, dto: UpdateUserDto) {
     const found = await this.prisma.user.findUnique({ where: { id } });
     if (!found) throw new NotFoundException('Usuário não encontrado.');
-    return this.prisma.user.update({ where: { id }, data: dto as Prisma.UserUpdateInput });
+    const data: { name?: string; active?: boolean } = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.active !== undefined) data.active = dto.active;
+    const updated = await this.prisma.user.update({ where: { id }, data });
+    return publicUser(updated);
   }
 }

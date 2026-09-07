@@ -1,5 +1,119 @@
 import { BadRequestException } from '@nestjs/common';
 import { UsersService } from './users.service.js';
+import { AuthController } from '../auth/auth.controller.js';
+
+describe('respostas de User não vazam passwordHash nem inviteToken', () => {
+  it('createContact devolve allowlist sem passwordHash/inviteToken', async () => {
+    const prisma = {
+      user: {
+        create: vi.fn().mockImplementation(({ data }: any) =>
+          Promise.resolve({
+            id: 'u1',
+            active: false,
+            lastLoginAt: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            ...data,
+          }),
+        ),
+      },
+    };
+    const mail = { sendInvite: vi.fn().mockResolvedValue(undefined) };
+    const service = new UsersService(prisma as any, mail as any);
+
+    const result = await service.createContact('cli1', {
+      name: 'Contato',
+      email: 'c@acme.com',
+      role: 'CONTACT',
+    } as any);
+
+    expect(result).not.toHaveProperty('passwordHash');
+    expect(result).not.toHaveProperty('inviteToken');
+    expect(result).not.toHaveProperty('inviteSentAt');
+    expect(result).toMatchObject({ email: 'c@acme.com', type: 'CLIENT' });
+  });
+
+  it('findAll devolve lista sem passwordHash/inviteToken', async () => {
+    const prisma = {
+      user: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'u1',
+            name: 'A',
+            email: 'a@x.com',
+            type: 'INTERNAL',
+            role: 'AGENT',
+            clientId: null,
+            active: true,
+            lastLoginAt: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            passwordHash: 'HASH',
+            inviteToken: 'TOKEN',
+            inviteSentAt: new Date(),
+          },
+        ]),
+      },
+    };
+    const service = new UsersService(prisma as any, { sendInvite: vi.fn() } as any);
+
+    const [row] = await service.findAll({});
+    expect(row).not.toHaveProperty('passwordHash');
+    expect(row).not.toHaveProperty('inviteToken');
+    expect(row).not.toHaveProperty('inviteSentAt');
+  });
+
+  it('POST /auth/set-password devolve { ok: true } sem passwordHash', async () => {
+    const users = {
+      setPassword: vi.fn().mockResolvedValue({ id: 'u1', passwordHash: 'HASH' }),
+    };
+    const controller = new AuthController({} as any, users as any);
+
+    const result = await controller.setPassword({ token: 't', password: 'senha1234' } as any);
+    expect(result).toEqual({ ok: true });
+    expect(result).not.toHaveProperty('passwordHash');
+  });
+});
+
+describe('UsersService.update não permite escalonamento de papel', () => {
+  const build = () => {
+    const prisma = {
+      user: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'u1' }),
+        update: vi.fn().mockImplementation(({ data }: any) =>
+          Promise.resolve({
+            id: 'u1',
+            name: 'A',
+            email: 'a@x.com',
+            type: 'INTERNAL',
+            role: 'AGENT',
+            clientId: null,
+            active: true,
+            lastLoginAt: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            ...data,
+          }),
+        ),
+      },
+    };
+    return { prisma, service: new UsersService(prisma as any, { sendInvite: vi.fn() } as any) };
+  };
+
+  it('ignora role no body (whitelist do DTO): update é chamado sem role', async () => {
+    const { prisma, service } = build();
+    await service.update('u1', { role: 'ADMIN' } as any);
+    const data = prisma.user.update.mock.calls[0][0].data;
+    expect(data).not.toHaveProperty('role');
+  });
+
+  it('active: false funciona', async () => {
+    const { prisma, service } = build();
+    await service.update('u1', { active: false } as any);
+    const data = prisma.user.update.mock.calls[0][0].data;
+    expect(data).toEqual({ active: false });
+  });
+});
 
 describe('UsersService.createContact', () => {
   it('gera inviteToken hex e chama mail.sendInvite com link de definir-senha', async () => {

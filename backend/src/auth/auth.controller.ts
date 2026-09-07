@@ -65,8 +65,9 @@ export class AuthController {
 
   @Public()
   @Post('set-password')
-  setPassword(@Body() dto: SetPasswordDto) {
-    return this.users.setPassword(dto.token, dto.password);
+  async setPassword(@Body() dto: SetPasswordDto) {
+    await this.users.setPassword(dto.token, dto.password);
+    return { ok: true };
   }
 
   @Public()
