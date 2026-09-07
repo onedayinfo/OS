@@ -134,6 +134,7 @@ model Ticket {
   equipment       String?
   needsTriage     Boolean        @default(false)
   slaDueAt        DateTime?
+  slaBreachNotifiedAt DateTime?
   firstResponseAt DateTime?
   resolvedAt      DateTime?
   closedAt        DateTime?
