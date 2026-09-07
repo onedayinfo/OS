@@ -70,9 +70,12 @@ type Item =
 export function TicketTimeline({
   ticket,
   agents = [],
+  allowInternal = true,
 }: {
   ticket: TicketDetail;
   agents?: PublicUser[];
+  /** Portal do cliente passa `false`: sem badge "Interno" (o backend já filtra). */
+  allowInternal?: boolean;
 }) {
   const names = new Map<string, string>();
   agents.forEach((a) => names.set(a.id, a.name));
@@ -105,7 +108,7 @@ export function TicketTimeline({
             key={`c-${it.data.id}`}
             className={cn(
               'rounded-lg border p-3',
-              it.data.visibility === 'INTERNAL'
+              allowInternal && it.data.visibility === 'INTERNAL'
                 ? 'border-amber-200 bg-amber-50'
                 : 'border-border bg-background',
             )}
@@ -114,9 +117,11 @@ export function TicketTimeline({
               <span>{nameFor(it.data.authorId)}</span>
               <span>·</span>
               <span>{fmt(it.at)}</span>
-              <Badge tone={it.data.visibility === 'INTERNAL' ? 'amber' : 'green'}>
-                {it.data.visibility === 'INTERNAL' ? 'Interno' : 'Público'}
-              </Badge>
+              {allowInternal && (
+                <Badge tone={it.data.visibility === 'INTERNAL' ? 'amber' : 'green'}>
+                  {it.data.visibility === 'INTERNAL' ? 'Interno' : 'Público'}
+                </Badge>
+              )}
             </div>
             <p className="whitespace-pre-wrap text-sm">{it.data.body}</p>
             <AttachmentList items={it.data.attachments} />

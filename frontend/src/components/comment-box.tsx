@@ -9,10 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
-export function CommentBox({ ticketId }: { ticketId: string }) {
+export function CommentBox({
+  ticketId,
+  allowInternal = true,
+}: {
+  ticketId: string;
+  /** Portal do cliente passa `false`: sem alternância, resposta sempre pública. */
+  allowInternal?: boolean;
+}) {
   const qc = useQueryClient();
   const [body, setBody] = useState('');
-  const [visibility, setVisibility] = useState<CommentVisibility>('INTERNAL');
+  const [visibility, setVisibility] = useState<CommentVisibility>(
+    allowInternal ? 'INTERNAL' : 'PUBLIC',
+  );
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -44,30 +53,34 @@ export function CommentBox({ ticketId }: { ticketId: string }) {
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
-      <div className="flex gap-1">
-        {(['INTERNAL', 'PUBLIC'] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setVisibility(v)}
-            className={cn(
-              'rounded-md px-3 py-1 text-sm font-medium',
-              visibility === v
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground',
-            )}
-          >
-            {v === 'INTERNAL' ? 'Interno' : 'Público'}
-          </button>
-        ))}
-      </div>
+      {allowInternal && (
+        <div className="flex gap-1">
+          {(['INTERNAL', 'PUBLIC'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setVisibility(v)}
+              className={cn(
+                'rounded-md px-3 py-1 text-sm font-medium',
+                visibility === v
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground',
+              )}
+            >
+              {v === 'INTERNAL' ? 'Interno' : 'Público'}
+            </button>
+          ))}
+        </div>
+      )}
       <Textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder={
-          visibility === 'INTERNAL'
-            ? 'Nota interna (não visível ao cliente)'
-            : 'Resposta visível ao cliente'
+          !allowInternal
+            ? 'Escreva sua resposta'
+            : visibility === 'INTERNAL'
+              ? 'Nota interna (não visível ao cliente)'
+              : 'Resposta visível ao cliente'
         }
       />
       <input
