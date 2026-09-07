@@ -1,0 +1,117 @@
+import { UnauthorizedException } from '@nestjs/common';
+import { AuthService } from './auth.service.js';
+import { hashPassword } from './password.util.js';
+
+const jwtStub = { signAsync: vi.fn().mockResolvedValue('access.jwt') } as any;
+
+describe('AuthService.validateLogin', () => {
+  let hash: string;
+  beforeAll(async () => {
+    hash = await hashPassword('correta');
+  });
+
+  const build = (user: unknown) =>
+    new AuthService(
+      { user: { findUnique: vi.fn().mockResolvedValue(user) } } as any,
+      jwtStub,
+    );
+
+  it('retorna usuário com senha correta', async () => {
+    const s = build({ id: 'u1', active: true, passwordHash: hash });
+    await expect(s.validateLogin('a@a.com', 'correta')).resolves.toMatchObject({ id: 'u1' });
+  });
+
+  it('rejeita senha errada', async () => {
+    const s = build({ id: 'u1', active: true, passwordHash: hash });
+    await expect(s.validateLogin('a@a.com', 'errada')).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('rejeita usuário inativo', async () => {
+    const s = build({ id: 'u1', active: false, passwordHash: hash });
+    await expect(s.validateLogin('a@a.com', 'correta')).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('rejeita usuário sem hash', async () => {
+    const s = build({ id: 'u1', active: true, passwordHash: null });
+    await expect(s.validateLogin('a@a.com', 'correta')).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('rejeita usuário inexistente', async () => {
+    const s = build(null);
+    await expect(s.validateLogin('a@a.com', 'correta')).rejects.toThrow(UnauthorizedException);
+  });
+});
+
+describe('AuthService.issueTokens', () => {
+  it('emite access JWT e grava refresh como sha256', async () => {
+    const create = vi.fn();
+    const prisma = { refreshToken: { create } } as any;
+    const s = new AuthService(prisma, jwtStub);
+    const out = await s.issueTokens({ id: 'u1', type: 'INTERNAL', role: 'ADMIN', clientId: null });
+    expect(out.accessToken).toBe('access.jwt');
+    expect(out.refreshToken).toMatch(/^[a-f0-9]{96}$/); // randomBytes(48).hex
+    const data = create.mock.calls[0][0].data;
+    expect(data.tokenHash).toMatch(/^[a-f0-9]{64}$/); // sha256 hex
+    expect(data.tokenHash).not.toBe(out.refreshToken);
+    expect(data.userId).toBe('u1');
+    expect(data.expiresAt.getTime()).toBeGreaterThan(Date.now());
+  });
+});
+
+describe('AuthService.rotateRefresh', () => {
+  const validRow = {
+    id: 'rt1',
+    userId: 'u1',
+    revokedAt: null,
+    expiresAt: new Date(Date.now() + 1_000_000),
+  };
+
+  it('revoga o antigo e emite par novo', async () => {
+    const update = vi.fn();
+    const create = vi.fn();
+    const prisma = {
+      user: { findUnique: vi.fn().mockResolvedValue({ id: 'u1', active: true }) },
+      refreshToken: { findFirst: vi.fn().mockResolvedValue({ ...validRow }), update, create },
+    } as any;
+    const s = new AuthService(prisma, jwtStub);
+    const out = await s.rotateRefresh('raw-token');
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'rt1' },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(create).toHaveBeenCalled();
+    expect(out.accessToken).toBe('access.jwt');
+    expect(out.refreshToken).toMatch(/^[a-f0-9]{96}$/);
+  });
+
+  it('rejeita refresh revogado', async () => {
+    const prisma = {
+      refreshToken: {
+        findFirst: vi.fn().mockResolvedValue({ ...validRow, revokedAt: new Date() }),
+      },
+    } as any;
+    const s = new AuthService(prisma, jwtStub);
+    await expect(s.rotateRefresh('raw-token')).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('rejeita refresh expirado', async () => {
+    const prisma = {
+      refreshToken: {
+        findFirst: vi.fn().mockResolvedValue({ ...validRow, expiresAt: new Date(Date.now() - 1) }),
+      },
+    } as any;
+    const s = new AuthService(prisma, jwtStub);
+    await expect(s.rotateRefresh('raw-token')).rejects.toThrow(UnauthorizedException);
+  });
+});
+
+describe('AuthService.logout', () => {
+  it('marca revokedAt via updateMany', async () => {
+    const updateMany = vi.fn();
+    const s = new AuthService({ refreshToken: { updateMany } } as any, jwtStub);
+    await s.logout('raw-token');
+    const arg = updateMany.mock.calls[0][0];
+    expect(arg.where.revokedAt).toBeNull();
+    expect(arg.data.revokedAt).toBeInstanceOf(Date);
+  });
+});
