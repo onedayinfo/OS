@@ -222,6 +222,50 @@ export class TicketsService {
     return updated;
   }
 
+  /** Define/remove o responsável. `null` desatribui. */
+  async assign(id: string, assigneeId: string | null, actor?: Actor): Promise<Ticket> {
+    const ticket = await this.prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) throw new NotFoundException('Chamado não encontrado.');
+    const from = ticket.assigneeId;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.ticket.update({ where: { id }, data: { assigneeId } });
+      await this.events.record(tx, id, 'ASSIGNED', { from, to: assigneeId }, actor?.id);
+      return u;
+    });
+
+    if (assigneeId && assigneeId !== from) {
+      await this.notify((n) => n.assigned(updated), updated);
+    }
+    return updated;
+  }
+
+  /** Muda a prioridade; recalcula o SLA se o chamado não está em status terminal. */
+  async changePriority(
+    id: string,
+    priority: TicketPriority,
+    actor?: Actor,
+  ): Promise<Ticket> {
+    const ticket = await this.prisma.ticket.findUnique({ where: { id } });
+    if (!ticket) throw new NotFoundException('Chamado não encontrado.');
+    const from = ticket.priority;
+
+    const data: Prisma.TicketUpdateInput = { priority };
+    const terminal =
+      ticket.status === 'RESOLVED' ||
+      ticket.status === 'CLOSED' ||
+      ticket.status === 'CANCELLED';
+    if (!terminal) {
+      data.slaDueAt = await this.sla.dueAt(priority, ticket.createdAt);
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const u = await tx.ticket.update({ where: { id }, data });
+      await this.events.record(tx, id, 'PRIORITY_CHANGED', { from, to: priority }, actor?.id);
+      return u;
+    });
+  }
+
   /** Dispara notificação sem deixar a falha abortar a operação. */
   private async notify(fn: (n: TicketNotifier) => Promise<void>, ticket: Ticket): Promise<void> {
     try {

@@ -1,10 +1,15 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { CurrentUser, CurrentUserData } from '../common/current-user.decorator.js';
+import { CurrentUser } from '../common/current-user.decorator.js';
+import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { Roles } from '../common/roles.decorator.js';
 import { TicketsService } from './tickets.service.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { ListTicketsDto } from './dto/list-tickets.dto.js';
-import { ChangeStatusDto } from './dto/ticket-mutations.dto.js';
+import {
+  AssignDto,
+  ChangePriorityDto,
+  ChangeStatusDto,
+} from './dto/ticket-mutations.dto.js';
 
 @Controller('tickets')
 export class TicketsController {
@@ -35,5 +40,25 @@ export class TicketsController {
     @CurrentUser() actor: CurrentUserData,
   ) {
     return this.tickets.changeStatus(id, dto.status, actor);
+  }
+
+  @Patch(':id/assign')
+  @Roles('ADMIN', 'AGENT')
+  assign(
+    @Param('id') id: string,
+    @Body() dto: AssignDto,
+    @CurrentUser() actor: CurrentUserData,
+  ) {
+    return this.tickets.assign(id, dto.assigneeId ?? null, actor);
+  }
+
+  @Patch(':id/priority')
+  @Roles('ADMIN', 'AGENT')
+  changePriority(
+    @Param('id') id: string,
+    @Body() dto: ChangePriorityDto,
+    @CurrentUser() actor: CurrentUserData,
+  ) {
+    return this.tickets.changePriority(id, dto.priority, actor);
   }
 }
