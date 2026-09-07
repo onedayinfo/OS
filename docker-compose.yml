@@ -4,15 +4,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: os
-      POSTGRES_PASSWORD: os
-      POSTGRES_DB: os
+      POSTGRES_USER: ${POSTGRES_USER:-os}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-os}
+      POSTGRES_DB: ${POSTGRES_DB:-os}
     volumes:
       - pg_data:/var/lib/postgresql/data
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U os -d os"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-os} -d ${POSTGRES_DB:-os}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -22,19 +22,11 @@ services:
   backend:
     build:
       context: ./backend
+    env_file:
+      - ./backend/.env
     environment:
+      # Sobrescreve o host do .env (localhost) pelo nome do serviço na rede compose.
       DATABASE_URL: "postgresql://os:os@postgres:5432/os?schema=public"
-      PORT: "3001"
-      APP_URL: http://localhost:3000
-      PORTAL_URL: http://localhost:3000
-      JWT_ACCESS_SECRET: dev-access
-      JWT_REFRESH_SECRET: dev-refresh
-      RESEND_API_KEY: ""
-      RESEND_INBOUND_SECRET: dev-inbound
-      MAIL_FROM: "suporte@exemplo.com.br"
-      STORAGE_PATH: /app/uploads
-      SEED_ADMIN_EMAIL: admin@exemplo.com.br
-      SEED_ADMIN_PASSWORD: admin123
     volumes:
       - uploads:/app/uploads
     ports:
@@ -48,6 +40,8 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: "http://localhost:3001/api"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3001/api
     ports:
