@@ -12,6 +12,7 @@ import { UsersModule } from './users/users.module.js';
 import { SlaModule } from './sla/sla.module.js';
 import { TicketsModule } from './tickets/tickets.module.js';
 import { CommentsModule } from './comments/comments.module.js';
+import { AttachmentsModule } from './attachments/attachments.module.js';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { CommentsModule } from './comments/comments.module.js';
     SlaModule,
     TicketsModule,
     CommentsModule,
+    AttachmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
