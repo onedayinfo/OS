@@ -9,6 +9,7 @@ import { CommonModule } from './common/common.module.js';
 import { ClientsModule } from './clients/clients.module.js';
 import { CategoriesModule } from './categories/categories.module.js';
 import { UsersModule } from './users/users.module.js';
+import { EmailModule } from './email/email.module.js';
 import { SlaModule } from './sla/sla.module.js';
 import { TicketsModule } from './tickets/tickets.module.js';
 import { CommentsModule } from './comments/comments.module.js';
@@ -24,6 +25,7 @@ import { AttachmentsModule } from './attachments/attachments.module.js';
     ClientsModule,
     CategoriesModule,
     UsersModule,
+    EmailModule,
     SlaModule,
     TicketsModule,
     CommentsModule,
