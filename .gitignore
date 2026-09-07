@@ -6,3 +6,4 @@ dist/
 uploads/
 *.log
 *.tsbuildinfo
+.superpowers/
