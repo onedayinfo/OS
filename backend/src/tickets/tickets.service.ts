@@ -34,7 +34,7 @@ const NON_TERMINAL_ONLY: Prisma.TicketWhereInput['status'] = {
   notIn: TERMINAL_STATUSES,
 };
 
-type Actor = { id: string; type?: string; role?: string; clientId?: string | null };
+export type Actor = { id: string; type?: string; role?: string; clientId?: string | null };
 
 /** Escopo de visibilidade derivado de `type` + `role`. */
 type Scope =
@@ -205,6 +205,19 @@ export class TicketsService {
     if (scope.kind === 'none') return false;
     if (scope.kind === 'requester') return ticket.requesterId === scope.id;
     return ticket.clientId === scope.id;
+  }
+
+  /**
+   * Garante que `actor` enxerga o chamado e devolve o registro cru. Reusa o
+   * mesmo escopo do `findOne`; fora do escopo → `NotFoundException`. Consumido
+   * por `CommentsService` e `AttachmentsService` como guarda de acesso.
+   */
+  async assertAccess(ticketId: string, actor: Actor): Promise<Ticket> {
+    const ticket = await this.prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket || !this.inScope(ticket, actor)) {
+      throw new NotFoundException('Chamado não encontrado.');
+    }
+    return ticket;
   }
 
   /** Detalhe com timeline. Fora do escopo → `NotFoundException` (não vaza existência). */

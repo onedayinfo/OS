@@ -17,6 +17,12 @@ import { LoggerTicketNotifier } from './ticket-notifier.js';
     TicketStatusService,
     { provide: 'TicketNotifier', useClass: LoggerTicketNotifier },
   ],
-  exports: [TicketNumberService, TicketEventsService, TicketStatusService, TicketsService],
+  exports: [
+    TicketNumberService,
+    TicketEventsService,
+    TicketStatusService,
+    TicketsService,
+    'TicketNotifier',
+  ],
 })
 export class TicketsModule {}

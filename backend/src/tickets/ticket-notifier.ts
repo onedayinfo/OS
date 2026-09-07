@@ -1,14 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { Ticket } from '@prisma/client';
+import type { Ticket, TicketComment } from '@prisma/client';
 
 /**
- * Porta de notificação de chamados. Consumida por `TicketsService`.
- * Registrada com `provide: 'TicketNotifier'`.
+ * Porta de notificação de chamados. Consumida por `TicketsService` e
+ * `CommentsService`. Registrada com `provide: 'TicketNotifier'`.
  */
 export interface TicketNotifier {
   created(ticket: Ticket): Promise<void>;
   resolved(ticket: Ticket): Promise<void>;
   assigned(ticket: Ticket): Promise<void>;
+  publicComment(ticket: Ticket, comment: TicketComment): Promise<void>;
 }
 
 // ponytail: impl temporária da Fase 5 — só loga. A Fase 8 troca pelo
@@ -25,5 +26,8 @@ export class LoggerTicketNotifier implements TicketNotifier {
   }
   async assigned(ticket: Ticket): Promise<void> {
     this.logger.log(`chamado atribuído ${ticket.number} -> ${ticket.assigneeId ?? 'ninguém'}`);
+  }
+  async publicComment(ticket: Ticket, comment: TicketComment): Promise<void> {
+    this.logger.log(`comentário público em ${ticket.number} (${comment.id})`);
   }
 }
