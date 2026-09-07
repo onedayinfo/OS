@@ -79,6 +79,20 @@ describe('CommentsService.create', () => {
     expect(second.tx.ticket.update).not.toHaveBeenCalled();
   });
 
+  it('PUBLIC de CLIENT não seta firstResponseAt', async () => {
+    const { service, tx } = makeDeps({ firstResponseAt: null });
+    await service.create('t1', { body: 'oi', visibility: 'PUBLIC' }, client);
+    expect(tx.ticket.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: { firstResponseAt: expect.any(Date) } }),
+    );
+  });
+
+  it('INTERNAL de AGENT não seta firstResponseAt', async () => {
+    const { service, tx } = makeDeps({ firstResponseAt: null });
+    await service.create('t1', { body: 'nota', visibility: 'INTERNAL' }, agent);
+    expect(tx.ticket.update).not.toHaveBeenCalled();
+  });
+
   it('comentário de CLIENT em ticket WAITING_CLIENT → resolveClientReply (volta a IN_PROGRESS)', async () => {
     const { service, tx } = makeDeps({ status: 'WAITING_CLIENT' });
     await service.create('t1', { body: 'segue', visibility: 'PUBLIC' }, client);

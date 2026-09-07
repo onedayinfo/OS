@@ -46,6 +46,9 @@ export class CommentsService {
       throw new ForbiddenException('Cliente não pode criar comentário interno.');
     }
 
+    // ponytail: `ticket.firstResponseAt` vem do assertAccess, fora da tx. Race
+    // inócuo — se duas respostas simultâneas o lerem null, ambas gravam ~now
+    // (last-write-wins, diferença de ms). Só piora sob lock por ticket, YAGNI.
     const setsFirstResponse =
       actor.type === 'INTERNAL' &&
       dto.visibility === 'PUBLIC' &&

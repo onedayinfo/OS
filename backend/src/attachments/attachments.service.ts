@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   BadRequestException,
   Injectable,
@@ -17,8 +17,12 @@ import {
   type UploadedFile,
 } from './storage.util.js';
 
-/** Lido a cada chamada (não em escopo de módulo) para testes trocarem o alvo. */
-const storagePath = () => process.env.STORAGE_PATH ?? './uploads';
+/**
+ * Lido a cada chamada (não em escopo de módulo) para testes trocarem o alvo,
+ * mas sempre resolvido para absoluto — o `mkdir` do boot, a escrita e o download
+ * usam o mesmo caminho independem do cwd. `.env` pode seguir `./uploads`.
+ */
+const storagePath = () => resolve(process.env.STORAGE_PATH ?? './uploads');
 
 @Injectable()
 export class AttachmentsService implements OnModuleInit {

@@ -245,8 +245,13 @@ export class TicketsService {
       comments: isClientSide
         ? ticket.comments.filter((c) => c.visibility !== 'INTERNAL')
         : ticket.comments,
+      // ponytail: cliente não vê nenhum evento COMMENT — o comentário público já
+      // vai no array `comments`; assim a nota interna não vaza (existência/hora/
+      // actorId) pela timeline via evento COMMENT com data.visibility=INTERNAL.
       events: isClientSide
-        ? ticket.events.filter((e) => !INTERNAL_EVENT_TYPES.has(e.type))
+        ? ticket.events.filter(
+            (e) => !INTERNAL_EVENT_TYPES.has(e.type) && e.type !== 'COMMENT',
+          )
         : ticket.events,
     };
   }

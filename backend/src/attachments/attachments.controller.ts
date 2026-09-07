@@ -6,6 +6,7 @@ import {
   Post,
   Res,
   UploadedFile,
+  UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -13,6 +14,7 @@ import type { Response } from 'express';
 import { CurrentUser } from '../common/current-user.decorator.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { AttachmentsService } from './attachments.service.js';
+import { MulterExceptionFilter } from './multer-exception.filter.js';
 import { MAX_ATTACHMENT_BYTES, type UploadedFile as UF } from './storage.util.js';
 
 const interceptor = FileInterceptor('file', {
@@ -20,6 +22,7 @@ const interceptor = FileInterceptor('file', {
 });
 
 @Controller()
+@UseFilters(MulterExceptionFilter)
 export class AttachmentsController {
   constructor(private readonly attachments: AttachmentsService) {}
 
@@ -51,10 +54,13 @@ export class AttachmentsController {
     @Res() res: Response,
   ) {
     const attachment = await this.attachments.getForDownload(id, actor);
-    res.set({
-      'Content-Type': attachment.mime,
-      'Content-Disposition': `attachment; filename="${attachment.filename}"`,
-    });
-    res.sendFile(resolve(attachment.storedPath));
+    // res.download faz o encoding RFC 5987 do nome (filename*=UTF-8'') e o
+    // fallback ASCII — sem spoof por aspas nem ERR_INVALID_CHAR em acento.
+    res.type(attachment.mime);
+    await new Promise<void>((ok, fail) =>
+      res.download(resolve(attachment.storedPath), attachment.filename, (err) =>
+        err ? fail(err) : ok(),
+      ),
+    );
   }
 }

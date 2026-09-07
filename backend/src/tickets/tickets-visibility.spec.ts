@@ -157,8 +157,24 @@ describe('TicketsService.findOne — guarda de acesso', () => {
       id: 'req-A', type: 'CLIENT', role: 'CONTACT', clientId: 'cli-X',
     });
     expect(res.comments.map((c: any) => c.id)).toEqual(['c1']);
-    expect(res.events.map((e: any) => e.type)).toEqual(['CREATED', 'STATUS_CHANGED', 'COMMENT']);
+    expect(res.events.map((e: any) => e.type)).toEqual(['CREATED', 'STATUS_CHANGED']);
     expect(res.requester).not.toHaveProperty('passwordHash');
+  });
+
+  it('CLIENT dono → nenhum evento COMMENT com visibility INTERNAL vaza na timeline', async () => {
+    const t = fullTicket();
+    t.events = [
+      { id: 'e1', type: 'CREATED' },
+      { id: 'e2', type: 'COMMENT', data: { visibility: 'INTERNAL' } } as any,
+      { id: 'e3', type: 'COMMENT', data: { visibility: 'PUBLIC' } } as any,
+      { id: 'e4', type: 'STATUS_CHANGED' },
+    ];
+    const { service } = serviceWithTicket(t);
+    const res = await service.findOne('t1', {
+      id: 'req-A', type: 'CLIENT', role: 'CONTACT', clientId: 'cli-X',
+    });
+    expect(res.events.some((e: any) => e.data?.visibility === 'INTERNAL')).toBe(false);
+    expect(res.events.map((e: any) => e.type)).toEqual(['CREATED', 'STATUS_CHANGED']);
   });
 
   it('AGENT interno → vê tudo', async () => {
