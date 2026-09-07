@@ -1,10 +1,15 @@
 import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
-import type { Ticket, TicketOrigin, TicketPriority } from '@prisma/client';
+import type { Prisma, Ticket, TicketOrigin, TicketPriority } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SlaService } from '../sla/sla.service.js';
 import { TicketNumberService } from './ticket-number.service.js';
 import { TicketEventsService } from './ticket-events.service.js';
 import type { TicketNotifier } from './ticket-notifier.js';
+import type { ListTicketsDto } from './dto/list-tickets.dto.js';
+
+const NON_TERMINAL_ONLY: Prisma.TicketWhereInput['status'] = {
+  notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'],
+};
 
 type Actor = { id: string; type?: string; role?: string; clientId?: string | null };
 
@@ -75,5 +80,50 @@ export class TicketsService {
       );
     }
     return ticket;
+  }
+
+  /** Listagem paginada com escopo por papel + filtros. */
+  async findAll(query: ListTicketsDto, actor: Actor) {
+    const where: Prisma.TicketWhereInput = {};
+
+    if (query.status) where.status = query.status;
+    if (query.priority) where.priority = query.priority;
+    if (query.clientId) where.clientId = query.clientId;
+    if (query.assigneeId) where.assigneeId = query.assigneeId;
+    if (query.categoryId) where.categoryId = query.categoryId;
+
+    if (query.overdue) {
+      where.slaDueAt = { lt: new Date() };
+      where.status = NON_TERMINAL_ONLY;
+    }
+
+    if (query.q) {
+      where.OR = [
+        { number: { contains: query.q, mode: 'insensitive' } },
+        { title: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
+
+    // Escopo por papel — aplicado por último, vence filtros conflitantes do query.
+    if (actor.role === 'CONTACT') {
+      where.requesterId = actor.id;
+    } else if (actor.role === 'MANAGER') {
+      where.clientId = actor.clientId ?? '__no_client__';
+    }
+
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+
+    const [data, total] = await Promise.all([
+      this.prisma.ticket.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.ticket.count({ where }),
+    ]);
+
+    return { data, total, page, pageSize };
   }
 }
