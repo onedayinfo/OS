@@ -41,6 +41,16 @@ export class ClientsService {
     return { data, total, page, pageSize };
   }
 
+  /**
+   * Casa o domínio do remetente de um e-mail inbound com um cliente ativo.
+   * Uso interno pelo inbound (Fase 9) — não é rota.
+   */
+  findByEmailDomain(domain: string) {
+    return this.prisma.client.findFirst({
+      where: { emailDomains: { has: domain.toLowerCase() }, active: true },
+    });
+  }
+
   async findOne(id: string) {
     const client = await this.prisma.client.findUnique({ where: { id } });
     if (!client) throw new NotFoundException('Cliente não encontrado.');

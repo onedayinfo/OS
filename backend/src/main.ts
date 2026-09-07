@@ -4,7 +4,10 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // `rawBody: true` preenche `req.rawBody` com os bytes originais da requisição
+  // (usado pela verificação de assinatura HMAC do webhook inbound do Resend em
+  // InboundController).
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.setGlobalPrefix('api');
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
