@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
-import type { Prisma, Ticket } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import type { Ticket } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { UsersService } from '../users/users.service.js';
 import { ClientsService } from '../clients/clients.service.js';
@@ -19,7 +20,8 @@ import type {
 
 /** Campos já normalizados a partir do payload cru do Resend. */
 type ParsedEmail = {
-  messageId: string | null;
+  /** Sempre presente: `no-message-id-<uuid>` quando o e-mail não traz `Message-ID`. */
+  messageId: string;
   fromEmail: string;
   subject: string;
   text: string;
@@ -43,58 +45,83 @@ export class InboundService {
     private readonly attachments: AttachmentsService,
   ) {}
 
-  /** Fluxo do webhook inbound (spec §6.1). Idempotente por `messageId`. */
+  /**
+   * Fluxo do webhook inbound (spec §6.1). Idempotente por `messageId`: a **criação
+   * atômica** da linha `InboundEmail` é a barreira de dedupe. Num retry (após falha
+   * transitória) ou entrega concorrente, o 2º `create` bate no `@unique` (P2002) e
+   * retornamos no-op — sem ticket/comentário duplicado.
+   */
   async handle(payload: ResendInboundPayload): Promise<{ ticketId: string | null; deduped: boolean }> {
     const email = parsePayload(payload);
 
-    // 2. Dedupe: já processamos esse Message-ID → no-op.
-    if (email.messageId) {
-      const seen = await this.prisma.inboundEmail.findUnique({
-        where: { messageId: email.messageId },
-      });
-      if (seen) return { ticketId: seen.ticketId, deduped: true };
-    }
+    // Fast-path opcional: Message-ID já visto → no-op. A barreira real é o create abaixo.
+    const seen = await this.prisma.inboundEmail.findUnique({
+      where: { messageId: email.messageId },
+    });
+    if (seen) return { ticketId: seen.ticketId, deduped: true };
 
     const body = stripQuotedText(email.text);
+    const inboundData = {
+      messageId: email.messageId,
+      fromEmail: email.fromEmail,
+      subject: email.subject,
+      receivedAt: new Date(),
+      headers: email.headers as Prisma.InputJsonValue,
+    };
 
-    // 3. Threading: In-Reply-To/References → InboundEmail conhecido; senão
-    //    fallback pelo número no assunto.
-    let ticket = await this.findThreadTicket(email);
+    // Threading: In-Reply-To/References → InboundEmail conhecido; senão o número no assunto.
+    const thread = await this.findThreadTicket(email);
 
-    if (ticket) {
-      // 4. Resposta a chamado existente: comentário PUBLIC + EMAIL_IN + eventual
-      //    volta de WAITING_CLIENT para IN_PROGRESS.
-      const authorId = await this.resolveAuthorId(ticket);
-      const found = ticket;
-      await this.prisma.$transaction(async (tx) => {
-        await tx.ticketComment.create({
-          data: { ticketId: found.id, authorId, body, visibility: 'PUBLIC' },
+    if (thread) {
+      // Resposta a chamado existente: comentário PUBLIC + EMAIL_IN + eventual volta de
+      // WAITING_CLIENT p/ IN_PROGRESS + gravação do InboundEmail, tudo numa transação.
+      // Entrega concorrente → P2002 no create → rollback de tudo → no-op.
+      const authorId = await this.resolveAuthorId(thread);
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          await tx.ticketComment.create({
+            data: { ticketId: thread.id, authorId, body, visibility: 'PUBLIC' },
+          });
+          await this.events.record(tx, thread.id, 'EMAIL_IN', {
+            fromEmail: email.fromEmail,
+            messageId: email.messageId,
+          });
+          await resolveClientReply(tx, thread.id);
+          await tx.inboundEmail.create({ data: { ...inboundData, ticketId: thread.id } });
         });
-        await this.events.record(tx, found.id, 'EMAIL_IN', {
-          fromEmail: email.fromEmail,
-          messageId: email.messageId,
-        });
-        await resolveClientReply(tx, found.id);
-      });
-    } else {
-      // 5. Novo chamado.
-      ticket = await this.createTicketFromEmail(email, body);
+      } catch (e) {
+        if (isUniqueViolation(e)) return { ticketId: thread.id, deduped: true };
+        throw e;
+      }
+      await this.saveAttachments(thread, email.attachments);
+      return { ticketId: thread.id, deduped: false };
     }
 
-    // 6. Anexos do e-mail. Falha de um anexo (MIME/tamanho) não derruba o webhook.
-    await this.saveAttachments(ticket, email.attachments);
+    // Novo chamado. Reivindica o Message-ID primeiro (create atômico = dedupe); se a
+    // criação do ticket falhar depois, remove a linha para permitir o retry do Resend.
+    try {
+      await this.prisma.inboundEmail.create({ data: inboundData });
+    } catch (e) {
+      if (isUniqueViolation(e)) return { ticketId: null, deduped: true };
+      throw e;
+    }
 
-    // 7. Registra o InboundEmail (dedupe/threading futuros).
-    await this.prisma.inboundEmail.create({
-      data: {
-        messageId: email.messageId ?? `no-message-id-${randomUUID()}`,
-        ticketId: ticket.id,
-        fromEmail: email.fromEmail,
-        subject: email.subject,
-        receivedAt: new Date(),
-        headers: email.headers as Prisma.InputJsonValue,
-      },
+    let ticket: Ticket;
+    try {
+      ticket = await this.createTicketFromEmail(email, body);
+    } catch (e) {
+      await this.prisma.inboundEmail
+        .delete({ where: { messageId: email.messageId } })
+        .catch(() => undefined);
+      throw e;
+    }
+    await this.prisma.inboundEmail.update({
+      where: { messageId: email.messageId },
+      data: { ticketId: ticket.id },
     });
+
+    // Anexos do e-mail. Falha de um anexo (MIME/tamanho) não derruba o webhook.
+    await this.saveAttachments(ticket, email.attachments);
 
     return { ticketId: ticket.id, deduped: false };
   }
@@ -227,6 +254,15 @@ export class InboundService {
   }
 }
 
+/**
+ * Violação de constraint `@unique` (P2002). `InboundEmail` só tem o unique de
+ * `messageId`, então qualquer P2002 nessas gravações é colisão de Message-ID.
+ * ponytail: sem inspecionar `e.meta.target` — só há um unique nessa tabela.
+ */
+function isUniqueViolation(e: unknown): boolean {
+  return e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002';
+}
+
 /** Normaliza o payload cru (achatado ou em `data`) para `ParsedEmail`. */
 export function parsePayload(payload: ResendInboundPayload): ParsedEmail {
   const d: ResendInboundEmail = payload.data ?? payload;
@@ -242,7 +278,7 @@ export function parsePayload(payload: ResendInboundPayload): ParsedEmail {
     firstToken(headers['message-id']) ??
     d.messageId ??
     d.message_id ??
-    null;
+    `no-message-id-${randomUUID()}`;
 
   return {
     messageId,

@@ -19,6 +19,22 @@ describe('stripQuotedText', () => {
     expect(stripQuotedText(input)).toBe('Resposta curta.');
   });
 
+  it('remove bloco após "-----Original Message-----"', () => {
+    const input = [
+      'Segue em anexo.',
+      '',
+      '-----Original Message-----',
+      'From: Suporte',
+      'Seu chamado foi aberto.',
+    ].join('\n');
+    expect(stripQuotedText(input)).toBe('Segue em anexo.');
+  });
+
+  it('remove bloco após o separador de underscores do Outlook (comprimento variável)', () => {
+    const input = 'Obrigado pelo retorno.\n\n________________________________________\nDe: Suporte\nAssunto: [#2026-0001]';
+    expect(stripQuotedText(input)).toBe('Obrigado pelo retorno.');
+  });
+
   it('remove linhas > mesmo sem marcador', () => {
     expect(stripQuotedText('linha util\n> citada\noutra util')).toBe('linha util\noutra util');
   });

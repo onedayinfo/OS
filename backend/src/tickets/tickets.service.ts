@@ -349,11 +349,18 @@ export class TicketsService {
     }
 
     const client = await this.prisma.client.findUnique({ where: { id: input.clientId } });
-    if (!client) throw new BadRequestException('Cliente inválido.');
+    if (!client || client.active === false) {
+      throw new BadRequestException('Cliente inválido ou inativo.');
+    }
 
     const requester = await this.prisma.user.findUnique({ where: { id: input.requesterId } });
-    if (!requester || requester.type !== 'CLIENT' || requester.clientId !== input.clientId) {
-      throw new BadRequestException('Solicitante não pertence ao cliente informado.');
+    if (
+      !requester ||
+      requester.active === false ||
+      requester.type !== 'CLIENT' ||
+      requester.clientId !== input.clientId
+    ) {
+      throw new BadRequestException('Solicitante inválido, inativo ou de outro cliente.');
     }
 
     return this.prisma.$transaction(async (tx) => {

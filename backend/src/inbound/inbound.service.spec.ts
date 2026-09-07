@@ -1,5 +1,15 @@
-import { InboundService } from './inbound.service.js';
+import { Prisma } from '@prisma/client';
+import { InboundService, parsePayload } from './inbound.service.js';
 import { TicketEventsService } from '../tickets/ticket-events.service.js';
+
+/** Erro de violação de `@unique` (P2002) como o Prisma real lança. */
+export function p2002(): Prisma.PrismaClientKnownRequestError {
+  return new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+    code: 'P2002',
+    clientVersion: 'test',
+    meta: { target: ['messageId'] },
+  });
+}
 
 function makeDeps(over: {
   ticketStatus?: string;
@@ -7,6 +17,8 @@ function makeDeps(over: {
   existingInbound?: any;
   contact?: any;
   client?: any;
+  inboundCreateError?: unknown;
+  ticketsCreateError?: unknown;
 } = {}) {
   const events: any[] = [];
   const tx = {
@@ -25,12 +37,23 @@ function makeDeps(over: {
       findUnique: vi.fn().mockResolvedValue({ status: over.ticketStatus ?? 'OPEN' }),
       update: vi.fn().mockResolvedValue({}),
     },
+    inboundEmail: {
+      create: vi.fn().mockImplementation(({ data }: any) => {
+        if (over.inboundCreateError) return Promise.reject(over.inboundCreateError);
+        return Promise.resolve({ id: 'ie1', ...data });
+      }),
+    },
   };
   const prisma = {
     inboundEmail: {
       findUnique: vi.fn().mockResolvedValue(over.existingInbound ?? null),
       findFirst: vi.fn().mockResolvedValue(null),
-      create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'ie1', ...data })),
+      create: vi.fn().mockImplementation(({ data }: any) => {
+        if (over.inboundCreateError) return Promise.reject(over.inboundCreateError);
+        return Promise.resolve({ id: 'ie1', ...data });
+      }),
+      update: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'ie1', ...data })),
+      delete: vi.fn().mockResolvedValue({ id: 'ie1' }),
     },
     ticket: {
       findUnique: vi.fn().mockResolvedValue(over.threadTicket ?? null),
@@ -48,9 +71,10 @@ function makeDeps(over: {
   };
   const clients = { findByEmailDomain: vi.fn().mockResolvedValue(over.client ?? null) };
   const tickets = {
-    create: vi.fn().mockImplementation((input: any) =>
-      Promise.resolve({ id: 't-new', number: '2026-0009', needsTriage: !input.clientId, ...input }),
-    ),
+    create: vi.fn().mockImplementation((input: any) => {
+      if (over.ticketsCreateError) return Promise.reject(over.ticketsCreateError);
+      return Promise.resolve({ id: 't-new', number: '2026-0009', needsTriage: !input.clientId, ...input });
+    }),
   };
   const attachments = { saveForTicket: vi.fn().mockResolvedValue({ id: 'at1' }) };
 
@@ -121,9 +145,11 @@ describe('InboundService.handle', () => {
     expect(tx.ticket.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: 'IN_PROGRESS' } }),
     );
-    expect(prisma.inboundEmail.create).toHaveBeenCalledWith(
+    // InboundEmail gravado DENTRO da transação, já com o ticketId do thread.
+    expect(tx.inboundEmail.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ ticketId: 't1' }) }),
     );
+    expect(prisma.inboundEmail.create).not.toHaveBeenCalled();
   });
 
   it('domínio desconhecido → TicketsService.create com clientId/requesterId nulos e needsTriage', async () => {
@@ -187,5 +213,45 @@ describe('InboundService.handle', () => {
     const [ticketId, file] = attachments.saveForTicket.mock.calls[0];
     expect(ticketId).toBe('t-new');
     expect(file.originalname).toBe('foto.png');
+  });
+
+  it('entrega concorrente: inboundEmail.create lança P2002 → no-op, sem 2º ticket/comentário', async () => {
+    const { service, prisma, tickets, tx } = makeDeps({ inboundCreateError: p2002() });
+    const res = await service.handle(basePayload({ from: 'quem@desconhecido.com' }));
+
+    expect(res).toEqual({ ticketId: null, deduped: true });
+    expect(prisma.inboundEmail.create).toHaveBeenCalledTimes(1);
+    expect(tickets.create).not.toHaveBeenCalled();
+    expect(tx.ticketComment.create).not.toHaveBeenCalled();
+  });
+
+  it('caminho ticket novo: InboundEmail.create ANTES de tickets.create, depois update com ticketId', async () => {
+    const { service, prisma, tickets } = makeDeps();
+    await service.handle(basePayload({ from: 'quem@desconhecido.com' }));
+
+    expect(prisma.inboundEmail.create.mock.invocationCallOrder[0]).toBeLessThan(
+      tickets.create.mock.invocationCallOrder[0],
+    );
+    expect(prisma.inboundEmail.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.not.objectContaining({ ticketId: expect.anything() }) }),
+    );
+    expect(prisma.inboundEmail.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { ticketId: 't-new' } }),
+    );
+  });
+
+  it('caminho ticket novo: tickets.create falha → inboundEmail.delete e erro propaga', async () => {
+    const boom = new Error('boom');
+    const { service, prisma } = makeDeps({ ticketsCreateError: boom });
+
+    await expect(service.handle(basePayload({ from: 'quem@desconhecido.com' }))).rejects.toBe(boom);
+    expect(prisma.inboundEmail.delete).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ messageId: expect.any(String) }) }),
+    );
+  });
+
+  it('parsePayload sem Message-ID → messageId cai no fallback no-message-id-*', () => {
+    const parsed = parsePayload({ from: 'x@y.com', subject: 's', text: 't', headers: [] } as any);
+    expect(parsed.messageId).toMatch(/^no-message-id-/);
   });
 });

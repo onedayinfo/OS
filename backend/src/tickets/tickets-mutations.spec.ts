@@ -159,6 +159,22 @@ describe('TicketsService.triage', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('cliente inativo → BadRequestException', async () => {
+    const { service } = makeTriage({ client: { id: 'cli1', name: 'ACME', active: false } });
+    await expect(
+      service.triage('t1', { clientId: 'cli1', requesterId: 'r1' }, actor),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('solicitante inativo → BadRequestException', async () => {
+    const { service } = makeTriage({
+      requester: { id: 'r1', type: 'CLIENT', clientId: 'cli1', active: false },
+    });
+    await expect(
+      service.triage('t1', { clientId: 'cli1', requesterId: 'r1' }, actor),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('requesterId de outro cliente → BadRequestException', async () => {
     const { service } = makeTriage({
       requester: { id: 'r1', type: 'CLIENT', clientId: 'OUTRO' },

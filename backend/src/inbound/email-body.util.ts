@@ -9,7 +9,8 @@ const QUOTE_MARKERS: RegExp[] = [
   /^Em .+ escreveu:$/m,
   /^On .+ wrote:$/m,
   /^-----Original Message-----$/m,
-  /^________________________________$/m,
+  // Separador de underscores do Outlook — o comprimento varia entre versões.
+  /^_{5,}$/m,
 ];
 
 /**
