@@ -1,5 +1,5 @@
 import { EmailService } from './email.service.js';
-import { ticketCreated } from './templates.js';
+import { contactInvite, ticketComment, ticketCreated } from './templates.js';
 
 const { sendMock } = vi.hoisted(() => ({ sendMock: vi.fn() }));
 vi.mock('resend', () => ({
@@ -65,5 +65,22 @@ describe('EmailService.send', () => {
 describe('templates', () => {
   it('ticketCreated inclui [#2026-0001] no subject', () => {
     expect(ticketCreated(ticket).subject).toContain('[#2026-0001]');
+  });
+
+  it('ticketComment escapa HTML de title e comment.body', () => {
+    const { html } = ticketComment(
+      { ...ticket, title: '<script>alert(1)</script>' },
+      { body: '<img src=x onerror=alert(1)>' } as any,
+    );
+    expect(html).toContain('&lt;script&gt;');
+    expect(html).toContain('&lt;img src=x onerror=');
+    expect(html).not.toContain('<script>');
+    expect(html).not.toContain('<img src=x onerror=');
+  });
+
+  it('contactInvite escapa HTML do user.name', () => {
+    const { html } = contactInvite({ name: '<b>x</b>', email: 'a@a.com' }, 'https://x/def?t=1');
+    expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');
+    expect(html).not.toContain('<b>x</b>');
   });
 });

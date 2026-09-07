@@ -12,6 +12,8 @@ export interface SendEmailInput {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger('EmailService');
+  // ponytail: memoiza o client Resend — antes era `new Resend()` a cada send().
+  private client?: Resend;
 
   /**
    * Envia um e-mail transacional via Resend. Sem `RESEND_API_KEY` (dev/teste)
@@ -28,7 +30,8 @@ export class EmailService {
     }
 
     try {
-      const { error } = await new Resend(apiKey).emails.send({
+      this.client ??= new Resend(apiKey);
+      const { error } = await this.client.emails.send({
         from,
         to,
         subject,
