@@ -36,4 +36,9 @@ export class ContactsController {
   create(@Param('clientId') clientId: string, @Body() dto: CreateContactDto) {
     return this.users.createContact(clientId, dto);
   }
+
+  @Get()
+  findAll(@Param('clientId') clientId: string) {
+    return this.users.findAll({ type: 'CLIENT', clientId });
+  }
 }
