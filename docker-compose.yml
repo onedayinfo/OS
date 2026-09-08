@@ -26,8 +26,9 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      # Sobrescreve o host do .env (localhost) pelo nome do serviço na rede compose.
-      DATABASE_URL: "postgresql://os:os@postgres:5432/os?schema=public"
+      # Sobrescreve o host do .env (localhost) pelo nome do serviço na rede compose,
+      # usando as mesmas credenciais do serviço postgres.
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-os}:${POSTGRES_PASSWORD:-os}@postgres:5432/${POSTGRES_DB:-os}?schema=public"
     volumes:
       - uploads:/app/uploads
     ports:

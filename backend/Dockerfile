@@ -19,10 +19,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN npm i -g npm@11
 COPY package*.json ./
-# client Prisma vem do builder logo abaixo; sem scripts aqui.
-RUN npm ci --omit=dev --ignore-scripts
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY prisma ./prisma
+# Deps de produção (inclui a CLI do Prisma e o tsx). Os scripts rodam: o
+# postinstall gera o client Prisma (schema já presente) e o esbuild do tsx
+# baixa seu binário nativo — necessário para `prisma db seed`.
+RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
 EXPOSE 3001
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+# Aplica migrations, roda o seed idempotente (admin, políticas de SLA e
+# categorias) e sobe a API. Sem SEED_ADMIN_* o seed apenas pula o admin.
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node dist/main.js"]

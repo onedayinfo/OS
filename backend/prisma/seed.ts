@@ -32,7 +32,13 @@ async function main() {
   const email = process.env.SEED_ADMIN_EMAIL;
   const password = process.env.SEED_ADMIN_PASSWORD;
   if (!email || !password) {
-    throw new Error('SEED_ADMIN_EMAIL e SEED_ADMIN_PASSWORD são obrigatórios.');
+    // O seed roda a cada boot do container (idempotente). Sem as credenciais
+    // do admin, apenas pula a criação dele — SLA e categorias já foram semeados.
+    console.warn(
+      'SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD ausentes — admin não criado. Defina-os e reinicie para criar.',
+    );
+    console.log('Seed concluído (sem admin).');
+    return;
   }
   const passwordHash = await bcrypt.hash(password, 10);
   await prisma.user.upsert({

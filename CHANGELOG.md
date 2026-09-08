@@ -5,6 +5,19 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Adicionado
+- Stack do Portainer (`portainer-stack.yml`) puxando imagens do Docker Hub, com
+  todo domínio/segredo em variáveis de ambiente; `deploy/` com `stack.env.example`,
+  script de build/push e guia de deploy.
+
+### Alterado
+- Imagem do backend roda o seed idempotente no boot (admin, SLA, categorias);
+  `tsx` movido para `dependencies`; runtime instala deps com scripts.
+- Frontend cai em `/api` relativo quando `NEXT_PUBLIC_API_URL` não é definido —
+  a mesma imagem serve qualquer domínio (front e API no mesmo host).
+- `DATABASE_URL` do `docker-compose.yml` passa a usar `POSTGRES_USER/PASSWORD/DB`.
+- Seed sem `SEED_ADMIN_*` apenas pula a criação do admin (não aborta mais).
+
 ## [0.1.0] - 2026-09-07
 
 ### Adicionado

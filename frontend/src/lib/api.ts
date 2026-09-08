@@ -1,7 +1,10 @@
 // Cliente HTTP do frontend: injeta o access token, faz refresh single-flight em
 // 401 e repete a request original uma vez. Sem dependência externa.
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+// Sem NEXT_PUBLIC_API_URL a imagem cai em `/api` relativo — funciona quando o
+// front e a API estão no mesmo domínio (o proxy roteia /api → backend). Para
+// domínios separados, defina NEXT_PUBLIC_API_URL em build time.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const TOKEN_KEY = 'os.accessToken';
 
 let accessToken: string | null = null;
