@@ -96,9 +96,15 @@ describe('AuthService.rotateRefresh', () => {
   it('revoga o antigo e emite par novo', async () => {
     const update = vi.fn();
     const create = vi.fn();
+    const updateMany = vi.fn();
     const prisma = {
       user: { findUnique: vi.fn().mockResolvedValue({ id: 'u1', active: true }) },
-      refreshToken: { findFirst: vi.fn().mockResolvedValue({ ...validRow }), update, create },
+      refreshToken: {
+        findFirst: vi.fn().mockResolvedValue({ ...validRow }),
+        update,
+        create,
+        updateMany,
+      },
     } as any;
     const s = new AuthService(prisma, jwtStub);
     const out = await s.rotateRefresh('raw-token');
@@ -107,28 +113,49 @@ describe('AuthService.rotateRefresh', () => {
       data: { revokedAt: expect.any(Date) },
     });
     expect(create).toHaveBeenCalled();
+    // Fluxo normal: revoga só o token apresentado, NÃO faz nuke de família.
+    expect(updateMany).not.toHaveBeenCalled();
     expect(out.accessToken).toBe('access.jwt');
     expect(out.refreshToken).toMatch(/^[a-f0-9]{96}$/);
   });
 
-  it('rejeita refresh revogado', async () => {
+  it('refresh já revogado → replay: revoga a família do usuário e lança', async () => {
+    const updateMany = vi.fn();
     const prisma = {
       refreshToken: {
         findFirst: vi.fn().mockResolvedValue({ ...validRow, revokedAt: new Date() }),
+        updateMany,
       },
     } as any;
     const s = new AuthService(prisma, jwtStub);
     await expect(s.rotateRefresh('raw-token')).rejects.toThrow(UnauthorizedException);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { userId: 'u1', revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
   });
 
-  it('rejeita refresh expirado', async () => {
+  it('rejeita refresh expirado não-revogado sem nuke de família', async () => {
+    const updateMany = vi.fn();
     const prisma = {
       refreshToken: {
         findFirst: vi.fn().mockResolvedValue({ ...validRow, expiresAt: new Date(Date.now() - 1) }),
+        updateMany,
       },
     } as any;
     const s = new AuthService(prisma, jwtStub);
     await expect(s.rotateRefresh('raw-token')).rejects.toThrow(UnauthorizedException);
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('token não encontrado → lança sem nuke', async () => {
+    const updateMany = vi.fn();
+    const prisma = {
+      refreshToken: { findFirst: vi.fn().mockResolvedValue(null), updateMany },
+    } as any;
+    const s = new AuthService(prisma, jwtStub);
+    await expect(s.rotateRefresh('raw-token')).rejects.toThrow(UnauthorizedException);
+    expect(updateMany).not.toHaveBeenCalled();
   });
 });
 

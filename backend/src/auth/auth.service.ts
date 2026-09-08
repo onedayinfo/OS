@@ -61,7 +61,23 @@ export class AuthService {
     const row = await this.prisma.refreshToken.findFirst({
       where: { tokenHash: sha256(rawToken) },
     });
-    if (!row || row.revokedAt || row.expiresAt.getTime() < Date.now()) {
+    if (!row) {
+      throw new UnauthorizedException('Refresh token inválido.');
+    }
+    if (row.revokedAt) {
+      // A linha existe mas já foi rotacionada: replay de um refresh token antigo
+      // (token vazado / roubado). Revoga a família inteira do usuário (todos os
+      // refresh vivos) e derruba a sessão.
+      // ponytail: nuke por userId — uma "família" aqui é um usuário; sem
+      // rastrear linhagem de rotação porque não há multi-device separado.
+      await this.prisma.refreshToken.updateMany({
+        where: { userId: row.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      throw new UnauthorizedException('Refresh token inválido.');
+    }
+    if (row.expiresAt.getTime() < Date.now()) {
+      // Expiração natural, ainda não revogado: só recusa, sem nuke de família.
       throw new UnauthorizedException('Refresh token inválido.');
     }
     const user = await this.prisma.user.findUnique({ where: { id: row.userId } });
