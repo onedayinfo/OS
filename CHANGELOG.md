@@ -5,6 +5,8 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+## [0.1.1] - 2026-09-08
+
 ### Adicionado
 - Stack do Portainer (`portainer-stack.yml`) puxando imagens do Docker Hub, com
   todo domínio/segredo em variáveis de ambiente; `deploy/` com `stack.env.example`,
@@ -13,6 +15,11 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   expor nenhuma porta no host. O servidor Next encaminha `/api/*` para o backend
   na rede interna (`BACKEND_INTERNAL_URL`), então front e API ficam na mesma
   origem — um único hostname no túnel.
+- **Segurança**: `helmet` no bootstrap; rate limiting por IP nas rotas de
+  autenticação (`login`/`set-password` 10/min, `forgot-password` 5/min) com a
+  chave mascarada por sub-rede IPv6 e o IP real lido de `CF-Connecting-IP`;
+  detecção de reuso de refresh token (revoga a família, com janela de 10s para
+  não derrubar sessões em corrida de abas).
 
 ### Alterado
 - Imagem do backend roda o seed idempotente no boot (admin, SLA, categorias);
@@ -21,6 +28,12 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   a mesma imagem serve qualquer domínio.
 - `DATABASE_URL` do `docker-compose.yml` passa a usar `POSTGRES_USER/PASSWORD/DB`.
 - Seed sem `SEED_ADMIN_*` apenas pula a criação do admin (não aborta mais).
+
+### Corrigido
+- `GET /api/attachments/:id` nega download de anexo de comentário interno a
+  usuário do portal (IDOR latente).
+- Middleware do Next remove `X-Forwarded-For` de entrada antes de encaminhar ao
+  backend.
 
 ## [0.1.0] - 2026-09-07
 
