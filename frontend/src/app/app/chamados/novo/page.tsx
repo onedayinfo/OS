@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 interface Category {
   id: string;
   name: string;
+  active?: boolean;
 }
 
 export default function NewTicketPage() {
@@ -130,7 +131,7 @@ export default function NewTicketPage() {
             <Label>Categoria</Label>
             <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
               <option value="">Nenhuma</option>
-              {categories?.map((c) => (
+              {categories?.filter((c) => c.active !== false).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>

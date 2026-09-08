@@ -11,12 +11,9 @@ export class CategoriesService {
     return this.prisma.category.create({ data: { name: dto.name } });
   }
 
-  /** Só categorias ativas: o portal usa esta lista no form de abrir chamado. */
+  /** Todas as categorias (ativas e inativas): a config da equipe precisa das inativas para reativar. Os forms de abertura filtram ativas no cliente. */
   findAll() {
-    return this.prisma.category.findMany({
-      where: { active: true },
-      orderBy: { name: 'asc' },
-    });
+    return this.prisma.category.findMany({ orderBy: { name: 'asc' } });
   }
 
   async update(id: string, dto: UpdateCategoryDto) {
