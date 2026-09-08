@@ -10,10 +10,10 @@ Numa máquina com Docker e acesso ao código:
 
 ```bash
 docker login
-./deploy/build-and-push.sh onedayinformatica 0.1.0
+./deploy/build-and-push.sh onedayinformatica 0.1.1
 ```
 
-Publica `onedayinformatica/os-backend:0.1.0` + `:latest` e `onedayinformatica/os-frontend:0.1.0` + `:latest`.
+Publica `onedayinformatica/os-backend:0.1.1` + `:latest` e `onedayinformatica/os-frontend:0.1.1` + `:latest`.
 
 > Se o servidor do Portainer for `linux/amd64` e você builda noutra arquitetura,
 > edite o script para incluir `--platform linux/amd64` nos `docker build`.
