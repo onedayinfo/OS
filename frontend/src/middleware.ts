@@ -10,7 +10,16 @@ export function middleware(req: NextRequest) {
     req.nextUrl.pathname + req.nextUrl.search,
     target.replace(/\/$/, ''),
   );
-  return NextResponse.rewrite(dest);
+  // Defesa em profundidade: dropa o `x-forwarded-for` que veio na request do
+  // cliente antes de repassar ao backend. O `clientIp` do backend usa o 1º
+  // item de XFF (controlado pelo cliente) como fallback; se um dia algo além
+  // do túnel alcançar o `frontend`, o atacante não injeta IP por aí.
+  // `cf-connecting-ip` é MANTIDO de propósito: no túnel real o Cloudflare o
+  // põe na conexão que chega ao `cloudflared`/`frontend` e é o único jeito do
+  // backend saber o IP verdadeiro — removê-lo tornaria o rate limit global.
+  const headers = new Headers(req.headers);
+  headers.delete('x-forwarded-for');
+  return NextResponse.rewrite(dest, { request: { headers } });
 }
 
 export const config = { matcher: '/api/:path*' };
