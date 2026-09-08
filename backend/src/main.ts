@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
+import { setupRateLimit } from './common/rate-limit.js';
 
 async function bootstrap() {
   // `rawBody: true` preenche `req.rawBody` com os bytes originais da requisição
@@ -22,6 +23,8 @@ async function bootstrap() {
   // helmet quebraria o front (SPA em origin separada + assets), e o front já é
   // servido pelo Next, não por este backend de API.
   app.use(helmet({ contentSecurityPolicy: false }));
+  // Rate limiting nas rotas de autenticação (antes do Nest tratar as rotas).
+  setupRateLimit(app);
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   // Guards globais (JwtAuthGuard antes de RolesGuard) são registrados como APP_GUARD no CommonModule.

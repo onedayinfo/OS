@@ -72,6 +72,14 @@ suporte para o Resend e configure o webhook dele para
 (Nota: a validação de assinatura hoje é HMAC simples; o Resend usa Svix —
 trocar antes de ligar em produção.)
 
+### Rate limiting
+
+O backend limita por IP as rotas `/api/auth/login` + `/api/auth/set-password`
+(10/min combinados) e `/api/auth/forgot-password` (5/min). Atrás do Cloudflare
+Tunnel o IP real chega em `CF-Connecting-IP` (fallback `X-Forwarded-For`); com o
+`trust proxy=1` já configurado não há nada a ajustar. Store em memória — uma
+topologia multi-instância exigiria store compartilhado (Redis).
+
 ## 4. Primeiro acesso
 
 No 1º boot o backend roda `prisma migrate deploy` + seed idempotente (cria o
