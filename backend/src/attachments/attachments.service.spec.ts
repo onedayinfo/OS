@@ -129,4 +129,39 @@ describe('AttachmentsService.getForDownload', () => {
     expect(tickets.assertAccess).toHaveBeenCalledWith('t1', actor);
     expect(out.id).toBe('at1');
   });
+
+  const clientActor = { id: 'c1', type: 'CLIENT', role: 'CLIENT', clientId: 'cli1' };
+
+  it('anexo de comentário INTERNAL + actor CLIENT (mesmo com acesso ao ticket) → NotFoundException', async () => {
+    const { service, prisma, tickets } = makeDeps();
+    prisma.attachment.findUnique.mockResolvedValue({ id: 'at1', ticketId: null, commentId: 'c1' });
+    prisma.ticketComment.findUnique.mockResolvedValue({ ticketId: 't1', visibility: 'INTERNAL' });
+    await expect(service.getForDownload('at1', clientActor)).rejects.toBeInstanceOf(NotFoundException);
+    expect(tickets.assertAccess).not.toHaveBeenCalled();
+  });
+
+  it('anexo de comentário INTERNAL + actor AGENT → OK', async () => {
+    const { service, prisma } = makeDeps();
+    prisma.attachment.findUnique.mockResolvedValue({ id: 'at1', ticketId: null, commentId: 'c1' });
+    prisma.ticketComment.findUnique.mockResolvedValue({ ticketId: 't1', visibility: 'INTERNAL' });
+    const out = await service.getForDownload('at1', actor);
+    expect(out.id).toBe('at1');
+  });
+
+  it('anexo de comentário PUBLIC + actor CLIENT → OK', async () => {
+    const { service, prisma, tickets } = makeDeps();
+    prisma.attachment.findUnique.mockResolvedValue({ id: 'at1', ticketId: null, commentId: 'c1' });
+    prisma.ticketComment.findUnique.mockResolvedValue({ ticketId: 't1', visibility: 'PUBLIC' });
+    const out = await service.getForDownload('at1', clientActor);
+    expect(tickets.assertAccess).toHaveBeenCalledWith('t1', clientActor);
+    expect(out.id).toBe('at1');
+  });
+
+  it('anexo de nível ticket + actor CLIENT → inalterado (só assertAccess decide)', async () => {
+    const { service, prisma, tickets } = makeDeps();
+    prisma.attachment.findUnique.mockResolvedValue({ id: 'at1', ticketId: 't1', commentId: null });
+    const out = await service.getForDownload('at1', clientActor);
+    expect(tickets.assertAccess).toHaveBeenCalledWith('t1', clientActor);
+    expect(out.id).toBe('at1');
+  });
 });

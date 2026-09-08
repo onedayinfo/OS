@@ -76,9 +76,16 @@ export class AttachmentsService implements OnModuleInit {
     if (!ticketId && attachment.commentId) {
       const comment = await this.prisma.ticketComment.findUnique({
         where: { id: attachment.commentId },
-        select: { ticketId: true },
+        select: { ticketId: true, visibility: true },
       });
       ticketId = comment?.ticketId ?? null;
+      // IDOR: acesso ao ticket não basta para anexo de comentário INTERNAL.
+      // Um contato CLIENT nunca enxerga comentários internos (mesmo filtro de
+      // `tickets.service` ao listar), então também não baixa os anexos deles.
+      // NotFoundException para não vazar a existência do anexo.
+      if (comment?.visibility === 'INTERNAL' && actor?.type === 'CLIENT') {
+        throw new NotFoundException('Anexo não encontrado.');
+      }
     }
     if (!ticketId) throw new NotFoundException('Anexo não encontrado.');
 
