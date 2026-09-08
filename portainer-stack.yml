@@ -31,7 +31,7 @@ services:
       - os-net
 
   backend:
-    image: onedayinfo/os-backend:${OS_TAG:-latest}
+    image: onedayinformatica/os-backend:${OS_TAG:-latest}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -62,7 +62,7 @@ services:
       - os-net
 
   frontend:
-    image: onedayinfo/os-frontend:${OS_TAG:-latest}
+    image: onedayinformatica/os-frontend:${OS_TAG:-latest}
     restart: unless-stopped
     depends_on:
       - backend

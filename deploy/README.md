@@ -1,7 +1,7 @@
 # Deploy — Portainer + Docker Hub
 
-O `portainer-stack.yml` (na raiz) puxa as imagens `onedayinfo/os-backend` e
-`onedayinfo/os-frontend` do Docker Hub. Toda config específica de cliente/domínio
+O `portainer-stack.yml` (na raiz) puxa as imagens `onedayinformatica/os-backend` e
+`onedayinformatica/os-frontend` do Docker Hub. Toda config específica de cliente/domínio
 vem de variáveis de ambiente — a mesma imagem serve qualquer instalação.
 
 ## 1. Publicar as imagens no Docker Hub
@@ -10,10 +10,10 @@ Numa máquina com Docker e acesso ao código:
 
 ```bash
 docker login
-./deploy/build-and-push.sh onedayinfo 0.1.0
+./deploy/build-and-push.sh onedayinformatica 0.1.0
 ```
 
-Publica `onedayinfo/os-backend:0.1.0` + `:latest` e `onedayinfo/os-frontend:0.1.0` + `:latest`.
+Publica `onedayinformatica/os-backend:0.1.0` + `:latest` e `onedayinformatica/os-frontend:0.1.0` + `:latest`.
 
 > Se o servidor do Portainer for `linux/amd64` e você builda noutra arquitetura,
 > edite o script para incluir `--platform linux/amd64` nos `docker build`.
@@ -70,7 +70,7 @@ admin de `SEED_ADMIN_*`, políticas de SLA e categorias) e sobe. Acesse
 ## Atualizar
 
 ```bash
-./deploy/build-and-push.sh onedayinfo <nova-tag>
+./deploy/build-and-push.sh onedayinformatica <nova-tag>
 ```
 
 No Portainer: ajuste `OS_TAG` e "Pull and redeploy" (ou "Update the stack" com
@@ -82,7 +82,7 @@ Gere o frontend com a URL da API embutida:
 
 ```bash
 docker build --build-arg NEXT_PUBLIC_API_URL=https://api-os.SEU_DOMINIO.com.br/api \
-  -t onedayinfo/os-frontend:0.1.0-<cliente> ./frontend
+  -t onedayinformatica/os-frontend:0.1.0-<cliente> ./frontend
 ```
 
 e no stack: `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true`, `APP_URL`/`PORTAL_URL`
