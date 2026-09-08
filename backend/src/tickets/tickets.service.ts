@@ -130,7 +130,14 @@ export class TicketsService {
     // Abertura pelo portal: cliente/solicitante/origin vêm do token, não do body
     // (tentativa de forjar cliente alheio é ignorada — o do token vence).
     const fromPortal = actor?.type === 'CLIENT';
-    const origin: TicketOrigin = fromPortal ? 'PORTAL' : input.origin ?? 'MANUAL';
+    // Ator interno via `POST /api/tickets` sempre abre chamado MANUAL — `origin`
+    // do body é ignorado. O inbound de e-mail chama o service direto (sem
+    // `actor`) e continua ditando `origin: 'EMAIL'`.
+    const origin: TicketOrigin = fromPortal
+      ? 'PORTAL'
+      : actor
+        ? 'MANUAL'
+        : input.origin ?? 'MANUAL';
     const clientId = fromPortal ? actor!.clientId ?? null : input.clientId ?? null;
     const requesterId = fromPortal ? actor!.id : input.requesterId ?? null;
 
@@ -141,6 +148,23 @@ export class TicketsService {
         'clientId e requesterId são obrigatórios para chamados de portal ou manuais.',
       );
     }
+
+    // Criação interna (ator INTERNAL, não portal): o solicitante tem de ser um
+    // contato CLIENT ativo do cliente informado — mesma checagem do `triage`.
+    if (!fromPortal && actor && hasParties) {
+      const requester = await this.prisma.user.findUnique({ where: { id: requesterId! } });
+      if (
+        !requester ||
+        requester.active === false ||
+        requester.type !== 'CLIENT' ||
+        requester.clientId !== clientId
+      ) {
+        throw new BadRequestException(
+          'Solicitante inválido, inativo ou de outro cliente.',
+        );
+      }
+    }
+
     const needsTriage = origin === 'EMAIL' && !hasParties;
 
     // read-only, pode ficar fora da transação
@@ -283,7 +307,12 @@ export class TicketsService {
     return {
       ...ticket,
       requester: ticket.requester ? publicUser(ticket.requester) : null,
-      assignee: ticket.assignee ? publicUser(ticket.assignee) : null,
+      // Lado do cliente não vê dados operacionais internos: o agente responsável
+      // (eventos ASSIGNED já são escondidos), o SLA (spec §9 permite omitir) e a
+      // flag de triagem (chamado de triagem tem clientId=null; normalizado mesmo assim).
+      assignee: isClientSide || !ticket.assignee ? null : publicUser(ticket.assignee),
+      slaDueAt: isClientSide ? null : ticket.slaDueAt,
+      needsTriage: isClientSide ? false : ticket.needsTriage,
       attachments: (ticket.attachments ?? []).map(publicAttachment),
       comments: visibleComments.map((c) => ({
         ...c,

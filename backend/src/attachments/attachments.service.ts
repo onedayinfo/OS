@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import type { Attachment } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { TicketsService } from '../tickets/tickets.service.js';
+import { TicketsService, publicAttachment } from '../tickets/tickets.service.js';
 import type { Actor } from '../tickets/tickets.service.js';
 import {
   ALLOWED_MIMES,
@@ -44,9 +44,9 @@ export class AttachmentsService implements OnModuleInit {
     ticketId: string,
     file: UploadedFile,
     actor?: Actor,
-  ): Promise<Attachment> {
+  ): Promise<ReturnType<typeof publicAttachment>> {
     if (actor) await this.tickets.assertAccess(ticketId, actor);
-    return this.persist({ ticketId }, file, actor);
+    return publicAttachment(await this.persist({ ticketId }, file, actor));
   }
 
   /**
@@ -57,14 +57,14 @@ export class AttachmentsService implements OnModuleInit {
     commentId: string,
     file: UploadedFile,
     actor?: Actor,
-  ): Promise<Attachment> {
+  ): Promise<ReturnType<typeof publicAttachment>> {
     const comment = await this.prisma.ticketComment.findUnique({
       where: { id: commentId },
       select: { ticketId: true },
     });
     if (!comment) throw new NotFoundException('Comentário não encontrado.');
     if (actor) await this.tickets.assertAccess(comment.ticketId, actor);
-    return this.persist({ commentId }, file, actor);
+    return publicAttachment(await this.persist({ commentId }, file, actor));
   }
 
   /** Carrega o anexo validando o acesso do `actor` ao chamado dono. */

@@ -60,19 +60,32 @@ describe('AttachmentsService.saveForTicket', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('grava caminho previsível dentro de STORAGE_PATH e Attachment só com ticketId', async () => {
+  it('grava caminho previsível dentro de STORAGE_PATH; retorno é allowlist (sem storedPath/uploadedById)', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'att-'));
     const prev = process.env.STORAGE_PATH;
     process.env.STORAGE_PATH = dir;
     try {
-      const { service } = makeDeps();
+      const { service, prisma } = makeDeps();
       const out = await service.saveForTicket('t1', png(), actor);
 
-      expect(out.ticketId).toBe('t1');
-      expect(out.commentId).toBeUndefined();
-      expect(out.storedPath.startsWith(dir)).toBe(true);
-      expect(out.storedPath).toMatch(/[0-9a-f-]{36}\.png$/);
-      expect(readFileSync(out.storedPath).toString()).toBe('conteudo');
+      // O caminho no FS é verificado pelo argumento passado ao prisma.create,
+      // não pelo retorno da rota (que não expõe storedPath).
+      const persisted = prisma.attachment.create.mock.calls[0][0].data;
+      expect(persisted.ticketId).toBe('t1');
+      expect(persisted.storedPath.startsWith(dir)).toBe(true);
+      expect(persisted.storedPath).toMatch(/[0-9a-f-]{36}\.png$/);
+      expect(readFileSync(persisted.storedPath).toString()).toBe('conteudo');
+
+      expect(out).not.toHaveProperty('storedPath');
+      expect(out).not.toHaveProperty('uploadedById');
+      expect(out).toMatchObject({
+        id: expect.any(String),
+        filename: 'foto.png',
+        mime: 'image/png',
+        size: 1234,
+        createdAt: expect.any(Date),
+        ticketId: 't1',
+      });
     } finally {
       process.env.STORAGE_PATH = prev;
       rmSync(dir, { recursive: true, force: true });

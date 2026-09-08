@@ -75,13 +75,15 @@ export class UsersService {
   }
 
   /**
-   * "Esqueci a senha": se o e-mail existe, gera novo `inviteToken`/`inviteSentAt`
-   * e reenvia o convite. Reusa o fluxo de token do convite (`setPassword`).
-   * O controller sempre responde 204 — não revela se o e-mail existe.
+   * "Esqueci a senha": se o e-mail existe e está ativo, gera novo
+   * `inviteToken`/`inviteSentAt` e reenvia o convite. Reusa o fluxo de token do
+   * convite (`setPassword`). O controller sempre responde 204 — não revela se o
+   * e-mail existe. Conta desativada (único offboarding do sistema) não pode
+   * pedir redefinição: um ADMIN demitido não volta pelo "esqueci a senha".
    */
   async forgotPassword(email: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) return;
+    if (!user || !user.active) return;
     const inviteToken = randomBytes(32).toString('hex');
     await this.prisma.user.update({
       where: { id: user.id },
@@ -99,6 +101,13 @@ export class UsersService {
     if (!user || !user.inviteSentAt) {
       throw new BadRequestException('Convite inválido.');
     }
+    // Só usuário ativo recebe token legítimo (contatos convidados nascem
+    // `active: true`; `forgotPassword` recusa conta desativada). Um contato
+    // inbound "não verificado" (`active: false`) que de algum modo tenha token
+    // não pode se auto-ativar por aqui.
+    if (!user.active) {
+      throw new BadRequestException('Convite inválido.');
+    }
     if (Date.now() - user.inviteSentAt.getTime() > INVITE_TTL_MS) {
       throw new BadRequestException('Convite expirado.');
     }
@@ -106,7 +115,6 @@ export class UsersService {
       where: { id: user.id },
       data: {
         passwordHash: await hashPassword(password),
-        active: true,
         inviteToken: null,
         inviteSentAt: null,
       },

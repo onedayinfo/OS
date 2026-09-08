@@ -33,6 +33,11 @@ export class AuthService {
     if (!(await verifyPassword(password, user.passwordHash))) {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
+    // Best-effort: registra o último acesso (exposto por `publicUser`). Uma
+    // falha aqui não pode barrar o login.
+    await this.prisma.user
+      .update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+      .catch(() => {});
     return user;
   }
 

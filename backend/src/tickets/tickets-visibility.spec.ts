@@ -151,6 +151,29 @@ describe('TicketsService.findOne — guarda de acesso', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('CLIENT dono → assignee/slaDueAt nulos e needsTriage false; AGENT vê assignee com nome', async () => {
+    const withAssignee = () => ({
+      ...fullTicket(),
+      slaDueAt: new Date('2026-02-01T00:00:00Z'),
+      needsTriage: true,
+      assignee: { id: 'ag-1', name: 'Agente', email: 'ag@x.com', type: 'INTERNAL', role: 'AGENT', clientId: null, passwordHash: 'H' },
+    });
+
+    const asClient = await serviceWithTicket(withAssignee()).service.findOne('t1', {
+      id: 'req-A', type: 'CLIENT', role: 'CONTACT', clientId: 'cli-X',
+    });
+    expect(asClient.assignee).toBeNull();
+    expect(asClient.slaDueAt).toBeNull();
+    expect(asClient.needsTriage).toBe(false);
+
+    const asAgent = await serviceWithTicket(withAssignee()).service.findOne('t1', {
+      id: 'ag', type: 'INTERNAL', role: 'AGENT', clientId: null,
+    });
+    expect(asAgent.assignee).toMatchObject({ name: 'Agente' });
+    expect(asAgent.assignee).not.toHaveProperty('passwordHash');
+    expect(asAgent.slaDueAt).toBeInstanceOf(Date);
+  });
+
   it('CLIENT dono → sem comentários INTERNAL nem eventos internos, requester sem passwordHash', async () => {
     const { service } = serviceWithTicket(fullTicket());
     const res = await service.findOne('t1', {

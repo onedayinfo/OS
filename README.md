@@ -11,7 +11,7 @@ Sistema de chamados / ordens de serviço para empresa de informática.
 
 ```bash
 cp .env.example backend/.env
-docker compose -f docker-compose.dev.yml up
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```
 
 Aplicação disponível em http://localhost:3000

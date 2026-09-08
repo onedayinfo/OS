@@ -164,9 +164,26 @@ describe('UsersService.forgotPassword', () => {
     expect(mail.sendInvite).not.toHaveBeenCalled();
   });
 
+  it('usuário desativado: 204 sem gerar token nem enviar (ADMIN demitido não volta)', async () => {
+    const { prisma, mail, service } = build({
+      id: 'u1',
+      email: 'ex@acme.com',
+      type: 'INTERNAL',
+      active: false,
+    });
+    await expect(service.forgotPassword('ex@acme.com')).resolves.toBeUndefined();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(mail.sendInvite).not.toHaveBeenCalled();
+  });
+
   it('CLIENT existente: novo token + link no PORTAL_URL', async () => {
     process.env.PORTAL_URL = 'http://portal.local';
-    const { prisma, mail, service } = build({ id: 'u1', email: 'c@acme.com', type: 'CLIENT' });
+    const { prisma, mail, service } = build({
+      id: 'u1',
+      email: 'c@acme.com',
+      type: 'CLIENT',
+      active: true,
+    });
     await service.forgotPassword('c@acme.com');
     const data = prisma.user.update.mock.calls[0][0].data;
     expect(data.inviteToken).toMatch(/^[a-f0-9]{64}$/);
@@ -179,7 +196,7 @@ describe('UsersService.forgotPassword', () => {
 
   it('INTERNAL existente: link no APP_URL', async () => {
     process.env.APP_URL = 'http://app.local';
-    const { mail, service } = build({ id: 'u1', email: 'a@x.com', type: 'INTERNAL' });
+    const { mail, service } = build({ id: 'u1', email: 'a@x.com', type: 'INTERNAL', active: true });
     await service.forgotPassword('a@x.com');
     expect(mail.sendInvite).toHaveBeenCalledWith(
       expect.anything(),
@@ -202,6 +219,7 @@ describe('UsersService.setPassword', () => {
   it('rejeita token com inviteSentAt > 7 dias', async () => {
     const { service } = build({
       id: 'u1',
+      active: true,
       inviteToken: 't',
       inviteSentAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
     });
@@ -213,9 +231,21 @@ describe('UsersService.setPassword', () => {
     await expect(service.setPassword('x', 'senha1234')).rejects.toThrow(BadRequestException);
   });
 
-  it('aceita token dentro de 7 dias: grava hash, ativa e limpa o token', async () => {
+  it('rejeita token de usuário desativado (contato inbound não verificado não se auto-ativa)', async () => {
     const { prisma, service } = build({
       id: 'u1',
+      active: false,
+      inviteToken: 't',
+      inviteSentAt: new Date(Date.now() - 1000),
+    });
+    await expect(service.setPassword('t', 'senha1234')).rejects.toThrow(BadRequestException);
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('aceita token dentro de 7 dias: grava hash e limpa o token, sem tocar em active', async () => {
+    const { prisma, service } = build({
+      id: 'u1',
+      active: true,
       inviteToken: 't',
       inviteSentAt: new Date(Date.now() - 1000),
     });
@@ -223,7 +253,7 @@ describe('UsersService.setPassword', () => {
     const data = prisma.user.update.mock.calls[0][0].data;
     expect(data.inviteToken).toBeNull();
     expect(data.inviteSentAt).toBeNull();
-    expect(data.active).toBe(true);
+    expect(data).not.toHaveProperty('active');
     expect(data.passwordHash).toEqual(expect.any(String));
   });
 });

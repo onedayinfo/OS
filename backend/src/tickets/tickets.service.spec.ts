@@ -22,7 +22,14 @@ function makeDeps() {
       }),
     },
   };
-  const prisma = { $transaction: vi.fn().mockImplementation((cb: any) => cb(tx)) };
+  const prisma = {
+    $transaction: vi.fn().mockImplementation((cb: any) => cb(tx)),
+    user: {
+      findUnique: vi
+        .fn()
+        .mockResolvedValue({ id: 'r1', type: 'CLIENT', active: true, clientId: 'c1' }),
+    },
+  };
   const sla = {
     // MEDIUM = 24h
     dueAt: vi.fn().mockImplementation((_p: string, from: Date) =>
@@ -72,6 +79,38 @@ describe('TicketsService.create', () => {
     expect(created[0].actorId).toBe('u1');
 
     expect(notifier.created).toHaveBeenCalledTimes(1);
+  });
+
+  it('ator interno: origin do body é ignorado, chamado nasce MANUAL', async () => {
+    const { service } = makeDeps();
+    const ticket = await service.create(
+      { title: 't', description: 'd', clientId: 'c1', requesterId: 'r1', origin: 'EMAIL' } as any,
+      { id: 'u1', type: 'INTERNAL', role: 'AGENT', clientId: null },
+    );
+    expect(ticket.origin).toBe('MANUAL');
+  });
+
+  it('ator interno: requesterId de outro cliente → BadRequestException', async () => {
+    const { service, prisma } = makeDeps();
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'r1', type: 'CLIENT', active: true, clientId: 'OUTRO',
+    });
+    await expect(
+      service.create(
+        { title: 't', description: 'd', clientId: 'c1', requesterId: 'r1', origin: 'MANUAL' },
+        { id: 'u1', type: 'INTERNAL', role: 'AGENT', clientId: null },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('inbound (sem actor): mantém origin=EMAIL e não valida requester ∈ client', async () => {
+    const { service, prisma } = makeDeps();
+    const ticket = await service.create({
+      title: 't', description: 'd', clientId: null, requesterId: null, origin: 'EMAIL',
+    });
+    expect(ticket.origin).toBe('EMAIL');
+    expect(ticket.needsTriage).toBe(true);
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 
   it('actor CLIENT: origin=PORTAL, clientId/requesterId derivados do token', async () => {

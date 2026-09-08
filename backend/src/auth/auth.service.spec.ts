@@ -10,14 +10,29 @@ describe('AuthService.validateLogin', () => {
     hash = await hashPassword('correta');
   });
 
-  const build = (user: unknown) =>
-    new AuthService(
-      { user: { findUnique: vi.fn().mockResolvedValue(user) } } as any,
+  let lastUpdate: ReturnType<typeof vi.fn>;
+  const build = (user: unknown) => {
+    lastUpdate = vi.fn().mockResolvedValue({});
+    return new AuthService(
+      {
+        user: { findUnique: vi.fn().mockResolvedValue(user), update: lastUpdate },
+      } as any,
       jwtStub,
     );
+  };
 
-  it('retorna usuário com senha correta', async () => {
+  it('retorna usuário com senha correta e grava lastLoginAt', async () => {
     const s = build({ id: 'u1', active: true, passwordHash: hash });
+    await expect(s.validateLogin('a@a.com', 'correta')).resolves.toMatchObject({ id: 'u1' });
+    expect(lastUpdate).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { lastLoginAt: expect.any(Date) },
+    });
+  });
+
+  it('login não quebra se o update de lastLoginAt falhar', async () => {
+    const s = build({ id: 'u1', active: true, passwordHash: hash });
+    lastUpdate.mockRejectedValue(new Error('db down'));
     await expect(s.validateLogin('a@a.com', 'correta')).resolves.toMatchObject({ id: 'u1' });
   });
 

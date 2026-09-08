@@ -11,8 +11,12 @@ export class CategoriesService {
     return this.prisma.category.create({ data: { name: dto.name } });
   }
 
+  /** Só categorias ativas: o portal usa esta lista no form de abrir chamado. */
   findAll() {
-    return this.prisma.category.findMany({ orderBy: { name: 'asc' } });
+    return this.prisma.category.findMany({
+      where: { active: true },
+      orderBy: { name: 'asc' },
+    });
   }
 
   async update(id: string, dto: UpdateCategoryDto) {
