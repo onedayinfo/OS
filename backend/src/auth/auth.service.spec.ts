@@ -119,11 +119,28 @@ describe('AuthService.rotateRefresh', () => {
     expect(out.refreshToken).toMatch(/^[a-f0-9]{96}$/);
   });
 
-  it('refresh já revogado → replay: revoga a família do usuário e lança', async () => {
+  it('replay de token revogado há 2s → corrida de aba: lança SEM nuke de família', async () => {
     const updateMany = vi.fn();
     const prisma = {
       refreshToken: {
-        findFirst: vi.fn().mockResolvedValue({ ...validRow, revokedAt: new Date() }),
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({ ...validRow, revokedAt: new Date(Date.now() - 2_000) }),
+        updateMany,
+      },
+    } as any;
+    const s = new AuthService(prisma, jwtStub);
+    await expect(s.rotateRefresh('raw-token')).rejects.toThrow(UnauthorizedException);
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('replay de token revogado há 60s → provável roubo: revoga a família e lança', async () => {
+    const updateMany = vi.fn();
+    const prisma = {
+      refreshToken: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({ ...validRow, revokedAt: new Date(Date.now() - 60_000) }),
         updateMany,
       },
     } as any;

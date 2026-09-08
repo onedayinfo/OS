@@ -65,15 +65,20 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token inválido.');
     }
     if (row.revokedAt) {
-      // A linha existe mas já foi rotacionada: replay de um refresh token antigo
-      // (token vazado / roubado). Revoga a família inteira do usuário (todos os
-      // refresh vivos) e derruba a sessão.
+      // A linha existe mas já foi rotacionada. Replay tardio = provável token
+      // vazado/roubado → nuke da família (todos os refresh vivos do usuário) e
+      // derruba a sessão.
+      // ponytail: janela de 10s — duas abas com o mesmo cookie fazem refresh
+      // quase juntas e a 2ª apresenta o token que a 1ª acabou de revogar; isso
+      // é corrida de aba legítima, não roubo, então só recusa sem nuke.
       // ponytail: nuke por userId — uma "família" aqui é um usuário; sem
       // rastrear linhagem de rotação porque não há multi-device separado.
-      await this.prisma.refreshToken.updateMany({
-        where: { userId: row.userId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
+      if (Date.now() - row.revokedAt.getTime() >= 10_000) {
+        await this.prisma.refreshToken.updateMany({
+          where: { userId: row.userId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
       throw new UnauthorizedException('Refresh token inválido.');
     }
     if (row.expiresAt.getTime() < Date.now()) {
