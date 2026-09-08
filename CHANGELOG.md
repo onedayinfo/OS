@@ -9,12 +9,16 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 - Stack do Portainer (`portainer-stack.yml`) puxando imagens do Docker Hub, com
   todo domínio/segredo em variáveis de ambiente; `deploy/` com `stack.env.example`,
   script de build/push e guia de deploy.
+- Serviço `cloudflared` no stack: publica o sistema por Cloudflare Tunnel, sem
+  expor nenhuma porta no host. O servidor Next encaminha `/api/*` para o backend
+  na rede interna (`BACKEND_INTERNAL_URL`), então front e API ficam na mesma
+  origem — um único hostname no túnel.
 
 ### Alterado
 - Imagem do backend roda o seed idempotente no boot (admin, SLA, categorias);
   `tsx` movido para `dependencies`; runtime instala deps com scripts.
 - Frontend cai em `/api` relativo quando `NEXT_PUBLIC_API_URL` não é definido —
-  a mesma imagem serve qualquer domínio (front e API no mesmo host).
+  a mesma imagem serve qualquer domínio.
 - `DATABASE_URL` do `docker-compose.yml` passa a usar `POSTGRES_USER/PASSWORD/DB`.
 - Seed sem `SEED_ADMIN_*` apenas pula a criação do admin (não aborta mais).
 

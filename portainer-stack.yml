@@ -1,14 +1,13 @@
 # Stack do Sistema de OS para Portainer.
 #
 # Puxa as imagens já publicadas no Docker Hub (não builda nada aqui).
-# TODA configuração específica de cliente/domínio vem de variáveis de ambiente
-# (aba "Environment variables" do stack no Portainer, ou um stack.env) — a mesma
+# TODA configuração de cliente/domínio vem de variáveis de ambiente — a mesma
 # imagem serve qualquer instalação. Veja deploy/stack.env.example.
 #
-# Topologia assumida: front e API no MESMO domínio, com um proxy reverso
-# (Traefik, Nginx Proxy Manager, etc.) roteando:
-#   https://<SEU_DOMINIO>/api   -> 127.0.0.1:${BACKEND_PORT}
-#   https://<SEU_DOMINIO>/      -> 127.0.0.1:${FRONTEND_PORT}
+# Publicação via Cloudflare Tunnel: nenhuma porta é exposta no host. O Next
+# encaminha /api/* para o backend na rede interna (BACKEND_INTERNAL_URL), então
+# front e API ficam na mesma origem. No painel Zero Trust do Cloudflare o
+# túnel roteia  <SEU_DOMINIO>  ->  http://frontend:3000  (um hostname só).
 
 name: os
 
@@ -43,7 +42,7 @@ services:
       # links de convite / recuperação de senha e dos e-mails.
       APP_URL: ${APP_URL}
       PORTAL_URL: ${PORTAL_URL}
-      # Cookie do refresh. Mesmo domínio + HTTPS: lax / true.
+      # Cookie do refresh. Mesma origem + HTTPS: lax / true.
       COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
@@ -56,8 +55,6 @@ services:
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     volumes:
       - uploads:/app/uploads
-    ports:
-      - "127.0.0.1:${BACKEND_PORT:-3001}:3001"
     networks:
       - os-net
 
@@ -66,10 +63,20 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-    # A imagem chama /api relativo (mesmo domínio). Para domínios separados,
-    # gere uma imagem com --build-arg NEXT_PUBLIC_API_URL=https://api.../api.
-    ports:
-      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
+    environment:
+      # O servidor Next encaminha /api/* para cá (rede interna).
+      BACKEND_INTERNAL_URL: http://backend:3001
+    networks:
+      - os-net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
     networks:
       - os-net
 

@@ -35,23 +35,34 @@ Obrigatórias: `APP_URL`, `PORTAL_URL` (mesmo domínio, sem barra final),
 `JWT_REFRESH_SECRET`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `MAIL_FROM`.
 Gere segredos com `openssl rand -hex 32`.
 
-Opcionais: `OS_TAG` (default `latest`), `BACKEND_PORT`/`FRONTEND_PORT` (3001/3000),
-`COOKIE_SAMESITE`/`COOKIE_SECURE` (default `lax`/`true`),
-`RESEND_API_KEY`/`RESEND_INBOUND_SECRET` (sem elas o sistema roda, mas não envia
-e-mail).
+Obrigatória também: `CLOUDFLARE_TUNNEL_TOKEN` (passo 3).
 
-## 3. Proxy reverso
+Opcionais: `OS_TAG` (default `latest`), `COOKIE_SAMESITE`/`COOKIE_SECURE`
+(default `lax`/`true`), `RESEND_API_KEY`/`RESEND_INBOUND_SECRET` (sem elas o
+sistema roda, mas não envia e-mail).
 
-O stack expõe as portas só em `127.0.0.1`. Aponte seu proxy (Traefik / Nginx
-Proxy Manager) do host para:
+## 3. Cloudflare Tunnel (sem expor portas)
 
-| Rota pública | Destino |
-|---|---|
-| `https://<APP_URL>/api` | `127.0.0.1:${BACKEND_PORT}` (3001) |
-| `https://<APP_URL>/` | `127.0.0.1:${FRONTEND_PORT}` (3000) |
+O stack **não publica nenhuma porta** — o serviço `cloudflared` abre um túnel de
+saída para a Cloudflare e serve o sistema pelo seu domínio. O servidor Next
+encaminha `/api/*` para o backend na rede interna, então front e API ficam na
+mesma origem (`https://<APP_URL>`).
 
-O proxy termina o TLS. Como front e API ficam no mesmo domínio, o cookie de
-refresh funciona com `COOKIE_SAMESITE=lax`.
+1. Zero Trust → **Networks → Tunnels → Create a tunnel** → *Cloudflared* → dê um
+   nome (ex.: `os`).
+2. Copie o **token** (a tela mostra um `docker run ... --token eyJ...`; use só o
+   valor do token) e ponha em `CLOUDFLARE_TUNNEL_TOKEN` nas variáveis do stack.
+3. Ainda no túnel, **Public Hostnames → Add a public hostname**:
+   - Subdomain/Domain: o mesmo host de `APP_URL` (ex.: `os` + `SEU_DOMINIO.com.br`)
+   - Type: `HTTP` · URL: `frontend:3000`
+   - (só esse — não precisa de rota para `/api`, o Next resolve internamente)
+4. Suba/atualize o stack no Portainer. O DNS é criado pela Cloudflare
+   automaticamente; em segundos `https://<APP_URL>` responde.
+
+Sem domínio ainda? Dá para testar com um hostname `*.trycloudflare` gerado pelo
+próprio túnel, ou adicionar temporariamente `ports: ["127.0.0.1:3000:3000"]` ao
+serviço `frontend` e acessar por `http://IP-DO-SERVIDOR:3000` (aí o cookie
+precisa de `COOKIE_SECURE=false`).
 
 ### Webhook de e-mail de entrada (opcional)
 
