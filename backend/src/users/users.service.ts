@@ -82,6 +82,10 @@ export class UsersService {
    * pedir redefinição: um ADMIN demitido não volta pelo "esqueci a senha".
    */
   async forgotPassword(email: string): Promise<void> {
+    // ponytail: a rota devolve 204 sempre (não vaza existência); o rate limit
+    // (@Throttle 5/min em POST /api/auth/forgot-password) é a mitigação. O vetor
+    // de enumeração por timing (conta existente faz update + envio de e-mail,
+    // inexistente retorna cedo) fica como risco aceito — sem custo de mascarar.
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || !user.active) return;
     const inviteToken = randomBytes(32).toString('hex');
