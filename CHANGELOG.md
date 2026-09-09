@@ -5,6 +5,28 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+## [0.2.0] - 2026-09-09
+
+### Adicionado
+- Configurações no app (`/app/config`, abas visíveis só para ADMIN): credenciais
+  do Resend, armazenamento S3, aparência e backup — antes só via `.env`.
+- Segredos de configuração criptografados no banco (AES-256-GCM); nova variável
+  de ambiente `APP_ENCRYPTION_KEY` (`openssl rand -base64 32`).
+- Armazenamento de anexos em bucket S3 (AWS, Cloudflare R2, MinIO), com leitura
+  retrocompatível dos anexos já gravados em disco (dual-read, sem migração).
+- Backup dos dados em JSON: download sob demanda, importação com restauração
+  total (confirmação "RESTAURAR") e backup diário automático (03:00) para o
+  armazenamento configurado, com retenção ajustável.
+- Aparência: logo, nome da empresa e cor primária aplicados no app, no portal,
+  nas telas de login, nos e-mails e no título/favicon da aba.
+
+### Alterado
+- `EmailService` e o webhook inbound do Resend passam a ler a configuração do
+  banco, mantendo `RESEND_API_KEY`, `MAIL_FROM` e `RESEND_INBOUND_SECRET` como
+  fallback.
+- `Attachment.storedPath` passa a guardar uma chave relativa (`attachments/…`)
+  para anexos novos; os antigos (caminho absoluto) seguem sendo lidos do disco.
+
 ## [0.1.1] - 2026-09-08
 
 ### Adicionado
