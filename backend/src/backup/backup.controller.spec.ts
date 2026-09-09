@@ -7,7 +7,7 @@ const backup = {
   import: vi.fn(),
 };
 const storage = { list: vi.fn(async () => ['backups/os-backup-2026-09-01.json']) };
-const actor = { id: 'u1', email: 'admin@x.com' } as any;
+const actor = { id: 'u1' } as any;
 
 describe('BackupController', () => {
   it('export escreve JSON com header de download', async () => {

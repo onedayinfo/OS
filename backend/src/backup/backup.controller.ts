@@ -55,7 +55,7 @@ export class BackupController {
     } catch {
       throw new BadRequestException('Arquivo não é um JSON válido.');
     }
-    this.logger.warn(`Restauração total disparada por ${actor.email}`);
+    this.logger.warn(`Restauração total disparada pelo usuário ${actor.id}`);
     await this.backup.import(parsed as never);
     return { ok: true };
   }
