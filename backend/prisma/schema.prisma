@@ -243,3 +243,12 @@ model Counter {
 
   @@map("counters")
 }
+
+model Setting {
+  key       String   @id
+  value     String
+  encrypted Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
