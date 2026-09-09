@@ -2,20 +2,33 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
   Post,
   Put,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../common/roles.decorator.js';
 import { StorageService } from '../storage/storage.service.js';
+import type { UploadedFile as UF } from '../attachments/storage.util.js';
 import { isEncryptionKeySet } from './crypto.util.js';
 import { SETTING_KEYS } from './settings.keys.js';
 import { SettingsService } from './settings.service.js';
 import { UpdateSettingsDto } from './dto/update-settings.dto.js';
 
 const KNOWN = new Set<string>(SETTING_KEYS);
+const LOGO_MAX = 512 * 1024;
+const LOGO_MIMES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+  'image/svg+xml',
+]);
 
 @Controller('settings')
 @Roles('ADMIN')
@@ -53,5 +66,25 @@ export class SettingsController {
         HttpStatus.BAD_GATEWAY,
       );
     }
+  }
+
+  @Post('branding/logo')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: LOGO_MAX } }))
+  async uploadLogo(@UploadedFile() file: UF) {
+    if (!file) throw new BadRequestException('Arquivo ausente.');
+    if (!LOGO_MIMES.has(file.mimetype)) {
+      throw new BadRequestException(`Tipo de imagem não permitido: ${file.mimetype}.`);
+    }
+    if (file.size > LOGO_MAX) throw new BadRequestException('Logo excede 512 KB.');
+    await this.settings.set('branding.logoData', file.buffer.toString('base64'));
+    await this.settings.set('branding.logoMime', file.mimetype);
+    return { ok: true };
+  }
+
+  @Delete('branding/logo')
+  async deleteLogo() {
+    await this.settings.unset('branding.logoData');
+    await this.settings.unset('branding.logoMime');
+    return { ok: true };
   }
 }

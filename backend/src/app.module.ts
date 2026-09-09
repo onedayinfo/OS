@@ -6,6 +6,7 @@ import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { SettingsModule } from './settings/settings.module.js';
 import { StorageModule } from './storage/storage.module.js';
+import { BrandingModule } from './branding/branding.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CommonModule } from './common/common.module.js';
 import { ClientsModule } from './clients/clients.module.js';
@@ -27,6 +28,7 @@ import { TasksModule } from './tasks/tasks.module.js';
     PrismaModule,
     SettingsModule,
     StorageModule,
+    BrandingModule,
     AuthModule,
     CommonModule,
     ClientsModule,
