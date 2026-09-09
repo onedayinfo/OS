@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BrandMark } from '@/components/brand-mark';
 
 const schema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -65,6 +66,9 @@ export function LoginForm({ area }: { area: 'app' | 'portal' }) {
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
+          <div className="mb-4 flex justify-center">
+            <BrandMark className="h-10 w-auto" />
+          </div>
           <CardTitle>{TITLES[area]}</CardTitle>
         </CardHeader>
         <CardContent>

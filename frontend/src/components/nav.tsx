@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useSession } from '@/lib/auth';
+import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
 
 const APP_LINKS = [
@@ -23,7 +24,9 @@ export function AppNav() {
 
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-muted/40 p-3">
-      <div className="px-2 py-3 text-sm font-semibold">Sistema de OS</div>
+      <div className="px-2 py-3">
+        <BrandMark />
+      </div>
       <nav className="flex flex-col gap-0.5">
         {APP_LINKS.map((l) => (
           <Link
@@ -62,8 +65,8 @@ export function PortalNav() {
 
   return (
     <header className="flex items-center justify-between border-b border-border px-6 py-3">
-      <Link href="/portal" className="text-sm font-semibold">
-        Meus chamados
+      <Link href="/portal">
+        <BrandMark />
       </Link>
       <Button
         variant="ghost"
