@@ -1,11 +1,10 @@
-import { isAbsolute } from 'node:path';
+import { Readable, Writable } from 'node:stream';
 import { AttachmentsController } from './attachments.controller.js';
 
 function makeRes() {
-  const res: any = {
-    type: vi.fn().mockReturnThis(),
-    download: vi.fn((_path: string, _name: string, cb: (err?: Error) => void) => cb()),
-  };
+  const res = new Writable({ write(_c, _e, cb) { cb(); } }) as any;
+  res.type = vi.fn().mockReturnThis();
+  res.setHeader = vi.fn();
   return res;
 }
 
@@ -15,13 +14,10 @@ describe('AttachmentsController.download — nome de arquivo seguro', () => {
   it.each([
     ['relatório de rede.pdf', 'application/pdf'],
     ['x".pdf', 'application/pdf'],
-  ])('baixa %j via res.download (encoding RFC 5987, sem spoof)', async (filename, mime) => {
+  ])('faz stream de %j com Content-Disposition RFC 5987 (sem spoof)', async (filename, mime) => {
     const attachments = {
-      getForDownload: vi.fn().mockResolvedValue({
-        filename,
-        mime,
-        storedPath: '/srv/uploads/abc.pdf',
-      }),
+      getForDownload: vi.fn().mockResolvedValue({ filename, mime, storedPath: 'attachments/abc.pdf' }),
+      readable: vi.fn().mockResolvedValue({ stream: Readable.from([Buffer.from('pdf')]) }),
     };
     const controller = new AttachmentsController(attachments as any);
     const res = makeRes();
@@ -29,9 +25,18 @@ describe('AttachmentsController.download — nome de arquivo seguro', () => {
     await controller.download('at1', actor, res);
 
     expect(res.type).toHaveBeenCalledWith(mime);
-    const [path, name] = res.download.mock.calls[0];
-    expect(isAbsolute(path)).toBe(true);
-    // nome cru repassado ao Express, que faz o encoding/escape do header
-    expect(name).toBe(filename);
+    const [, header] = res.setHeader.mock.calls.find((c: string[]) => c[0] === 'Content-Disposition')!;
+    // aspas e caracteres não-ASCII não vazam pro nome ASCII
+    expect(header).not.toMatch(/filename="[^"]*["\\][^"]*"/);
+    expect(header).toContain(`filename*=UTF-8''${encodeURIComponent(filename)}`);
+  });
+
+  it('objeto ausente no armazenamento → 404', async () => {
+    const attachments = {
+      getForDownload: vi.fn().mockResolvedValue({ filename: 'a.pdf', mime: 'application/pdf', storedPath: 'attachments/x.pdf' }),
+      readable: vi.fn().mockRejectedValue(new Error('ENOENT')),
+    };
+    const controller = new AttachmentsController(attachments as any);
+    await expect(controller.download('at1', actor, makeRes())).rejects.toThrow(/não encontrado/i);
   });
 });

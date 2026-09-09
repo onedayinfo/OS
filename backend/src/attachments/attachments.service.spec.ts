@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AttachmentsService } from './attachments.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { safeExt, storedName } from './storage.util.js';
+
+const diskStorage = () =>
+  new StorageService({
+    get: async (k: string) => (k === 'storage.driver' ? 'disk' : undefined),
+  } as never);
 
 const png = (over: Partial<any> = {}) => ({
   originalname: 'foto.png',
@@ -24,7 +30,7 @@ function makeDeps() {
     ticketComment: { findUnique: vi.fn() },
   };
   const tickets = { assertAccess: vi.fn().mockResolvedValue({ id: 't1' }) };
-  const service = new AttachmentsService(prisma as any, tickets as any);
+  const service = new AttachmentsService(prisma as any, tickets as any, diskStorage());
   return { service, prisma, tickets };
 }
 
@@ -72,9 +78,9 @@ describe('AttachmentsService.saveForTicket', () => {
       // não pelo retorno da rota (que não expõe storedPath).
       const persisted = prisma.attachment.create.mock.calls[0][0].data;
       expect(persisted.ticketId).toBe('t1');
-      expect(persisted.storedPath.startsWith(dir)).toBe(true);
-      expect(persisted.storedPath).toMatch(/[0-9a-f-]{36}\.png$/);
-      expect(readFileSync(persisted.storedPath).toString()).toBe('conteudo');
+      // storedPath agora é uma key relativa; o arquivo vive em STORAGE_PATH/<key>.
+      expect(persisted.storedPath).toMatch(/^attachments\/[0-9a-f-]{36}\.png$/);
+      expect(readFileSync(join(dir, persisted.storedPath)).toString()).toBe('conteudo');
 
       expect(out).not.toHaveProperty('storedPath');
       expect(out).not.toHaveProperty('uploadedById');

@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import {
   BadRequestException,
   Injectable,
@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import type { Attachment } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { TicketsService, publicAttachment } from '../tickets/tickets.service.js';
 import type { Actor } from '../tickets/tickets.service.js';
 import {
@@ -17,11 +18,7 @@ import {
   type UploadedFile,
 } from './storage.util.js';
 
-/**
- * Lido a cada chamada (não em escopo de módulo) para testes trocarem o alvo,
- * mas sempre resolvido para absoluto — o `mkdir` do boot, a escrita e o download
- * usam o mesmo caminho independem do cwd. `.env` pode seguir `./uploads`.
- */
+/** Só usado no `onModuleInit` do driver de disco. */
 const storagePath = () => resolve(process.env.STORAGE_PATH ?? './uploads');
 
 @Injectable()
@@ -29,10 +26,18 @@ export class AttachmentsService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tickets: TicketsService,
+    private readonly storage: StorageService,
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await mkdir(storagePath(), { recursive: true });
+    if ((await this.storage.activeDriver()) === 'disk') {
+      await mkdir(storagePath(), { recursive: true });
+    }
+  }
+
+  /** Passa-through para o download resolver a origem (disco legado ou driver ativo). */
+  readable(storedPath: string) {
+    return this.storage.readable(storedPath);
   }
 
   /**
@@ -107,14 +112,17 @@ export class AttachmentsService implements OnModuleInit {
       throw new BadRequestException(`Tipo de arquivo não permitido: ${file.mimetype}.`);
     }
 
-    const storedPath = join(storagePath(), storedName(file.originalname));
-    await writeFile(storedPath, file.buffer);
+    // `storedPath` agora é uma *key* relativa (`attachments/<uuid><ext>`), não
+    // um caminho absoluto. Linhas antigas seguem com caminho absoluto e são
+    // resolvidas pelo dual-read do StorageService.
+    const key = `attachments/${storedName(file.originalname)}`;
+    await this.storage.put(key, file.buffer, file.mimetype);
 
     return this.prisma.attachment.create({
       data: {
         ...link,
         filename: file.originalname,
-        storedPath,
+        storedPath: key,
         mime: file.mimetype,
         size: file.size,
         // ponytail: `actor` opcional só dispensa a guarda de acesso; a Fase 9

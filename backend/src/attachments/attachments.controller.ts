@@ -1,7 +1,8 @@
-import { resolve } from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import {
   Controller,
   Get,
+  NotFoundException,
   Param,
   Post,
   Res,
@@ -54,13 +55,19 @@ export class AttachmentsController {
     @Res() res: Response,
   ) {
     const attachment = await this.attachments.getForDownload(id, actor);
-    // res.download faz o encoding RFC 5987 do nome (filename*=UTF-8'') e o
-    // fallback ASCII — sem spoof por aspas nem ERR_INVALID_CHAR em acento.
+    let obj;
+    try {
+      obj = await this.attachments.readable(attachment.storedPath);
+    } catch {
+      throw new NotFoundException('Arquivo não encontrado no armazenamento.');
+    }
     res.type(attachment.mime);
-    await new Promise<void>((ok, fail) =>
-      res.download(resolve(attachment.storedPath), attachment.filename, (err) =>
-        err ? fail(err) : ok(),
-      ),
+    // RFC 5987: nome ASCII sanitizado + filename* em UTF-8 percent-encoded.
+    const ascii = attachment.filename.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(attachment.filename)}`,
     );
+    await pipeline(obj.stream, res);
   }
 }
