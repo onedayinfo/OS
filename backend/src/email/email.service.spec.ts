@@ -10,26 +10,34 @@ vi.mock('resend', () => ({
 
 const ticket = { number: '2026-0001', title: 'Impressora sem toner', status: 'OPEN' } as any;
 
+/** Stub do SettingsService: `map` fornece os valores; ausente = undefined. */
+function settings(map: Record<string, string | undefined>) {
+  return {
+    getMany: vi.fn(async (keys: string[]) => Object.fromEntries(keys.map((k) => [k, map[k]]))),
+    get: vi.fn(async (k: string) => map[k]),
+  } as any;
+}
+
 describe('EmailService.send', () => {
   beforeEach(() => {
     sendMock.mockReset();
     sendMock.mockResolvedValue({ data: { id: 'x' }, error: null });
-    process.env.MAIL_FROM = 'suporte@exemplo.com.br';
+    delete process.env.RESEND_API_KEY;
   });
 
-  it('sem RESEND_API_KEY: não chama o Resend, só loga', async () => {
-    delete process.env.RESEND_API_KEY;
-    const svc = new EmailService();
+  it('sem chave (banco nem env): não chama o Resend, só loga', async () => {
+    const svc = new EmailService(settings({ 'mail.from': 'suporte@exemplo.com.br' }));
     const spy = vi.spyOn((svc as any).logger, 'warn').mockImplementation(() => {});
     await svc.send({ to: 'a@a.com', subject: 'oi', html: '<p>x</p>' });
     expect(sendMock).not.toHaveBeenCalled();
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('RESEND_API_KEY ausente'));
   });
 
-  it('com key: chama emails.send com from=MAIL_FROM e replyTo default', async () => {
-    process.env.RESEND_API_KEY = 'rk_test';
-    await new EmailService().send({ to: 'dest@a.com', subject: 'oi', html: '<p>x</p>' });
-    expect(sendMock).toHaveBeenCalledTimes(1);
+  it('chave vinda do banco (env sem nada): chama emails.send com from e replyTo default', async () => {
+    const svc = new EmailService(
+      settings({ 'resend.apiKey': 'rk_db', 'mail.from': 'suporte@exemplo.com.br' }),
+    );
+    await svc.send({ to: 'dest@a.com', subject: 'oi', html: '<p>x</p>' });
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
         from: 'suporte@exemplo.com.br',
@@ -40,8 +48,8 @@ describe('EmailService.send', () => {
   });
 
   it('repassa headers e replyTo explícito', async () => {
-    process.env.RESEND_API_KEY = 'rk_test';
-    await new EmailService().send({
+    const svc = new EmailService(settings({ 'resend.apiKey': 'rk', 'mail.from': 'f@a.com' }));
+    await svc.send({
       to: 'd@a.com',
       subject: 's',
       html: 'h',
@@ -54,11 +62,26 @@ describe('EmailService.send', () => {
   });
 
   it('erro do Resend não propaga', async () => {
-    process.env.RESEND_API_KEY = 'rk_test';
+    const svc = new EmailService(settings({ 'resend.apiKey': 'rk', 'mail.from': 'f@a.com' }));
     sendMock.mockRejectedValueOnce(new Error('boom'));
-    const svc = new EmailService();
     vi.spyOn((svc as any).logger, 'error').mockImplementation(() => {});
     await expect(svc.send({ to: 'a@a.com', subject: 's', html: 'h' })).resolves.toBeUndefined();
+  });
+});
+
+describe('EmailService.brand', () => {
+  it('sem APP_URL: logoUrl fica undefined mesmo com logo salvo', async () => {
+    delete process.env.APP_URL;
+    const svc = new EmailService(
+      settings({ 'branding.companyName': 'One Day', 'branding.logoData': 'AAA' }),
+    );
+    expect(await svc.brand()).toEqual({ companyName: 'One Day', logoUrl: undefined });
+  });
+
+  it('com APP_URL + logo: logoUrl aponta para /api/branding/logo', async () => {
+    process.env.APP_URL = 'https://os.exemplo.com';
+    const svc = new EmailService(settings({ 'branding.logoData': 'AAA' }));
+    expect((await svc.brand()).logoUrl).toBe('https://os.exemplo.com/api/branding/logo');
   });
 });
 
@@ -82,5 +105,14 @@ describe('templates', () => {
     const { html } = contactInvite({ name: '<b>x</b>', email: 'a@a.com' }, 'https://x/def?t=1');
     expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');
     expect(html).not.toContain('<b>x</b>');
+  });
+
+  it('wrap injeta logo e rodapé quando a marca é passada', () => {
+    const { html } = ticketCreated(ticket, {
+      companyName: 'One Day',
+      logoUrl: 'https://os.exemplo.com/api/branding/logo',
+    });
+    expect(html).toContain('<img src="https://os.exemplo.com/api/branding/logo"');
+    expect(html).toContain('One Day');
   });
 });

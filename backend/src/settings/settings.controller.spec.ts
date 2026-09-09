@@ -17,7 +17,7 @@ describe('SettingsController', () => {
   it('GET devolve describe() + encryptionKeySet', async () => {
     process.env.APP_ENCRYPTION_KEY = Buffer.alloc(32, 1).toString('base64');
     const c = new SettingsController(makeSvc() as any, storageOk as any);
-    const res = await c.get();
+    const res = (await c.get()) as Record<string, unknown>;
     expect(res['branding.companyName']).toBe('One Day');
     expect(res.encryptionKeySet).toBe(true);
   });

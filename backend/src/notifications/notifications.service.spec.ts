@@ -20,7 +20,8 @@ function make(users: Record<string, any>, admins: any[] = [], managers: any[] = 
       ),
     },
   };
-  const svc = new NotificationsService(prisma as any, { send } as any);
+  const brand = vi.fn().mockResolvedValue({});
+  const svc = new NotificationsService(prisma as any, { send, brand } as any);
   return { svc, send };
 }
 

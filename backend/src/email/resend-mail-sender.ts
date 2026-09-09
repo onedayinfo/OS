@@ -9,6 +9,6 @@ export class ResendMailSender implements MailSender {
   constructor(private readonly email: EmailService) {}
 
   async sendInvite(user: { name: string; email: string }, link: string): Promise<void> {
-    await this.email.send({ to: user.email, ...contactInvite(user, link) });
+    await this.email.send({ to: user.email, ...contactInvite(user, link, await this.email.brand()) });
   }
 }
