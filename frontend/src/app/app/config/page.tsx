@@ -11,6 +11,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Tabs } from '@/components/ui/tabs';
+import { useSession } from '@/lib/auth';
+import EmailTab from './tabs/email-tab';
+import StorageTab from './tabs/storage-tab';
+import AppearanceTab from './tabs/appearance-tab';
 
 function errToast(e: unknown) {
   toast.error(e instanceof ApiError ? e.message : 'Falha na operação.');
@@ -261,21 +265,32 @@ function UsersTab() {
 
 export default function ConfigPage() {
   const [tab, setTab] = useState('categorias');
+  const { user } = useSession();
+  const isAdmin = user?.role === 'ADMIN';
+
+  const tabs = [
+    { value: 'categorias', label: 'Categorias' },
+    { value: 'sla', label: 'SLA' },
+    { value: 'usuarios', label: 'Usuários internos' },
+    ...(isAdmin
+      ? [
+          { value: 'email', label: 'E-mail' },
+          { value: 'armazenamento', label: 'Armazenamento' },
+          { value: 'aparencia', label: 'Aparência' },
+        ]
+      : []),
+  ];
+
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Configurações</h1>
-      <Tabs
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { value: 'categorias', label: 'Categorias' },
-          { value: 'sla', label: 'SLA' },
-          { value: 'usuarios', label: 'Usuários internos' },
-        ]}
-      />
+      <Tabs value={tab} onChange={setTab} tabs={tabs} />
       {tab === 'categorias' && <CategoriesTab />}
       {tab === 'sla' && <SlaTab />}
       {tab === 'usuarios' && <UsersTab />}
+      {tab === 'email' && isAdmin && <EmailTab />}
+      {tab === 'armazenamento' && isAdmin && <StorageTab />}
+      {tab === 'aparencia' && isAdmin && <AppearanceTab />}
     </div>
   );
 }
