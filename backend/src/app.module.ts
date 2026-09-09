@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { SettingsModule } from './settings/settings.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { BrandingModule } from './branding/branding.module.js';
+import { BackupModule } from './backup/backup.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CommonModule } from './common/common.module.js';
 import { ClientsModule } from './clients/clients.module.js';
@@ -29,6 +30,7 @@ import { TasksModule } from './tasks/tasks.module.js';
     SettingsModule,
     StorageModule,
     BrandingModule,
+    BackupModule,
     AuthModule,
     CommonModule,
     ClientsModule,
