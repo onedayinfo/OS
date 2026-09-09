@@ -10,10 +10,10 @@ Numa máquina com Docker e acesso ao código:
 
 ```bash
 docker login
-./deploy/build-and-push.sh onedayinformatica 0.1.1
+./deploy/build-and-push.sh onedayinformatica 0.2.0
 ```
 
-Publica `onedayinformatica/os-backend:0.1.1` + `:latest` e `onedayinformatica/os-frontend:0.1.1` + `:latest`.
+Publica `onedayinformatica/os-backend:0.2.0` + `:latest` e `onedayinformatica/os-frontend:0.2.0` + `:latest`.
 
 > Se o servidor do Portainer for `linux/amd64` e você builda noutra arquitetura,
 > edite o script para incluir `--platform linux/amd64` nos `docker build`.
@@ -37,9 +37,14 @@ Gere segredos com `openssl rand -hex 32`.
 
 Obrigatória também: `CLOUDFLARE_TUNNEL_TOKEN` (passo 3).
 
+Obrigatória a partir da 0.2.0: `APP_ENCRYPTION_KEY` (`openssl rand -base64 32`) —
+criptografa os segredos configurados em `/app/config`. Sem ela o sistema sobe e
+usa o `.env` legado como fallback, mas não deixa salvar segredos pela UI.
+
 Opcionais: `OS_TAG` (default `latest`), `COOKIE_SAMESITE`/`COOKIE_SECURE`
-(default `lax`/`true`), `RESEND_API_KEY`/`RESEND_INBOUND_SECRET` (sem elas o
-sistema roda, mas não envia e-mail).
+(default `lax`/`true`). `RESEND_API_KEY`/`RESEND_INBOUND_SECRET`/`MAIL_FROM` e
+`STORAGE_PATH` viram legado/fallback — o recomendado é configurar em
+`/app/config` (abas E-mail e Armazenamento).
 
 ## 3. Cloudflare Tunnel (sem expor portas)
 
@@ -94,6 +99,10 @@ admin de `SEED_ADMIN_*`, políticas de SLA e categorias) e sobe. Acesse
 
 No Portainer: ajuste `OS_TAG` e "Pull and redeploy" (ou "Update the stack" com
 *re-pull image*). As migrations rodam sozinhas no boot.
+
+> Ao subir para a **0.2.0**: adicione `APP_ENCRYPTION_KEY` às variáveis do stack
+> **antes** do redeploy. Sem ela o backend sobe, mas a aba de Configurações não
+> salva segredos.
 
 ## Domínios separados (front e API em hosts diferentes)
 
