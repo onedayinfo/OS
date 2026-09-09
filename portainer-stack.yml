@@ -47,6 +47,11 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      # Criptografa os segredos configurados em /app/config (Resend, S3).
+      # Gere com: openssl rand -base64 32. Sem ela o sistema sobe, mas a UI de
+      # Configurações não salva segredos (usa só o fallback das vars abaixo).
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-}
+      # Fallback legado — o recomendado é configurar em /app/config.
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_INBOUND_SECRET: ${RESEND_INBOUND_SECRET:-}
       MAIL_FROM: ${MAIL_FROM}
