@@ -37,8 +37,9 @@ cofre de segredos externo (Vault/KMS); tema completo (só 1 cor primária).
   lidos do disco. Sem job de migração.
 - Logo/nome/cor aparecem em: cabeçalho app+portal, telas de login, e-mails,
   `<title>` + favicon (favicon = a própria imagem do logo).
-- Imagem do logo guardada **no storage de anexos** (segue a config disk/S3),
-  servida por endpoint público de branding.
+- Imagem do logo guardada **como base64 no banco** (linha de `Setting`), sem
+  depender de disk/S3, entra no backup JSON de graça. Servida por endpoint
+  público de branding (`/api/branding/logo`) que decodifica o base64.
 
 ## 3. Arquitetura
 
@@ -122,7 +123,8 @@ API:
 | `backup.retention` | não | — (`30`) |
 | `branding.companyName` | não | — |
 | `branding.primaryColor` | não | — |
-| `branding.logoKey` | não | — (setada pelo upload) |
+| `branding.logoData` | não | — (base64 do arquivo, setada pelo upload) |
+| `branding.logoMime` | não | — (`image/png` etc., setada pelo upload) |
 
 ### 3.3 `StorageService`
 
@@ -182,12 +184,14 @@ segurança — não reimplementar.)
 - `GET /api/branding` → `{ companyName, primaryColor, logoUrl, hasLogo }`.
   `logoUrl` = `/api/branding/logo` (sempre same-origin; o front nunca fala com
   o S3 direto).
-- `GET /api/branding/logo` → stream de `storage.readable(branding.logoKey)`,
+- `GET /api/branding/logo` → decodifica `branding.logoData` (base64),
+  responde com `Content-Type: branding.logoMime` e
   `Cache-Control: public, max-age=300`. 404 se não houver logo.
 - Upload do logo: `POST /api/settings/branding/logo` (ADMIN, multipart),
-  valida mime imagem + tamanho (≤ 2 MB), grava
-  `storage.put('branding/logo<ext>', ...)`, seta `branding.logoKey`.
-  `DELETE` remove.
+  valida mime imagem (`image/png|jpeg|webp|svg+xml`) + tamanho (≤ 512 KB —
+  base64 infla ~33% e a linha é lida em toda request de branding), grava
+  `branding.logoData` (base64) + `branding.logoMime`. `DELETE` limpa as duas
+  chaves.
 
 ### 3.6 `BackupService`
 
@@ -292,9 +296,8 @@ tem valor.
 ### 4.2 Admin liga o S3
 `PUT /settings {storage.driver:'s3', storage.s3.*}` → "Testar conexão" faz
 `put`/`delete` de `__probe`. A partir daí, todo anexo novo vai pro bucket;
-downloads de anexos antigos continuam vindo do disco (dual-read). Logo, se já
-existia, foi gravado no disco — re-upload pra mandar pro S3 (aceitável;
-`ponytail:` documenta).
+downloads de anexos antigos continuam vindo do disco (dual-read). O logo não é
+afetado — vive no banco (base64), independente do driver.
 
 ### 4.3 Backup manual
 Botão → `GET /backup/export` → browser baixa `os-backup-<ISO>.json`.
@@ -344,6 +347,9 @@ Unitários (vitest, sem infra):
   (hoje setam `process.env`); cobrir "banco tem chave, env não".
 - `InboundController` — assinatura válida/ inválida com secret vindo do
   `SettingsService`.
+- `BrandingController` — sem logo → `GET /branding/logo` 404; upload base64 →
+  `GET` devolve os bytes com o mime certo; upload > 512 KB ou mime não-imagem
+  → 400; `GET /branding` reflete `hasLogo`/cor/nome.
 
 Integração (`test:integration`, exige Postgres):
 
