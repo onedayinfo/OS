@@ -5,6 +5,24 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+## [0.3.0] - 2026-09-10
+
+### Adicionado
+- Cadastro de **Locais** por cliente (endereço, contato no local, observações
+  de acesso).
+- **Tipos de ativo** configuráveis pelo ADMIN (aba em Configurações).
+- Cadastro de **Ativos/equipamentos** por local: dados de rede (IP/MAC),
+  credenciais de acesso criptografadas (visíveis só à equipe), fotos, garantia
+  e status.
+- Chamado passa a referenciar um **Local** e um ou mais **Ativos**; a ficha do
+  ativo lista o histórico de chamados vinculados.
+- Importação de ativos por **CSV** (cliente, local e tipo resolvidos por nome;
+  relatório de erros por linha).
+
+### Alterado
+- O campo livre "Equipamento" do chamado foi aposentado: sai dos formulários e
+  fica só-leitura em chamados antigos que já tinham valor.
+
 ## [0.2.0] - 2026-09-09
 
 ### Adicionado
