@@ -13,6 +13,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { CurrentUser } from '../common/current-user.decorator.js';
+import { Roles } from '../common/roles.decorator.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { AttachmentsService } from './attachments.service.js';
 import { MulterExceptionFilter } from './multer-exception.filter.js';
@@ -46,6 +47,24 @@ export class AttachmentsController {
     @CurrentUser() actor: CurrentUserData,
   ) {
     return this.attachments.saveForComment(id, file, actor);
+  }
+
+  // Fotos de ativo: recurso interno. O acesso é checado pelo @Roles.
+  @Post('assets/:id/attachments')
+  @Roles('ADMIN', 'AGENT')
+  @UseInterceptors(interceptor)
+  uploadToAsset(
+    @Param('id') id: string,
+    @UploadedFile() file: UF,
+    @CurrentUser() actor: CurrentUserData,
+  ) {
+    return this.attachments.saveForAsset(id, file, actor);
+  }
+
+  @Get('assets/:id/attachments')
+  @Roles('ADMIN', 'AGENT')
+  listForAsset(@Param('id') id: string) {
+    return this.attachments.listForAsset(id);
   }
 
   @Get('attachments/:id')

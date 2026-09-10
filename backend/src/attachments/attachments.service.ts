@@ -72,6 +72,30 @@ export class AttachmentsService implements OnModuleInit {
     return publicAttachment(await this.persist({ commentId }, file, actor));
   }
 
+  /**
+   * Anexa um arquivo a um ativo (foto). Recurso interno: só ADMIN/AGENT no
+   * controller; `actor` sempre concreto. Não depende do `AssetsService` —
+   * checa a existência direto pelo `prisma`.
+   */
+  async saveForAsset(
+    assetId: string,
+    file: UploadedFile,
+    actor: Actor,
+  ): Promise<ReturnType<typeof publicAttachment>> {
+    const asset = await this.prisma.asset.findUnique({
+      where: { id: assetId },
+      select: { id: true },
+    });
+    if (!asset) throw new NotFoundException('Ativo não encontrado.');
+    return publicAttachment(await this.persist({ assetId }, file, actor));
+  }
+
+  listForAsset(assetId: string) {
+    return this.prisma.attachment
+      .findMany({ where: { assetId }, orderBy: { createdAt: 'asc' } })
+      .then((rows) => rows.map(publicAttachment));
+  }
+
   /** Carrega o anexo validando o acesso do `actor` ao chamado dono. */
   async getForDownload(id: string, actor: Actor): Promise<Attachment> {
     const attachment = await this.prisma.attachment.findUnique({ where: { id } });
@@ -92,6 +116,11 @@ export class AttachmentsService implements OnModuleInit {
         throw new NotFoundException('Anexo não encontrado.');
       }
     }
+    // Anexo de ativo: recurso interno. Cliente nunca baixa.
+    if (!ticketId && !attachment.commentId && attachment.assetId) {
+      if (actor?.type === 'CLIENT') throw new NotFoundException('Anexo não encontrado.');
+      return attachment;
+    }
     if (!ticketId) throw new NotFoundException('Anexo não encontrado.');
 
     // Sem acesso → NotFoundException (não vaza existência), mesmo escopo do 6.1.
@@ -100,7 +129,7 @@ export class AttachmentsService implements OnModuleInit {
   }
 
   private async persist(
-    link: { ticketId: string } | { commentId: string },
+    link: { ticketId: string } | { commentId: string } | { assetId: string },
     file: UploadedFile,
     actor?: Actor,
   ): Promise<Attachment> {

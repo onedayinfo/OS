@@ -28,6 +28,7 @@ function makeDeps() {
       findUnique: vi.fn(),
     },
     ticketComment: { findUnique: vi.fn() },
+    asset: { findUnique: vi.fn() },
   };
   const tickets = { assertAccess: vi.fn().mockResolvedValue({ id: 't1' }) };
   const service = new AttachmentsService(prisma as any, tickets as any, diskStorage());
@@ -110,6 +111,72 @@ describe('AttachmentsService.saveForTicket', () => {
       process.env.STORAGE_PATH = prev;
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('AttachmentsService.saveForAsset', () => {
+  it('rejeita ativo inexistente → NotFoundException', async () => {
+    const { service, prisma } = makeDeps();
+    prisma.asset.findUnique.mockResolvedValue(null);
+    await expect(service.saveForAsset('a1', png(), actor)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('persiste o anexo com assetId e devolve publicAttachment', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'att-'));
+    const prev = process.env.STORAGE_PATH;
+    process.env.STORAGE_PATH = dir;
+    try {
+      const { service, prisma } = makeDeps();
+      prisma.asset.findUnique.mockResolvedValue({ id: 'a1' });
+
+      const out = await service.saveForAsset('a1', png(), actor);
+
+      expect(prisma.asset.findUnique).toHaveBeenCalledWith({
+        where: { id: 'a1' },
+        select: { id: true },
+      });
+      const persisted = prisma.attachment.create.mock.calls[0][0].data;
+      expect(persisted.assetId).toBe('a1');
+      expect(out).not.toHaveProperty('storedPath');
+      expect(out).not.toHaveProperty('uploadedById');
+      expect(out).toMatchObject({ filename: 'foto.png', mime: 'image/png' });
+    } finally {
+      process.env.STORAGE_PATH = prev;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('AttachmentsService.getForDownload (asset)', () => {
+  const clientActor = { id: 'c1', type: 'CLIENT', role: 'CLIENT', clientId: 'cli1' };
+
+  it('CLIENT não baixa anexo de ativo → NotFoundException', async () => {
+    const { service, prisma, tickets } = makeDeps();
+    prisma.attachment.findUnique.mockResolvedValue({
+      id: 'at1',
+      ticketId: null,
+      commentId: null,
+      assetId: 'a1',
+    });
+    await expect(service.getForDownload('at1', clientActor as any)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(tickets.assertAccess).not.toHaveBeenCalled();
+  });
+
+  it('actor interno baixa anexo de ativo', async () => {
+    const { service, prisma, tickets } = makeDeps();
+    prisma.attachment.findUnique.mockResolvedValue({
+      id: 'at1',
+      ticketId: null,
+      commentId: null,
+      assetId: 'a1',
+    });
+    const out = await service.getForDownload('at1', actor);
+    expect(out.id).toBe('at1');
+    expect(tickets.assertAccess).not.toHaveBeenCalled();
   });
 });
 
