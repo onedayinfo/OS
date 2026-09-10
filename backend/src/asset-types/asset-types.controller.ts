@@ -14,8 +14,9 @@ export class AssetTypesController {
     return this.assetTypes.create(dto);
   }
 
-  // Qualquer autenticado interno: forms de ativo e a aba de config precisam listar.
+  // Só interno ADMIN/AGENT: forms de ativo e a aba de config (spec §3.2).
   @Get()
+  @Roles('ADMIN', 'AGENT')
   findAll() {
     return this.assetTypes.findAll();
   }

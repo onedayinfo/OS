@@ -240,6 +240,11 @@ describe('TicketsService.findOne — guarda de acesso', () => {
     expect(assetsArg.select.id).toBe(true);
     expect(assetsArg.select.label).toBe(true);
     expect(assetsArg.select.type).toEqual({ select: { id: true, name: true } });
+    // Spec §3.2: nada além de id/label/type — o lado cliente não vê ip/mac/serial.
+    for (const f of ['status', 'brand', 'model', 'serialNumber', 'ip', 'mac']) {
+      expect(assetsArg.select).not.toHaveProperty(f);
+    }
+    expect(Object.keys(assetsArg.select).sort()).toEqual(['id', 'label', 'type']);
   });
 
   it('findOne → anexos allowlistados: sem storedPath/uploadedById, com id/filename/mime/size (ticket e comentário, viewer AGENT)', async () => {

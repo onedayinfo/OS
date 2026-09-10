@@ -378,16 +378,12 @@ export class TicketsService {
         location: true,
         // `select` (não `include`): `include` traria todo scalar de Asset,
         // inclusive `credentialsEnc`, e o retorno espalha `...ticket`.
+        // Spec §3.2: o detalhe do chamado só expõe id/label/tipo do ativo — nada
+        // de status/brand/model/serial/ip/mac (o lado cliente vê o próprio chamado).
         assets: {
           select: {
             id: true,
             label: true,
-            status: true,
-            brand: true,
-            model: true,
-            serialNumber: true,
-            ip: true,
-            mac: true,
             type: { select: { id: true, name: true } },
           },
         },

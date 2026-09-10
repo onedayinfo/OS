@@ -167,7 +167,9 @@ function LocationsTab({ clientId }: { clientId: string }) {
       api<Paged<Location>>(`/locations?clientId=${clientId}&pageSize=100`),
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['locations', clientId] });
+  // Prefixo amplo: casa tanto ['locations', clientId] (pickers de chamado) quanto
+  // ['locations', 'options', clientId] (picker do form de ativo nesta mesma página).
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['locations'] });
 
   const create = useMutation({
     mutationFn: (v: LocationValues) =>
