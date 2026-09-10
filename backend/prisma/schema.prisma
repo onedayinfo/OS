@@ -42,6 +42,12 @@ enum TicketOrigin {
   MANUAL
 }
 
+enum AssetStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+}
+
 enum CommentVisibility {
   INTERNAL
   PUBLIC
@@ -55,6 +61,8 @@ enum TicketEventType {
   COMMENT
   EMAIL_IN
   EMAIL_OUT
+  LOCATION_CHANGED
+  ASSETS_CHANGED
 }
 
 model User {
@@ -93,8 +101,10 @@ model Client {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  users   User[]
-  tickets Ticket[]
+  users     User[]
+  tickets   Ticket[]
+  locations Location[]
+  assets    Asset[]
 
   @@map("clients")
 }
@@ -109,6 +119,71 @@ model Category {
   tickets Ticket[]
 
   @@map("categories")
+}
+
+model Location {
+  id           String   @id @default(cuid())
+  clientId     String
+  name         String
+  address      String?
+  contactName  String?
+  contactPhone String?
+  accessNotes  String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  client Client  @relation(fields: [clientId], references: [id])
+  assets Asset[]
+  tickets Ticket[]
+
+  @@unique([clientId, name])
+  @@index([clientId])
+  @@map("locations")
+}
+
+model AssetType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assets Asset[]
+
+  @@map("asset_types")
+}
+
+model Asset {
+  id             String      @id @default(cuid())
+  clientId       String
+  locationId     String
+  typeId         String
+  label          String
+  brand          String?
+  model          String?
+  serialNumber   String?
+  ip             String?
+  mac            String?
+  credentialsEnc String?
+  installedAt    DateTime?
+  warrantyEndsAt DateTime?
+  status         AssetStatus @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  client      Client       @relation(fields: [clientId], references: [id])
+  location    Location     @relation(fields: [locationId], references: [id])
+  type        AssetType    @relation(fields: [typeId], references: [id])
+  tickets     Ticket[]     @relation("TicketAssets")
+  attachments Attachment[]
+
+  @@unique([clientId, serialNumber])
+  @@index([clientId])
+  @@index([locationId])
+  @@index([typeId])
+  @@map("assets")
 }
 
 model SlaPolicy {
@@ -132,6 +207,7 @@ model Ticket {
   assigneeId      String?
   origin          TicketOrigin
   equipment       String?
+  locationId      String?
   needsTriage     Boolean        @default(false)
   slaDueAt        DateTime?
   slaBreachNotifiedAt DateTime?
@@ -145,6 +221,8 @@ model Ticket {
   requester     User?           @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: SetNull)
   assignee      User?           @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   category      Category?       @relation(fields: [categoryId], references: [id])
+  location      Location?       @relation(fields: [locationId], references: [id])
+  assets        Asset[]         @relation("TicketAssets")
   comments      TicketComment[]
   events        TicketEvent[]
   attachments   Attachment[]
@@ -154,6 +232,7 @@ model Ticket {
   @@index([assigneeId])
   @@index([requesterId])
   @@index([categoryId])
+  @@index([locationId])
   @@map("tickets")
 }
 
@@ -192,6 +271,7 @@ model Attachment {
   id           String   @id @default(cuid())
   ticketId     String?
   commentId    String?
+  assetId      String?
   filename     String
   storedPath   String
   mime         String
@@ -201,10 +281,12 @@ model Attachment {
 
   ticket     Ticket?        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   comment    TicketComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  asset      Asset?         @relation(fields: [assetId], references: [id], onDelete: Cascade)
   uploadedBy User           @relation(fields: [uploadedById], references: [id])
 
   @@index([ticketId])
   @@index([commentId])
+  @@index([assetId])
   @@map("attachments")
 }
 
