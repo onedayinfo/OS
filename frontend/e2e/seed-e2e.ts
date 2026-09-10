@@ -1,5 +1,6 @@
-// globalSetup do Playwright: garante um contato de cliente com senha conhecida
-// para o smoke E2E. Idempotente (upsert) e com limpeza no teardown.
+// globalSetup do Playwright: garante um contato de cliente e um ADMIN da equipe
+// com senhas conhecidas para os smokes E2E. Idempotente (upsert) e com limpeza
+// no teardown.
 //
 // Usa o PrismaClient e o bcrypt já instalados no backend — sem duplicar deps no
 // frontend. DATABASE_URL vem do ambiente (carregado pelo playwright.config.ts a
@@ -9,14 +10,20 @@ import { PrismaClient } from '../../backend/node_modules/@prisma/client/index.js
 
 export const E2E_EMAIL = 'contato@e2e.test';
 export const E2E_PASSWORD = 'e2e12345';
+export const E2E_ADMIN_EMAIL = 'admin@e2e.test';
+export const E2E_ADMIN_PASSWORD = 'e2e12345';
+export const E2E_ASSET_TYPE = 'Câmera E2E';
 const E2E_CLIENT_ID = 'e2e-client';
 const E2E_DOMAIN = 'e2e.test';
 
 async function cleanup(prisma: InstanceType<typeof PrismaClient>): Promise<void> {
-  // Eventos/comentários somem em cascata com o ticket.
+  // Eventos/comentários e vínculos m2m somem em cascata com o ticket.
   await prisma.ticket.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
-  await prisma.user.deleteMany({ where: { email: E2E_EMAIL } });
+  await prisma.asset.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
+  await prisma.location.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
+  await prisma.user.deleteMany({ where: { email: { in: [E2E_EMAIL, E2E_ADMIN_EMAIL] } } });
   await prisma.client.deleteMany({ where: { id: E2E_CLIENT_ID } });
+  await prisma.assetType.deleteMany({ where: { name: E2E_ASSET_TYPE } });
 }
 
 export default async function globalSetup(): Promise<() => Promise<void>> {
@@ -41,6 +48,26 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
       active: true,
       clientId: E2E_CLIENT_ID,
     },
+  });
+
+  const adminHash = await bcrypt.hash(E2E_ADMIN_PASSWORD, 10);
+  await prisma.user.upsert({
+    where: { email: E2E_ADMIN_EMAIL },
+    update: { passwordHash: adminHash, active: true, role: 'ADMIN', type: 'INTERNAL', clientId: null },
+    create: {
+      name: 'Admin E2E',
+      email: E2E_ADMIN_EMAIL,
+      passwordHash: adminHash,
+      type: 'INTERNAL',
+      role: 'ADMIN',
+      active: true,
+    },
+  });
+
+  await prisma.assetType.upsert({
+    where: { name: E2E_ASSET_TYPE },
+    update: { active: true },
+    create: { name: E2E_ASSET_TYPE, active: true },
   });
 
   // O seed do backend já cria categorias; garante ao menos uma ativa mesmo assim.
