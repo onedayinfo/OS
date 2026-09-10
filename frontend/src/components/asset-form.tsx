@@ -64,12 +64,15 @@ function toDateInput(v: string | null | undefined): string {
 
 export function AssetForm({
   initial,
+  lockedClientId,
   submitLabel,
   busy,
   onSubmit,
   onCancel,
 }: {
   initial?: AssetInitial;
+  // Fixa o cliente ao criar um ativo a partir da ficha do cliente.
+  lockedClientId?: string;
   submitLabel: string;
   busy?: boolean;
   onSubmit: (v: AssetFormPayload) => void;
@@ -77,7 +80,7 @@ export function AssetForm({
 }) {
   const editing = !!initial;
 
-  const [clientId, setClientId] = useState(initial?.clientId ?? '');
+  const [clientId, setClientId] = useState(initial?.clientId ?? lockedClientId ?? '');
   const [locationId, setLocationId] = useState(initial?.locationId ?? '');
   const [typeId, setTypeId] = useState(initial?.typeId ?? '');
   const [label, setLabel] = useState(initial?.label ?? '');
@@ -155,6 +158,7 @@ export function AssetForm({
         <Select
           id="a-client"
           value={clientId}
+          disabled={!!lockedClientId}
           onChange={(e) => setClientId(e.target.value)}
         >
           <option value="">Selecione…</option>

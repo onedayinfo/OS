@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Tabs } from '@/components/ui/tabs';
 import { useSession } from '@/lib/auth';
+import type { AssetType } from '@/lib/assets';
 import EmailTab from './tabs/email-tab';
 import StorageTab from './tabs/storage-tab';
 import AppearanceTab from './tabs/appearance-tab';
@@ -100,6 +101,83 @@ function CategoriesTab() {
               onClick={() => patch.mutate({ id: c.id, body: { active: !c.active } })}
             >
               {c.active ? 'Desativar' : 'Ativar'}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function AssetTypesTab() {
+  const qc = useQueryClient();
+  const [name, setName] = useState('');
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['asset-types'] });
+
+  const { data } = useQuery({
+    queryKey: ['asset-types'],
+    queryFn: () => api<AssetType[]>('/asset-types'),
+  });
+  const create = useMutation({
+    mutationFn: (n: string) => api('/asset-types', { method: 'POST', body: { name: n } }),
+    onSuccess: () => {
+      invalidate();
+      setName('');
+      toast.success('Tipo de ativo criado.');
+    },
+    onError: errToast,
+  });
+  const patch = useMutation({
+    mutationFn: (v: { id: string; body: Record<string, unknown> }) =>
+      api(`/asset-types/${v.id}`, { method: 'PATCH', body: v.body }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Tipo de ativo atualizado.');
+    },
+    onError: errToast,
+  });
+
+  return (
+    <div className="flex max-w-lg flex-col gap-3 pt-4">
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (name.trim()) create.mutate(name.trim());
+        }}
+      >
+        <Input
+          placeholder="Novo tipo de ativo"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Button type="submit" disabled={create.isPending}>
+          Adicionar
+        </Button>
+      </form>
+      <ul className="flex flex-col gap-1">
+        {data?.map((t) => (
+          <li
+            key={t.id}
+            className="flex items-center gap-2 rounded-md border border-border px-3 py-2"
+          >
+            <input
+              defaultValue={t.name}
+              className="flex-1 bg-transparent text-sm outline-none"
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v && v !== t.name) patch.mutate({ id: t.id, body: { name: v } });
+              }}
+            />
+            <Badge tone={t.active ? 'green' : 'neutral'}>
+              {t.active ? 'Ativo' : 'Inativo'}
+            </Badge>
+            <button
+              type="button"
+              className="text-sm text-primary hover:underline"
+              onClick={() => patch.mutate({ id: t.id, body: { active: !t.active } })}
+            >
+              {t.active ? 'Desativar' : 'Ativar'}
             </button>
           </li>
         ))}
@@ -275,6 +353,7 @@ export default function ConfigPage() {
     { value: 'usuarios', label: 'Usuários internos' },
     ...(isAdmin
       ? [
+          { value: 'tipos-ativo', label: 'Tipos de ativo' },
           { value: 'email', label: 'E-mail' },
           { value: 'armazenamento', label: 'Armazenamento' },
           { value: 'aparencia', label: 'Aparência' },
@@ -290,6 +369,7 @@ export default function ConfigPage() {
       {tab === 'categorias' && <CategoriesTab />}
       {tab === 'sla' && <SlaTab />}
       {tab === 'usuarios' && <UsersTab />}
+      {tab === 'tipos-ativo' && isAdmin && <AssetTypesTab />}
       {tab === 'email' && isAdmin && <EmailTab />}
       {tab === 'armazenamento' && isAdmin && <StorageTab />}
       {tab === 'aparencia' && isAdmin && <AppearanceTab />}

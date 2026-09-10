@@ -1,12 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
-import type { PublicUser } from '@/lib/tickets';
+import type { Paged, PublicUser } from '@/lib/tickets';
+import {
+  ASSET_STATUS_LABELS,
+  type Asset,
+  type AssetStatus,
+} from '@/lib/assets';
 import { ClientForm, type ClientValues } from '@/components/client-form';
 import { ContactForm, type ContactValues } from '@/components/contact-form';
+import { LocationForm, type LocationValues } from '@/components/location-form';
+import { AssetForm, type AssetFormPayload } from '@/components/asset-form';
 import { TicketTable } from '@/components/ticket-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +28,19 @@ interface Client {
   notes: string | null;
   active: boolean;
 }
+
+interface Location {
+  id: string;
+  name: string;
+  address: string | null;
+  active: boolean;
+}
+
+const STATUS_TONE: Record<AssetStatus, 'green' | 'amber' | 'neutral'> = {
+  ACTIVE: 'green',
+  MAINTENANCE: 'amber',
+  INACTIVE: 'neutral',
+};
 
 const ROLE_LABELS: Record<string, string> = { MANAGER: 'Gestor', CONTACT: 'Contato' };
 
@@ -136,6 +157,185 @@ function ContactsTab({ clientId }: { clientId: string }) {
   );
 }
 
+function LocationsTab({ clientId }: { clientId: string }) {
+  const qc = useQueryClient();
+  const [adding, setAdding] = useState(false);
+
+  const { data } = useQuery({
+    queryKey: ['locations', clientId],
+    queryFn: () =>
+      api<Paged<Location>>(`/locations?clientId=${clientId}&pageSize=100`),
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['locations', clientId] });
+
+  const create = useMutation({
+    mutationFn: (v: LocationValues) =>
+      api('/locations', { method: 'POST', body: { clientId, ...v } }),
+    onSuccess: () => {
+      invalidate();
+      setAdding(false);
+      toast.success('Local criado.');
+    },
+    onError: errToast,
+  });
+
+  const setActive = useMutation({
+    mutationFn: (v: { id: string; active: boolean }) =>
+      api(`/locations/${v.id}`, { method: 'PATCH', body: { active: v.active } }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Local atualizado.');
+    },
+    onError: errToast,
+  });
+
+  return (
+    <div className="flex flex-col gap-4 pt-4">
+      <div className="flex justify-end">
+        <Button onClick={() => setAdding((v) => !v)}>
+          {adding ? 'Fechar' : 'Novo local'}
+        </Button>
+      </div>
+      {adding && (
+        <div className="max-w-xl rounded-lg border border-border p-4">
+          <LocationForm
+            submitLabel="Criar local"
+            busy={create.isPending}
+            onSubmit={(v) => create.mutate(v)}
+            onCancel={() => setAdding(false)}
+          />
+        </div>
+      )}
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 font-medium">Nome</th>
+              <th className="px-3 py-2 font-medium">Endereço</th>
+              <th className="px-3 py-2 font-medium">Situação</th>
+              <th className="px-3 py-2 font-medium">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data?.data.map((l) => (
+              <tr key={l.id} className="border-t border-border">
+                <td className="px-3 py-2">{l.name}</td>
+                <td className="px-3 py-2 text-muted-foreground">{l.address ?? '—'}</td>
+                <td className="px-3 py-2">
+                  <Badge tone={l.active ? 'green' : 'neutral'}>
+                    {l.active ? 'Ativo' : 'Inativo'}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2">
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => setActive.mutate({ id: l.id, active: !l.active })}
+                  >
+                    {l.active ? 'Desativar' : 'Ativar'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {data && data.data.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">
+                  Nenhum local.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ClientAssetsTab({ clientId }: { clientId: string }) {
+  const qc = useQueryClient();
+  const [adding, setAdding] = useState(false);
+
+  const { data } = useQuery({
+    queryKey: ['assets', 'client', clientId],
+    queryFn: () =>
+      api<Paged<Asset>>(`/assets?clientId=${clientId}&pageSize=100`),
+  });
+
+  const create = useMutation({
+    mutationFn: (v: AssetFormPayload) => api<Asset>('/assets', { method: 'POST', body: v }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['assets'] });
+      setAdding(false);
+      toast.success('Ativo criado.');
+    },
+    onError: errToast,
+  });
+
+  return (
+    <div className="flex flex-col gap-4 pt-4">
+      <div className="flex justify-end">
+        <Button onClick={() => setAdding((v) => !v)}>
+          {adding ? 'Fechar' : 'Novo ativo'}
+        </Button>
+      </div>
+      {adding && (
+        <div className="max-w-2xl rounded-lg border border-border p-4">
+          <AssetForm
+            lockedClientId={clientId}
+            submitLabel="Criar ativo"
+            busy={create.isPending}
+            onSubmit={(v) => create.mutate(v)}
+            onCancel={() => setAdding(false)}
+          />
+        </div>
+      )}
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 font-medium">Identificação</th>
+              <th className="px-3 py-2 font-medium">Tipo</th>
+              <th className="px-3 py-2 font-medium">Local</th>
+              <th className="px-3 py-2 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data?.data.map((a) => (
+              <tr key={a.id} className="border-t border-border">
+                <td className="px-3 py-2">
+                  <Link
+                    href={`/app/ativos/${a.id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {a.label}
+                  </Link>
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">{a.type?.name ?? '—'}</td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {a.location?.name ?? '—'}
+                </td>
+                <td className="px-3 py-2">
+                  <Badge tone={STATUS_TONE[a.status]}>
+                    {ASSET_STATUS_LABELS[a.status]}
+                  </Badge>
+                </td>
+              </tr>
+            ))}
+            {data && data.data.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">
+                  Nenhum ativo.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function ClientDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const qc = useQueryClient();
@@ -182,6 +382,8 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
         tabs={[
           { value: 'dados', label: 'Dados' },
           { value: 'contatos', label: 'Contatos' },
+          { value: 'locais', label: 'Locais' },
+          { value: 'ativos', label: 'Ativos' },
           { value: 'chamados', label: 'Chamados' },
         ]}
       />
@@ -210,6 +412,10 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       )}
 
       {tab === 'contatos' && <ContactsTab clientId={id} />}
+
+      {tab === 'locais' && <LocationsTab clientId={id} />}
+
+      {tab === 'ativos' && <ClientAssetsTab clientId={id} />}
 
       {tab === 'chamados' && (
         <div className="pt-4">
