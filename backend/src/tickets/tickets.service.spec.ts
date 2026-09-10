@@ -55,7 +55,7 @@ function makeDeps() {
     new TicketStatusService(),
     notifier as any,
   );
-  return { service, prisma, sla, notifier, events };
+  return { service, prisma, sla, notifier, events, tx };
 }
 
 describe('TicketsService.create', () => {
@@ -221,5 +221,26 @@ describe('TicketsService — local e ativos', () => {
     const types = events.map((e) => e.type);
     expect(types).toContain('LOCATION_CHANGED');
     expect(types).toContain('ASSETS_CHANGED');
+  });
+
+  it('setTicketAssets sem mudança: não grava eventos, mas ticket.update roda', async () => {
+    const { service, prisma, events, tx } = makeDeps();
+    prisma.ticket.findUnique.mockResolvedValue({
+      id: 't1',
+      clientId: 'c1',
+      locationId: 'l1',
+      assets: [{ id: 'a1' }],
+    });
+    prisma.location.findUnique.mockResolvedValue({ id: 'l1', clientId: 'c1' });
+    prisma.asset.findMany.mockResolvedValue([{ id: 'a1', locationId: 'l1' }]);
+
+    await service.setTicketAssets(
+      't1',
+      { locationId: 'l1', assetIds: ['a1'] },
+      { id: 'u1', type: 'INTERNAL', role: 'AGENT', clientId: null },
+    );
+
+    expect(events).toHaveLength(0);
+    expect(tx.ticket.update).toHaveBeenCalledTimes(1);
   });
 });

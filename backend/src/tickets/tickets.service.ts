@@ -169,7 +169,8 @@ export class TicketsService {
     const needsTriage = origin === 'EMAIL' && !hasParties;
 
     const locationId = input.locationId ?? null;
-    const assetIds = input.assetIds ?? [];
+    // dedup: ids repetidos furam o check `assets.length !== assetIds.length`.
+    const assetIds = [...new Set(input.assetIds ?? [])];
     await this.validateLocationAndAssets(clientId, locationId, assetIds);
 
     // read-only, pode ficar fora da transação
@@ -258,7 +259,8 @@ export class TicketsService {
     if (!ticket) throw new NotFoundException('Chamado não encontrado.');
 
     const locationId = input.locationId ?? null;
-    const assetIds = locationId ? input.assetIds : [];
+    // dedup: ids repetidos furam o check em validateLocationAndAssets.
+    const assetIds = locationId ? [...new Set(input.assetIds)] : [];
     await this.validateLocationAndAssets(ticket.clientId, locationId, assetIds);
 
     const before = ticket.assets.map((a) => a.id).sort();
@@ -374,7 +376,21 @@ export class TicketsService {
         assignee: true,
         category: true,
         location: true,
-        assets: { include: { type: { select: { id: true, name: true } } } },
+        // `select` (não `include`): `include` traria todo scalar de Asset,
+        // inclusive `credentialsEnc`, e o retorno espalha `...ticket`.
+        assets: {
+          select: {
+            id: true,
+            label: true,
+            status: true,
+            brand: true,
+            model: true,
+            serialNumber: true,
+            ip: true,
+            mac: true,
+            type: { select: { id: true, name: true } },
+          },
+        },
         comments: {
           orderBy: { createdAt: 'asc' },
           include: { attachments: true },

@@ -224,6 +224,24 @@ describe('TicketsService.findOne — guarda de acesso', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('findOne → assets vêm por `select` de campos seguros (sem credentialsEnc)', async () => {
+    // `include` na relação `assets` devolveria TODO scalar de Asset — inclusive
+    // `credentialsEnc`, que `findOne` espalharia no retorno (serve o lado cliente).
+    // Prova a correção pelo argumento passado ao Prisma: mock não honra `select`.
+    const t = fullTicket();
+    (t as any).assets = [{ id: 'as1', label: 'CAM-01', type: { id: 'ty1', name: 'Câmera' } }];
+    const { service, findUnique } = serviceWithTicket(t);
+    await service.findOne('t1', { id: 'ag', type: 'INTERNAL', role: 'AGENT', clientId: null });
+
+    const assetsArg = findUnique.mock.calls[0][0].include.assets;
+    expect(assetsArg.include).toBeUndefined();
+    expect(assetsArg.select).toBeDefined();
+    expect(assetsArg.select).not.toHaveProperty('credentialsEnc');
+    expect(assetsArg.select.id).toBe(true);
+    expect(assetsArg.select.label).toBe(true);
+    expect(assetsArg.select.type).toEqual({ select: { id: true, name: true } });
+  });
+
   it('findOne → anexos allowlistados: sem storedPath/uploadedById, com id/filename/mime/size (ticket e comentário, viewer AGENT)', async () => {
     const raw = {
       id: 'att-t',
