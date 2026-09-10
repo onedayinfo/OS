@@ -1,0 +1,3 @@
+cliente,local,tipo,identificacao,marca,modelo,numero_serie,ip,mac,instalado_em,garantia_ate,observacoes
+ACME Ltda,Matriz,Câmera,CAM-01 Portaria,Intelbras,VIP 1230,SN0001,10.0.0.11,,2024-03-10,2026-03-10,foco no portão
+ACME Ltda,Matriz,DVR/NVR,DVR-01 Rack,Intelbras,MHDX 1132,SN0002,10.0.0.10,,2024-03-10,2026-03-10,
