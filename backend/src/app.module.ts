@@ -13,6 +13,7 @@ import { CommonModule } from './common/common.module.js';
 import { ClientsModule } from './clients/clients.module.js';
 import { CategoriesModule } from './categories/categories.module.js';
 import { AssetTypesModule } from './asset-types/asset-types.module.js';
+import { LocationsModule } from './locations/locations.module.js';
 import { UsersModule } from './users/users.module.js';
 import { EmailModule } from './email/email.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -37,6 +38,7 @@ import { TasksModule } from './tasks/tasks.module.js';
     ClientsModule,
     CategoriesModule,
     AssetTypesModule,
+    LocationsModule,
     UsersModule,
     EmailModule,
     NotificationsModule,
