@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 const APP_LINKS = [
   { href: '/app', label: 'Fila' },
   { href: '/app/clientes', label: 'Clientes' },
+  { href: '/app/ativos', label: 'Ativos' },
   { href: '/app/config', label: 'Configurações' },
 ];
 
