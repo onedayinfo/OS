@@ -11,6 +11,7 @@ import {
   type PublicUser,
   type TicketPriority,
 } from '@/lib/tickets';
+import { type Asset } from '@/lib/assets';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +33,8 @@ export default function NewTicketPage() {
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [priority, setPriority] = useState<TicketPriority>('MEDIUM');
-  const [equipment, setEquipment] = useState('');
+  const [locationId, setLocationId] = useState('');
+  const [assetIds, setAssetIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
   const { data: clients } = useQuery({
@@ -47,6 +49,19 @@ export default function NewTicketPage() {
   const { data: categories } = useQuery({
     queryKey: ['categories'],
     queryFn: () => api<Category[]>('/categories'),
+  });
+  const { data: locations } = useQuery({
+    queryKey: ['locations', clientId],
+    queryFn: () =>
+      api<Paged<{ id: string; name: string }>>(
+        `/locations?clientId=${clientId}&pageSize=100`,
+      ),
+    enabled: !!clientId,
+  });
+  const { data: assets } = useQuery({
+    queryKey: ['assets', locationId],
+    queryFn: () => api<Paged<Asset>>(`/assets?locationId=${locationId}&pageSize=100`),
+    enabled: !!locationId,
   });
 
   async function submit(e: React.FormEvent) {
@@ -66,7 +81,8 @@ export default function NewTicketPage() {
           requesterId,
           categoryId: categoryId || undefined,
           priority,
-          equipment: equipment.trim() || undefined,
+          locationId: locationId || undefined,
+          assetIds: assetIds.length ? assetIds : undefined,
         },
       });
       toast.success('Chamado criado.');
@@ -89,6 +105,8 @@ export default function NewTicketPage() {
             onChange={(e) => {
               setClientId(e.target.value);
               setRequesterId('');
+              setLocationId('');
+              setAssetIds([]);
             }}
           >
             <option value="">Selecione</option>
@@ -153,12 +171,54 @@ export default function NewTicketPage() {
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="equip">Equipamento</Label>
-          <Input
-            id="equip"
-            value={equipment}
-            onChange={(e) => setEquipment(e.target.value)}
-          />
+          <Label>Local</Label>
+          <Select
+            value={locationId}
+            disabled={!clientId}
+            onChange={(e) => {
+              setLocationId(e.target.value);
+              setAssetIds([]);
+            }}
+          >
+            <option value="">Nenhum</option>
+            {locations?.data.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label>Ativos</Label>
+          {!locationId ? (
+            <p className="text-sm text-muted-foreground">
+              Selecione um local para listar os ativos.
+            </p>
+          ) : assets?.data.length ? (
+            <div className="flex flex-col gap-1 rounded-md border border-input p-2">
+              {assets.data.map((a) => (
+                <label key={a.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={assetIds.includes(a.id)}
+                    onChange={(e) =>
+                      setAssetIds((prev) =>
+                        e.target.checked
+                          ? [...prev, a.id]
+                          : prev.filter((x) => x !== a.id),
+                      )
+                    }
+                  />
+                  {a.label}
+                  {a.type?.name ? (
+                    <span className="text-muted-foreground">({a.type.name})</span>
+                  ) : null}
+                </label>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhum ativo neste local.</p>
+          )}
         </div>
         <div className="flex gap-2">
           <Button type="submit" disabled={busy}>

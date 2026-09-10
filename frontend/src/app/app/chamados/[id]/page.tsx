@@ -1,6 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
 import {
@@ -11,17 +12,153 @@ import {
   useChangePriority,
   useChangeStatus,
   useTicket,
+  type Paged,
   type PublicUser,
+  type TicketDetail,
   type TicketPriority,
   type TicketStatus,
 } from '@/lib/tickets';
+import { type Asset } from '@/lib/assets';
 import { CommentBox } from '@/components/comment-box';
 import { TicketSidebar } from '@/components/ticket-sidebar';
 import { TicketTimeline } from '@/components/ticket-timeline';
+import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 
 function onErr(e: unknown) {
   toast.error(e instanceof ApiError ? e.message : 'Falha na operação.');
+}
+
+function AssetsEditPanel({ ticket }: { ticket: TicketDetail }) {
+  const qc = useQueryClient();
+  const clientId = ticket.clientId ?? '';
+  const [open, setOpen] = useState(false);
+  const [locationId, setLocationId] = useState(ticket.location?.id ?? '');
+  const [assetIds, setAssetIds] = useState<string[]>(
+    ticket.assets?.map((a) => a.id) ?? [],
+  );
+  const [busy, setBusy] = useState(false);
+
+  const { data: locations } = useQuery({
+    queryKey: ['locations', clientId],
+    queryFn: () =>
+      api<Paged<{ id: string; name: string }>>(
+        `/locations?clientId=${clientId}&pageSize=100`,
+      ),
+    enabled: !!clientId,
+  });
+  const { data: assets } = useQuery({
+    queryKey: ['assets', locationId],
+    queryFn: () => api<Paged<Asset>>(`/assets?locationId=${locationId}&pageSize=100`),
+    enabled: !!locationId,
+  });
+
+  function reset() {
+    setLocationId(ticket.location?.id ?? '');
+    setAssetIds(ticket.assets?.map((a) => a.id) ?? []);
+  }
+
+  async function save() {
+    setBusy(true);
+    try {
+      await api(`/tickets/${ticket.id}/assets`, {
+        method: 'PATCH',
+        body: { locationId: locationId || null, assetIds },
+      });
+      await qc.invalidateQueries({ queryKey: ['ticket', ticket.id] });
+      toast.success('Local e ativos atualizados.');
+      setOpen(false);
+    } catch (e) {
+      onErr(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <Button
+        variant="outline"
+        className="h-9 self-start"
+        onClick={() => {
+          reset();
+          setOpen(true);
+        }}
+      >
+        Editar local/ativos
+      </Button>
+    );
+  }
+
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border border-border p-3">
+      <h2 className="text-sm font-semibold">Local e ativos</h2>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs uppercase text-muted-foreground">Local</span>
+        <Select
+          className="h-9"
+          value={locationId}
+          disabled={!clientId}
+          onChange={(e) => {
+            setLocationId(e.target.value);
+            setAssetIds([]);
+          }}
+        >
+          <option value="">Nenhum</option>
+          {locations?.data.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs uppercase text-muted-foreground">Ativos</span>
+        {!locationId ? (
+          <p className="text-sm text-muted-foreground">Selecione um local.</p>
+        ) : assets?.data.length ? (
+          <div className="flex flex-col gap-1 rounded-md border border-input p-2">
+            {assets.data.map((a) => (
+              <label key={a.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={assetIds.includes(a.id)}
+                  onChange={(e) =>
+                    setAssetIds((prev) =>
+                      e.target.checked
+                        ? [...prev, a.id]
+                        : prev.filter((x) => x !== a.id),
+                    )
+                  }
+                />
+                {a.label}
+                {a.type?.name ? (
+                  <span className="text-muted-foreground">({a.type.name})</span>
+                ) : null}
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nenhum ativo neste local.</p>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Button className="h-9" disabled={busy} onClick={save}>
+          {busy ? 'Salvando…' : 'Salvar'}
+        </Button>
+        <Button
+          variant="outline"
+          className="h-9"
+          onClick={() => {
+            reset();
+            setOpen(false);
+          }}
+        >
+          Cancelar
+        </Button>
+      </div>
+    </section>
+  );
 }
 
 export default function TicketDetailPage({ params }: { params: { id: string } }) {
@@ -110,6 +247,8 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
 
       <div className="flex flex-col gap-6 lg:flex-row">
         <div className="flex flex-1 flex-col gap-4">
+          <AssetsEditPanel ticket={ticket} />
+
           <section>
             <h2 className="mb-1 text-sm font-semibold">Descrição</h2>
             <p className="whitespace-pre-wrap rounded-lg border border-border p-3 text-sm">

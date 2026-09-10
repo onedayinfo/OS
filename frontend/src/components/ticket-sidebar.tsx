@@ -110,7 +110,23 @@ export function TicketSidebar({ ticket }: { ticket: TicketDetail }) {
         <Row label="Categoria">{ticket.category?.name ?? '—'}</Row>
         <Row label="Origem">{ORIGIN_LABELS[ticket.origin]}</Row>
         <Row label="Prioridade">{PRIORITY_LABELS[ticket.priority]}</Row>
-        <Row label="Equipamento">{ticket.equipment ?? '—'}</Row>
+        <Row label="Local">{ticket.location?.name ?? '—'}</Row>
+        <Row label="Ativos">
+          {ticket.assets?.length
+            ? ticket.assets.map((a) => (
+                <a
+                  key={a.id}
+                  href={`/app/ativos/${a.id}`}
+                  className="mr-2 underline"
+                >
+                  {a.label}
+                </a>
+              ))
+            : '—'}
+        </Row>
+        {ticket.equipment ? (
+          <Row label="Equipamento (legado)">{ticket.equipment}</Row>
+        ) : null}
         <Row label="Criado em">{fmt(ticket.createdAt)}</Row>
         <Row label="SLA">{fmt(ticket.slaDueAt)}</Row>
         <Row label="Resolvido em">{fmt(ticket.resolvedAt)}</Row>

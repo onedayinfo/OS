@@ -89,6 +89,8 @@ export interface TicketEvent {
 export interface TicketDetail extends TicketListItem {
   description: string;
   equipment: string | null;
+  location?: { id: string; name: string } | null;
+  assets?: { id: string; label: string; type?: { name: string } }[];
   resolvedAt: string | null;
   closedAt: string | null;
   updatedAt: string;
