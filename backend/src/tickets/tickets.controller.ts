@@ -4,6 +4,7 @@ import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { Roles } from '../common/roles.decorator.js';
 import { TicketsService } from './tickets.service.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
+import { SetTicketAssetsDto } from './dto/set-ticket-assets.dto.js';
 import { ListTicketsDto } from './dto/list-tickets.dto.js';
 import {
   AssignDto,
@@ -63,6 +64,20 @@ export class TicketsController {
     @CurrentUser() actor: CurrentUserData,
   ) {
     return this.tickets.changePriority(id, dto.priority, actor);
+  }
+
+  @Patch(':id/assets')
+  @Roles('ADMIN', 'AGENT')
+  setAssets(
+    @Param('id') id: string,
+    @Body() dto: SetTicketAssetsDto,
+    @CurrentUser() actor: CurrentUserData,
+  ) {
+    return this.tickets.setTicketAssets(
+      id,
+      { locationId: dto.locationId ?? null, assetIds: dto.assetIds },
+      actor,
+    );
   }
 
   @Patch(':id/triage')

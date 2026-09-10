@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import type { TicketPriority } from '@prisma/client';
 
 export class CreateTicketDto {
@@ -28,5 +28,10 @@ export class CreateTicketDto {
 
   @IsOptional()
   @IsString()
-  equipment?: string;
+  locationId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  assetIds?: string[];
 }

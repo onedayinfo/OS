@@ -127,9 +127,11 @@ Upload de foto reutiliza `StorageService` e o `FileInterceptor`
 - `POST /assets/import` (multipart `file`) — §3.4.
 
 **tickets** (módulo existente, alterado)
-- `CreateTicketDto` / `UpdateTicketDto`: **remove** `equipment`; **adiciona**
-  `locationId?: string` e `assetIds?: string[]`.
-- `TicketsService.create/update`: valida
+- `CreateTicketDto`: **remove** `equipment`; `create` aceita `locationId?` +
+  `assetIds?`. Alteração pós-criação por `PATCH /tickets/:id/assets`
+  (`SetTicketAssetsDto`), no mesmo estilo das mutations `/status`, `/assign`,
+  `/priority`.
+- `TicketsService.create` / `setTicketAssets`: valida
   - `locationId` pertence a `ticket.clientId` (erro se cliente ausente);
   - cada `assetId` existe e tem `locationId === ticket.locationId`;
   - grava eventos `LOCATION_CHANGED` / `ASSETS_CHANGED` na timeline quando muda.

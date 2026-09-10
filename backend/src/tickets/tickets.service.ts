@@ -108,7 +108,8 @@ export type CreateTicketInput = {
   priority?: TicketPriority;
   /** Ausente → derivado do `actor`: CLIENT ⇒ PORTAL, caso contrário MANUAL. */
   origin?: TicketOrigin;
-  equipment?: string | null;
+  locationId?: string | null;
+  assetIds?: string[];
 };
 
 @Injectable()
@@ -167,6 +168,10 @@ export class TicketsService {
 
     const needsTriage = origin === 'EMAIL' && !hasParties;
 
+    const locationId = input.locationId ?? null;
+    const assetIds = input.assetIds ?? [];
+    await this.validateLocationAndAssets(clientId, locationId, assetIds);
+
     // read-only, pode ficar fora da transação
     const slaDueAt = await this.sla.dueAt(priority, new Date());
 
@@ -183,7 +188,10 @@ export class TicketsService {
           priority,
           status: 'OPEN',
           origin,
-          equipment: input.equipment ?? null,
+          locationId,
+          ...(assetIds.length
+            ? { assets: { connect: assetIds.map((id) => ({ id })) } }
+            : {}),
           needsTriage,
           slaDueAt,
         },
@@ -200,6 +208,83 @@ export class TicketsService {
       );
     }
     return ticket;
+  }
+
+  /** Regra: local pertence ao cliente do chamado; todo ativo pertence a esse local. */
+  private async validateLocationAndAssets(
+    clientId: string | null,
+    locationId: string | null,
+    assetIds: string[],
+  ): Promise<void> {
+    if (!locationId) {
+      if (assetIds.length) {
+        throw new BadRequestException('Informe um local antes de vincular ativos.');
+      }
+      return;
+    }
+    const location = await this.prisma.location.findUnique({ where: { id: locationId } });
+    if (!location) throw new BadRequestException('Local não encontrado.');
+    if (clientId && location.clientId !== clientId) {
+      throw new BadRequestException('O local não pertence ao cliente do chamado.');
+    }
+    if (assetIds.length) {
+      const assets = await this.prisma.asset.findMany({
+        where: { id: { in: assetIds } },
+        select: { id: true, locationId: true },
+      });
+      if (assets.length !== assetIds.length) {
+        throw new BadRequestException('Um ou mais ativos não existem.');
+      }
+      const foreign = assets.filter((a) => a.locationId !== locationId);
+      if (foreign.length) {
+        throw new BadRequestException('Um ou mais ativos não pertencem ao local informado.');
+      }
+    }
+  }
+
+  /**
+   * Redefine local + ativos vinculados. `locationId` null limpa o local e força
+   * `assetIds` vazio. Grava `LOCATION_CHANGED`/`ASSETS_CHANGED` só quando muda.
+   */
+  async setTicketAssets(
+    id: string,
+    input: { locationId: string | null; assetIds: string[] },
+    actor: Actor,
+  ): Promise<Ticket> {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id },
+      include: { assets: { select: { id: true } } },
+    });
+    if (!ticket) throw new NotFoundException('Chamado não encontrado.');
+
+    const locationId = input.locationId ?? null;
+    const assetIds = locationId ? input.assetIds : [];
+    await this.validateLocationAndAssets(ticket.clientId, locationId, assetIds);
+
+    const before = ticket.assets.map((a) => a.id).sort();
+    const after = [...assetIds].sort();
+    const assetsChanged = before.join(',') !== after.join(',');
+    const locationChanged = (ticket.locationId ?? null) !== locationId;
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.ticket.update({
+        where: { id },
+        data: { locationId, assets: { set: assetIds.map((aid) => ({ id: aid })) } },
+      });
+      if (locationChanged) {
+        await this.events.record(
+          tx,
+          id,
+          'LOCATION_CHANGED',
+          { from: ticket.locationId ?? null, to: locationId },
+          actor.id,
+        );
+      }
+      if (assetsChanged) {
+        await this.events.record(tx, id, 'ASSETS_CHANGED', { from: before, to: after }, actor.id);
+      }
+      return updated;
+    });
   }
 
   /** Listagem paginada com escopo por papel + filtros. */
@@ -288,6 +373,8 @@ export class TicketsService {
         requester: true,
         assignee: true,
         category: true,
+        location: true,
+        assets: { include: { type: { select: { id: true, name: true } } } },
         comments: {
           orderBy: { createdAt: 'asc' },
           include: { attachments: true },

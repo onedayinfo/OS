@@ -14,6 +14,9 @@ function makeDeps() {
       create: vi.fn().mockImplementation(({ data }: any) =>
         Promise.resolve({ id: 't1', createdAt: new Date(), ...data }),
       ),
+      update: vi.fn().mockImplementation(({ data }: any) =>
+        Promise.resolve({ id: 't1', ...data }),
+      ),
     },
     ticketEvent: {
       create: vi.fn().mockImplementation(({ data }: any) => {
@@ -29,6 +32,9 @@ function makeDeps() {
         .fn()
         .mockResolvedValue({ id: 'r1', type: 'CLIENT', active: true, clientId: 'c1' }),
     },
+    ticket: { findUnique: vi.fn() },
+    location: { findUnique: vi.fn() },
+    asset: { findMany: vi.fn().mockResolvedValue([]) },
   };
   const sla = {
     // MEDIUM = 24h
@@ -153,5 +159,67 @@ describe('TicketsService.create', () => {
         clientId: null,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe('TicketsService — local e ativos', () => {
+  it('create rejeita local de outro cliente', async () => {
+    const { service, prisma } = makeDeps();
+    prisma.location.findUnique.mockResolvedValue({ id: 'l1', clientId: 'OUTRO' });
+    await expect(
+      service.create(
+        {
+          title: 't',
+          description: 'd',
+          clientId: 'c1',
+          requesterId: 'r1',
+          origin: 'MANUAL',
+          locationId: 'l1',
+        } as any,
+        { id: 'u1', type: 'INTERNAL', role: 'AGENT', clientId: null },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('create rejeita ativo fora do local informado', async () => {
+    const { service, prisma } = makeDeps();
+    prisma.location.findUnique.mockResolvedValue({ id: 'l1', clientId: 'c1' });
+    prisma.asset.findMany.mockResolvedValue([{ id: 'a1', locationId: 'OUTRA' }]);
+    await expect(
+      service.create(
+        {
+          title: 't',
+          description: 'd',
+          clientId: 'c1',
+          requesterId: 'r1',
+          origin: 'MANUAL',
+          locationId: 'l1',
+          assetIds: ['a1'],
+        } as any,
+        { id: 'u1', type: 'INTERNAL', role: 'AGENT', clientId: null },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('setTicketAssets grava eventos LOCATION_CHANGED e ASSETS_CHANGED', async () => {
+    const { service, prisma, events } = makeDeps();
+    prisma.ticket.findUnique.mockResolvedValue({
+      id: 't1',
+      clientId: 'c1',
+      locationId: null,
+      assets: [],
+    });
+    prisma.location.findUnique.mockResolvedValue({ id: 'l1', clientId: 'c1' });
+    prisma.asset.findMany.mockResolvedValue([{ id: 'a1', locationId: 'l1' }]);
+
+    await service.setTicketAssets(
+      't1',
+      { locationId: 'l1', assetIds: ['a1'] },
+      { id: 'u1', type: 'INTERNAL', role: 'AGENT', clientId: null },
+    );
+
+    const types = events.map((e) => e.type);
+    expect(types).toContain('LOCATION_CHANGED');
+    expect(types).toContain('ASSETS_CHANGED');
   });
 });
