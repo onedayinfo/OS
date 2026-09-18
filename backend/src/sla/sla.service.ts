@@ -16,13 +16,17 @@ export class SlaService {
   }
 
   /**
-   * `from + hours*3600_000`, lendo a política da prioridade.
-   * ponytail: `contractId` aceito mas ainda não usado — override de SLA por
-   * contrato é da Task 6 (`ContractSlaPolicy`); por ora cai sempre na política
-   * global da prioridade.
+   * `from + hours*3600_000`. Com `contractId`, checa antes o SLA próprio do
+   * contrato (`ContractSlaPolicy`); sem override, cai no `SlaPolicy` global —
+   * comportamento idêntico ao de antes quando `contractId` é omitido.
    */
   async dueAt(priority: TicketPriority, from: Date, contractId?: string): Promise<Date> {
-    void contractId;
+    if (contractId) {
+      const override = await this.prisma.contractSlaPolicy.findUnique({
+        where: { contractId_priority: { contractId, priority } },
+      });
+      if (override) return new Date(from.getTime() + override.hours * 3600_000);
+    }
     const policy = await this.prisma.slaPolicy.findUnique({ where: { priority } });
     if (!policy) {
       throw new NotFoundException(`Política de SLA não encontrada para a prioridade ${priority}.`);
