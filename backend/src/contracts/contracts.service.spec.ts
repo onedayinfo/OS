@@ -9,6 +9,7 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
       create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'c1', ...data })),
       findUnique: vi.fn().mockResolvedValue({ id: 'c1', clientId: 'cli1', startDate: new Date('2026-01-01'), endDate: new Date('2026-12-31'), franchiseUnit: 'VISITS', franchiseAmount: 4 }),
       findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'c1', ...data })),
     },
     contractSlaPolicy: { deleteMany: vi.fn(), createMany: vi.fn() },
@@ -113,5 +114,39 @@ describe('ContractsService.update / cancel', () => {
       where: { id: 'c1' },
       data: { status: 'CANCELLED' },
     });
+  });
+});
+
+describe('ContractsService.resolveForTicket', () => {
+  it('sem clientId ou sem local/ativos → null', async () => {
+    const service = new ContractsService(makePrisma() as any);
+    expect(await service.resolveForTicket(null, 'loc1', [])).toBeNull();
+    expect(await service.resolveForTicket('cli1', null, [])).toBeNull();
+  });
+
+  it('resolve pelo local coberto por um contrato ativo', async () => {
+    const prisma = makePrisma({
+      contract: {
+        findFirst: vi.fn().mockResolvedValue({ id: 'c1' }),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+    });
+    const service = new ContractsService(prisma as any);
+    const id = await service.resolveForTicket('cli1', 'loc1', []);
+    expect(id).toBe('c1');
+    expect(prisma.contract.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ clientId: 'cli1', status: 'ACTIVE' }),
+        orderBy: { startDate: 'desc' },
+      }),
+    );
+  });
+
+  it('sem contrato cobrindo → null', async () => {
+    const prisma = makePrisma({ contract: { findFirst: vi.fn().mockResolvedValue(null) } });
+    const service = new ContractsService(prisma as any);
+    expect(await service.resolveForTicket('cli1', 'loc1', [])).toBeNull();
   });
 });

@@ -169,12 +169,23 @@ export class ContractsService {
     return { unit: 'VISITS', used: 0, franchiseAmount: 0, exceeded: false };
   }
 
-  /** Placeholder até a Task 3. */
   async resolveForTicket(
-    _clientId: string | null,
-    _locationId: string | null,
-    _assetIds: string[],
+    clientId: string | null,
+    locationId: string | null,
+    assetIds: string[],
   ): Promise<string | null> {
-    return null;
+    if (!clientId || (!locationId && assetIds.length === 0)) return null;
+    const contract = await this.prisma.contract.findFirst({
+      where: {
+        clientId,
+        status: 'ACTIVE',
+        OR: [
+          ...(locationId ? [{ locations: { some: { id: locationId } } }] : []),
+          ...(assetIds.length ? [{ assets: { some: { id: { in: assetIds } } } }] : []),
+        ],
+      },
+      orderBy: { startDate: 'desc' },
+    });
+    return contract?.id ?? null;
   }
 }
