@@ -120,6 +120,22 @@ export function ticketSlaBreached(ticket: Ticket, brand?: BrandInfo): RenderedEm
   };
 }
 
+export function contractExpiring(
+  contract: { name: string; endDate: Date; client: { name: string } },
+  brand?: BrandInfo,
+): RenderedEmail {
+  const dateStr = contract.endDate.toLocaleDateString('pt-BR');
+  return {
+    subject: `Contrato "${contract.name}" vence em breve`,
+    html: wrap(
+      'Contrato perto do fim',
+      `<p>O contrato <strong>${esc(contract.name)}</strong> do cliente <strong>${esc(contract.client.name)}</strong> vence em <strong>${esc(dateStr)}</strong>.</p>` +
+        `<p>Avalie renovação ou reajuste na ficha do contrato.</p>`,
+      brand,
+    ),
+  };
+}
+
 export function contactInvite(
   user: { name: string; email: string },
   link: string,
