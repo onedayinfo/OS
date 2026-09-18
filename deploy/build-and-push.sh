@@ -5,7 +5,7 @@
 #   docker login
 #   ./deploy/build-and-push.sh [namespace] [tag]
 #
-# Padrão: namespace=onedayinformatica  tag=0.3.0  (também publica :latest)
+# Padrão: namespace=onedayinformatica  tag=0.4.0  (também publica :latest)
 #
 # O frontend é buildado SEM NEXT_PUBLIC_API_URL de propósito: a imagem chama
 # /api relativo, servindo qualquer domínio (topologia "mesmo domínio").
@@ -18,7 +18,7 @@
 set -eu
 
 NS="${1:-onedayinformatica}"
-TAG="${2:-0.3.0}"
+TAG="${2:-0.4.0}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo ">> backend: $NS/os-backend:$TAG"
