@@ -77,7 +77,7 @@ export default function NewContractPage() {
 
       <div className="flex flex-col gap-1.5">
         <Label>Nome</Label>
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Contrato Matriz 2026" />
+        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Contrato Matriz 2026" />
       </div>
 
       <div className="flex gap-2">
