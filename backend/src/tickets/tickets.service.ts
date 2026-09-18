@@ -15,6 +15,7 @@ import type {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SlaService } from '../sla/sla.service.js';
+import { ContractsService } from '../contracts/contracts.service.js';
 import { publicUser } from '../users/user-view.js';
 import { TicketNumberService } from './ticket-number.service.js';
 import { TicketEventsService } from './ticket-events.service.js';
@@ -129,6 +130,7 @@ export class TicketsService {
     private readonly events: TicketEventsService,
     private readonly statusRules: TicketStatusService,
     @Inject('TicketNotifier') private readonly notifier: TicketNotifier,
+    private readonly contracts: ContractsService,
   ) {}
 
   async create(input: CreateTicketInput, actor?: Actor): Promise<Ticket> {
@@ -178,9 +180,10 @@ export class TicketsService {
     // dedup: ids repetidos furam o check `assets.length !== assetIds.length`.
     const assetIds = [...new Set(input.assetIds ?? [])];
     await this.validateLocationAndAssets(clientId, locationId, assetIds);
+    const contractId = await this.contracts.resolveForTicket(clientId, locationId, assetIds);
 
     // read-only, pode ficar fora da transação
-    const slaDueAt = await this.sla.dueAt(priority, new Date());
+    const slaDueAt = await this.sla.dueAt(priority, new Date(), contractId ?? undefined);
 
     const ticket = await this.prisma.$transaction(async (tx) => {
       const number = await this.ticketNumber.next(tx);
@@ -196,6 +199,7 @@ export class TicketsService {
           status: 'OPEN',
           origin,
           locationId,
+          contractId,
           ...(assetIds.length
             ? { assets: { connect: assetIds.map((id) => ({ id })) } }
             : {}),
@@ -268,6 +272,7 @@ export class TicketsService {
     // dedup: ids repetidos furam o check em validateLocationAndAssets.
     const assetIds = locationId ? [...new Set(input.assetIds)] : [];
     await this.validateLocationAndAssets(ticket.clientId, locationId, assetIds);
+    const contractId = await this.contracts.resolveForTicket(ticket.clientId, locationId, assetIds);
 
     const before = ticket.assets.map((a) => a.id).sort();
     const after = [...assetIds].sort();
@@ -277,7 +282,7 @@ export class TicketsService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.ticket.update({
         where: { id },
-        data: { locationId, assets: { set: assetIds.map((aid) => ({ id: aid })) } },
+        data: { locationId, contractId, assets: { set: assetIds.map((aid) => ({ id: aid })) } },
       });
       if (locationChanged) {
         await this.events.record(
@@ -382,6 +387,7 @@ export class TicketsService {
         assignee: true,
         category: true,
         location: true,
+        contract: { select: { id: true, name: true } },
         // `select` (não `include`): `include` traria todo scalar de Asset,
         // inclusive `credentialsEnc`, e o retorno espalha `...ticket`.
         // Spec §3.2: o detalhe do chamado só expõe id/label/tipo do ativo — nada

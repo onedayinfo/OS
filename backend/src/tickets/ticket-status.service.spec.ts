@@ -29,6 +29,7 @@ function makeService(current: any) {
     new TicketEventsService(),
     new TicketStatusService(),
     notifier as any,
+    { resolveForTicket: vi.fn().mockResolvedValue(null) } as any,
   );
   return { service, notifier, events, tx };
 }
