@@ -25,6 +25,7 @@ import { CommentsModule } from './comments/comments.module.js';
 import { AttachmentsModule } from './attachments/attachments.module.js';
 import { InboundModule } from './inbound/inbound.module.js';
 import { TasksModule } from './tasks/tasks.module.js';
+import { VisitsModule } from './visits/visits.module.js';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { TasksModule } from './tasks/tasks.module.js';
     AttachmentsModule,
     InboundModule,
     TasksModule,
+    VisitsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
