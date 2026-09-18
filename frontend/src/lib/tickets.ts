@@ -60,6 +60,9 @@ export interface Attachment {
   mime: string;
   size: number;
   createdAt: string;
+  kind?: 'GENERIC' | 'PHOTO_BEFORE' | 'PHOTO_AFTER' | 'SIGNATURE' | 'REPORT';
+  visitId?: string | null;
+  assetId?: string | null;
 }
 
 export interface TicketComment {
@@ -80,7 +83,11 @@ export interface TicketEvent {
     | 'PRIORITY_CHANGED'
     | 'COMMENT'
     | 'EMAIL_IN'
-    | 'EMAIL_OUT';
+    | 'EMAIL_OUT'
+    | 'VISIT_SCHEDULED'
+    | 'VISIT_STARTED'
+    | 'VISIT_COMPLETED'
+    | 'VISIT_CANCELLED';
   data: Record<string, unknown>;
   actorId: string | null;
   createdAt: string;
