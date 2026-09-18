@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { CurrentUser, type CurrentUserData } from '../common/current-user.decorator.js';
 import { Roles } from '../common/roles.decorator.js';
 import { VisitsService } from './visits.service.js';
@@ -7,6 +7,7 @@ import { UpdateVisitDto } from './dto/update-visit.dto.js';
 import { ListVisitsDto } from './dto/list-visits.dto.js';
 import { GeoDto } from './dto/geo.dto.js';
 import { LaborDto } from './dto/labor.dto.js';
+import { SetChecklistDto } from './dto/set-checklist.dto.js';
 
 @Controller('visits')
 @Roles('ADMIN', 'AGENT')
@@ -52,5 +53,10 @@ export class VisitsController {
   @Patch(':id/labor')
   setLabor(@Param('id') id: string, @Body() dto: LaborDto) {
     return this.visits.setLabor(id, dto);
+  }
+
+  @Put(':id/checklist')
+  setChecklist(@Param('id') id: string, @Body() dto: SetChecklistDto) {
+    return this.visits.setChecklist(id, dto);
   }
 }

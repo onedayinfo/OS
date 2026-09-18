@@ -14,6 +14,7 @@ import { UpdateVisitDto } from './dto/update-visit.dto.js';
 import { ListVisitsDto } from './dto/list-visits.dto.js';
 import { GeoDto } from './dto/geo.dto.js';
 import { LaborDto } from './dto/labor.dto.js';
+import { SetChecklistDto } from './dto/set-checklist.dto.js';
 
 const VISIT_INCLUDE = {
   ticket: {
@@ -172,6 +173,31 @@ export class VisitsService {
     const end = new Date(dto.laborEndAt);
     if (end <= start) throw new BadRequestException('laborEndAt precisa ser depois de laborStartAt.');
     await this.prisma.visit.update({ where: { id }, data: { laborStartAt: start, laborEndAt: end } });
+    return this.findOne(id);
+  }
+
+  async setChecklist(id: string, dto: SetChecklistDto) {
+    const visit = await this.mustFind(id);
+    if (!visit.checklistTemplateId) {
+      throw new BadRequestException('Visita sem checklist associado.');
+    }
+    const items = await this.prisma.checklistTemplateItem.findMany({
+      where: { templateId: visit.checklistTemplateId },
+      select: { id: true },
+    });
+    const validItemIds = new Set(items.map((i) => i.id));
+    for (const answer of dto.answers) {
+      if (!validItemIds.has(answer.itemId)) {
+        throw new BadRequestException(`Item de checklist inválido: ${answer.itemId}`);
+      }
+    }
+    for (const answer of dto.answers) {
+      await this.prisma.visitChecklistAnswer.upsert({
+        where: { visitId_itemId: { visitId: id, itemId: answer.itemId } },
+        create: { visitId: id, itemId: answer.itemId, done: answer.done, note: answer.note ?? null },
+        update: { done: answer.done, note: answer.note ?? null },
+      });
+    }
     return this.findOne(id);
   }
 

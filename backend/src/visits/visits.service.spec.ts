@@ -171,3 +171,41 @@ describe('VisitsService.checkIn / checkOut / setLabor', () => {
     expect(prisma.visit.update).toHaveBeenCalled();
   });
 });
+
+describe('VisitsService.setChecklist', () => {
+  it('rejeita item que não pertence ao template da visita', async () => {
+    const { service } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', status: 'IN_PROGRESS', ticketId: 't1', checklistTemplateId: 'tmpl1' }) },
+      checklistTemplateItem: { findMany: vi.fn().mockResolvedValue([{ id: 'item1' }]) },
+    });
+    await expect(
+      service.setChecklist('v1', { answers: [{ itemId: 'item-invalido', done: true }] }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejeita quando a visita não tem template associado', async () => {
+    const { service } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', status: 'IN_PROGRESS', ticketId: 't1', checklistTemplateId: null }) },
+    });
+    await expect(service.setChecklist('v1', { answers: [] })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('faz upsert de cada resposta válida', async () => {
+    const { service, prisma } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', status: 'IN_PROGRESS', ticketId: 't1', checklistTemplateId: 'tmpl1' }) },
+      checklistTemplateItem: { findMany: vi.fn().mockResolvedValue([{ id: 'item1' }, { id: 'item2' }]) },
+    });
+    await service.setChecklist('v1', {
+      answers: [
+        { itemId: 'item1', done: true },
+        { itemId: 'item2', done: false, note: 'sem acesso' },
+      ],
+    });
+    expect(prisma.visitChecklistAnswer.upsert).toHaveBeenCalledTimes(2);
+    expect(prisma.visitChecklistAnswer.upsert).toHaveBeenCalledWith({
+      where: { visitId_itemId: { visitId: 'v1', itemId: 'item1' } },
+      create: { visitId: 'v1', itemId: 'item1', done: true, note: null },
+      update: { done: true, note: null },
+    });
+  });
+});
