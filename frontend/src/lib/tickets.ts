@@ -18,7 +18,7 @@ export type TicketStatus =
   | 'CLOSED'
   | 'CANCELLED';
 export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-export type TicketOrigin = 'EMAIL' | 'PORTAL' | 'MANUAL';
+export type TicketOrigin = 'EMAIL' | 'PORTAL' | 'MANUAL' | 'CONTRACT';
 export type CommentVisibility = 'INTERNAL' | 'PUBLIC';
 
 export interface TicketListItem {
@@ -105,6 +105,7 @@ export interface TicketDetail extends TicketListItem {
   requester: PublicUser | null;
   assignee: PublicUser | null;
   category: { id: string; name: string } | null;
+  contract?: { id: string; name: string } | null;
   comments: TicketComment[];
   events: TicketEvent[];
   attachments: Attachment[];
@@ -132,6 +133,7 @@ export const ORIGIN_LABELS: Record<TicketOrigin, string> = {
   EMAIL: 'E-mail',
   PORTAL: 'Portal',
   MANUAL: 'Manual',
+  CONTRACT: 'Contrato',
 };
 
 export const TERMINAL_STATUSES: TicketStatus[] = ['RESOLVED', 'CLOSED', 'CANCELLED'];
