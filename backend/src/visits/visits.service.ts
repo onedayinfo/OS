@@ -9,7 +9,7 @@ import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TicketEventsService } from '../tickets/ticket-events.service.js';
 import { ChecklistTemplatesService } from '../checklist-templates/checklist-templates.service.js';
-import type { VisitReportService } from './visit-report.service.js';
+import { VisitReportService } from './visit-report.service.js';
 import { CreateVisitDto } from './dto/create-visit.dto.js';
 import { UpdateVisitDto } from './dto/update-visit.dto.js';
 import { ListVisitsDto } from './dto/list-visits.dto.js';
