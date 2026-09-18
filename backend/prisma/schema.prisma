@@ -40,6 +40,7 @@ enum TicketOrigin {
   EMAIL
   PORTAL
   MANUAL
+  CONTRACT
 }
 
 enum AssetStatus {
@@ -61,6 +62,17 @@ enum AttachmentKind {
   PHOTO_AFTER
   SIGNATURE
   REPORT
+}
+
+enum ContractStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum FranchiseUnit {
+  VISITS
+  HOURS
 }
 
 enum CommentVisibility {
@@ -125,6 +137,7 @@ model Client {
   tickets   Ticket[]
   locations Location[]
   assets    Asset[]
+  contracts Contract[]
 
   @@map("clients")
 }
@@ -138,6 +151,7 @@ model Category {
 
   tickets Ticket[]
   checklistTemplate ChecklistTemplate?
+  contracts Contract[]
 
   @@map("categories")
 }
@@ -216,6 +230,46 @@ model VisitChecklistAnswer {
   @@map("visit_checklist_answers")
 }
 
+model Contract {
+  id                        String         @id @default(cuid())
+  clientId                  String
+  name                      String
+  status                    ContractStatus @default(ACTIVE)
+  startDate                 DateTime
+  endDate                   DateTime
+  monthlyValue              Float?
+  franchiseUnit             FranchiseUnit
+  franchiseAmount           Int
+  preventiveFrequencyMonths Int?
+  nextGenerationAt          DateTime?
+  defaultCategoryId         String?
+  renewalWarnedAt           DateTime?
+  notes                     String?
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
+
+  client          Client              @relation(fields: [clientId], references: [id])
+  defaultCategory Category?           @relation(fields: [defaultCategoryId], references: [id])
+  locations       Location[]
+  assets          Asset[]
+  slaOverrides    ContractSlaPolicy[]
+  tickets         Ticket[]
+
+  @@index([clientId])
+  @@map("contracts")
+}
+
+model ContractSlaPolicy {
+  contractId String
+  priority   TicketPriority
+  hours      Int
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@id([contractId, priority])
+  @@map("contract_sla_policies")
+}
+
 model Location {
   id           String   @id @default(cuid())
   clientId     String
@@ -231,6 +285,7 @@ model Location {
   client Client  @relation(fields: [clientId], references: [id])
   assets Asset[]
   tickets Ticket[]
+  contracts Contract[]
 
   @@unique([clientId, name])
   @@index([clientId])
@@ -273,6 +328,7 @@ model Asset {
   type        AssetType    @relation(fields: [typeId], references: [id])
   tickets     Ticket[]     @relation("TicketAssets")
   attachments Attachment[]
+  contracts   Contract[]
 
   @@unique([clientId, serialNumber])
   @@index([clientId])
@@ -303,6 +359,7 @@ model Ticket {
   origin          TicketOrigin
   equipment       String?
   locationId      String?
+  contractId      String?
   needsTriage     Boolean        @default(false)
   slaDueAt        DateTime?
   slaBreachNotifiedAt DateTime?
@@ -317,6 +374,7 @@ model Ticket {
   assignee      User?           @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   category      Category?       @relation(fields: [categoryId], references: [id])
   location      Location?       @relation(fields: [locationId], references: [id])
+  contract      Contract?       @relation(fields: [contractId], references: [id])
   assets        Asset[]         @relation("TicketAssets")
   comments      TicketComment[]
   events        TicketEvent[]
@@ -329,6 +387,7 @@ model Ticket {
   @@index([requesterId])
   @@index([categoryId])
   @@index([locationId])
+  @@index([contractId])
   @@map("tickets")
 }
 
