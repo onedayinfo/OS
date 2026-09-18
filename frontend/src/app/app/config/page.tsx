@@ -342,6 +342,149 @@ function UsersTab() {
   );
 }
 
+interface ChecklistTemplateItemRow {
+  id: string;
+  label: string;
+  order: number;
+}
+interface ChecklistTemplateRow {
+  id: string;
+  categoryId: string | null;
+  name: string;
+  active: boolean;
+  items: ChecklistTemplateItemRow[];
+}
+
+function ChecklistTemplatesTab() {
+  const qc = useQueryClient();
+  const [newItemLabel, setNewItemLabel] = useState<Record<string, string>>({});
+  const [form, setForm] = useState({ categoryId: '', name: '' });
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['checklist-templates'] });
+
+  const { data } = useQuery({
+    queryKey: ['checklist-templates'],
+    queryFn: () => api<ChecklistTemplateRow[]>('/checklist-templates'),
+  });
+  const { data: categories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api<Category[]>('/categories'),
+  });
+  const create = useMutation({
+    mutationFn: () =>
+      api('/checklist-templates', {
+        method: 'POST',
+        body: { categoryId: form.categoryId || undefined, name: form.name, items: [{ label: 'Item 1' }] },
+      }),
+    onSuccess: () => {
+      invalidate();
+      setForm({ categoryId: '', name: '' });
+      toast.success('Checklist criado.');
+    },
+    onError: errToast,
+  });
+  const addItem = useMutation({
+    mutationFn: (v: { template: ChecklistTemplateRow; label: string }) =>
+      api(`/checklist-templates/${v.template.id}`, {
+        method: 'PATCH',
+        body: { items: [...v.template.items.map((i) => ({ id: i.id, label: i.label, order: i.order })), { label: v.label }] },
+      }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Item adicionado.');
+    },
+    onError: errToast,
+  });
+  const toggleActive = useMutation({
+    mutationFn: (v: { id: string; active: boolean }) =>
+      api(`/checklist-templates/${v.id}`, { method: 'PATCH', body: { active: v.active } }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Checklist atualizado.');
+    },
+    onError: errToast,
+  });
+
+  const categoryName = (id: string | null) => categories?.find((c) => c.id === id)?.name ?? 'Padrão (sem categoria)';
+
+  return (
+    <div className="flex max-w-2xl flex-col gap-4 pt-4">
+      <form
+        className="flex items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (form.name.trim()) create.mutate();
+        }}
+      >
+        <Select
+          className="h-9 w-48"
+          value={form.categoryId}
+          onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
+        >
+          <option value="">Sem categoria (padrão)</option>
+          {categories?.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
+        <Input
+          placeholder="Nome do checklist"
+          className="h-9 w-56"
+          value={form.name}
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+        />
+        <Button type="submit" className="h-9" disabled={create.isPending}>
+          Novo checklist
+        </Button>
+      </form>
+
+      {data?.map((t) => (
+        <div key={t.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold">{t.name}</span>
+            <Badge tone="neutral">{categoryName(t.categoryId)}</Badge>
+            <button
+              type="button"
+              className="ml-auto text-sm text-primary hover:underline"
+              onClick={() => toggleActive.mutate({ id: t.id, active: !t.active })}
+            >
+              {t.active ? 'Desativar' : 'Ativar'}
+            </button>
+          </div>
+          <ul className="flex flex-col gap-1">
+            {t.items.map((i) => (
+              <li key={i.id} className="text-sm text-muted-foreground">
+                • {i.label}
+              </li>
+            ))}
+          </ul>
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const label = (newItemLabel[t.id] ?? '').trim();
+              if (label) {
+                addItem.mutate({ template: t, label });
+                setNewItemLabel((prev) => ({ ...prev, [t.id]: '' }));
+              }
+            }}
+          >
+            <Input
+              placeholder="Novo item"
+              className="h-8 text-sm"
+              value={newItemLabel[t.id] ?? ''}
+              onChange={(e) => setNewItemLabel((prev) => ({ ...prev, [t.id]: e.target.value }))}
+            />
+            <Button type="submit" className="h-8">
+              Adicionar item
+            </Button>
+          </form>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ConfigPage() {
   const [tab, setTab] = useState('categorias');
   const { user } = useSession();
@@ -354,6 +497,7 @@ export default function ConfigPage() {
     ...(isAdmin
       ? [
           { value: 'tipos-ativo', label: 'Tipos de ativo' },
+          { value: 'checklists', label: 'Checklists' },
           { value: 'email', label: 'E-mail' },
           { value: 'armazenamento', label: 'Armazenamento' },
           { value: 'aparencia', label: 'Aparência' },
@@ -370,6 +514,7 @@ export default function ConfigPage() {
       {tab === 'sla' && <SlaTab />}
       {tab === 'usuarios' && <UsersTab />}
       {tab === 'tipos-ativo' && isAdmin && <AssetTypesTab />}
+      {tab === 'checklists' && isAdmin && <ChecklistTemplatesTab />}
       {tab === 'email' && isAdmin && <EmailTab />}
       {tab === 'armazenamento' && isAdmin && <StorageTab />}
       {tab === 'aparencia' && isAdmin && <AppearanceTab />}
