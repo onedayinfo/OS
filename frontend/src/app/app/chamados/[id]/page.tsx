@@ -19,6 +19,7 @@ import {
   type TicketStatus,
 } from '@/lib/tickets';
 import { type Asset } from '@/lib/assets';
+import { VISIT_STATUS_LABELS, useVisits } from '@/lib/visits';
 import { CommentBox } from '@/components/comment-box';
 import { TicketSidebar } from '@/components/ticket-sidebar';
 import { TicketTimeline } from '@/components/ticket-timeline';
@@ -161,6 +162,25 @@ function AssetsEditPanel({ ticket }: { ticket: TicketDetail }) {
   );
 }
 
+function VisitsBlock({ ticketId }: { ticketId: string }) {
+  const { data: visits } = useVisits({ ticketId });
+  if (!visits || visits.length === 0) return null;
+  return (
+    <section>
+      <h2 className="mb-2 text-sm font-semibold">Visitas</h2>
+      <ul className="flex flex-col gap-1">
+        {visits.map((v) => (
+          <li key={v.id} className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+            <span>{new Date(v.scheduledStart).toLocaleString('pt-BR')}</span>
+            <span className="text-muted-foreground">{v.technician.name}</span>
+            <span className="ml-auto text-xs text-muted-foreground">{VISIT_STATUS_LABELS[v.status]}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export default function TicketDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const { data: ticket, isLoading, isError } = useTicket(id);
@@ -274,6 +294,8 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
               </ul>
             )}
           </section>
+
+          <VisitsBlock ticketId={id} />
 
           <section>
             <h2 className="mb-2 text-sm font-semibold">Movimentações</h2>

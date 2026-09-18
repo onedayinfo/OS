@@ -58,6 +58,14 @@ function eventText(e: TicketEvent, nameFor: (id: string | null) => string): stri
       return 'E-mail recebido';
     case 'EMAIL_OUT':
       return 'E-mail enviado';
+    case 'VISIT_SCHEDULED':
+      return 'Visita agendada';
+    case 'VISIT_STARTED':
+      return 'Visita iniciada (check-in)';
+    case 'VISIT_COMPLETED':
+      return 'Visita concluída';
+    case 'VISIT_CANCELLED':
+      return 'Visita cancelada';
     default:
       return e.type;
   }
