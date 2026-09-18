@@ -48,6 +48,21 @@ enum AssetStatus {
   INACTIVE
 }
 
+enum VisitStatus {
+  SCHEDULED
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum AttachmentKind {
+  GENERIC
+  PHOTO_BEFORE
+  PHOTO_AFTER
+  SIGNATURE
+  REPORT
+}
+
 enum CommentVisibility {
   INTERNAL
   PUBLIC
@@ -63,6 +78,10 @@ enum TicketEventType {
   EMAIL_OUT
   LOCATION_CHANGED
   ASSETS_CHANGED
+  VISIT_SCHEDULED
+  VISIT_STARTED
+  VISIT_COMPLETED
+  VISIT_CANCELLED
 }
 
 model User {
@@ -87,6 +106,7 @@ model User {
   events           TicketEvent[]
   attachments      Attachment[]
   refreshTokens    RefreshToken[]
+  visits           Visit[]
 
   @@map("users")
 }
@@ -117,8 +137,83 @@ model Category {
   updatedAt DateTime @updatedAt
 
   tickets Ticket[]
+  checklistTemplate ChecklistTemplate?
 
   @@map("categories")
+}
+
+model ChecklistTemplate {
+  id         String   @id @default(cuid())
+  categoryId String?  @unique
+  name       String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category Category?               @relation(fields: [categoryId], references: [id])
+  items    ChecklistTemplateItem[]
+  visits   Visit[]
+
+  @@map("checklist_templates")
+}
+
+model ChecklistTemplateItem {
+  id         String @id @default(cuid())
+  templateId String
+  label      String
+  order      Int    @default(0)
+
+  template ChecklistTemplate       @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  answers  VisitChecklistAnswer[]
+
+  @@index([templateId])
+  @@map("checklist_template_items")
+}
+
+model Visit {
+  id                  String      @id @default(cuid())
+  ticketId            String
+  technicianId        String
+  checklistTemplateId String?
+  status              VisitStatus @default(SCHEDULED)
+  scheduledStart      DateTime
+  scheduledEnd        DateTime
+  checkInAt           DateTime?
+  checkInLat          Float?
+  checkInLng          Float?
+  checkOutAt          DateTime?
+  checkOutLat         Float?
+  checkOutLng         Float?
+  laborStartAt        DateTime?
+  laborEndAt          DateTime?
+  notes               String?
+  reportSentAt        DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  ticket            Ticket                  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  technician        User                    @relation(fields: [technicianId], references: [id])
+  checklistTemplate ChecklistTemplate?      @relation(fields: [checklistTemplateId], references: [id])
+  checklistAnswers  VisitChecklistAnswer[]
+  attachments       Attachment[]
+
+  @@index([ticketId])
+  @@index([technicianId])
+  @@map("visits")
+}
+
+model VisitChecklistAnswer {
+  id      String  @id @default(cuid())
+  visitId String
+  itemId  String
+  done    Boolean @default(false)
+  note    String?
+
+  visit Visit                 @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  item  ChecklistTemplateItem @relation(fields: [itemId], references: [id])
+
+  @@unique([visitId, itemId])
+  @@map("visit_checklist_answers")
 }
 
 model Location {
@@ -227,6 +322,7 @@ model Ticket {
   events        TicketEvent[]
   attachments   Attachment[]
   inboundEmails InboundEmail[]
+  visits        Visit[]
 
   @@index([clientId])
   @@index([assigneeId])
@@ -268,25 +364,29 @@ model TicketEvent {
 }
 
 model Attachment {
-  id           String   @id @default(cuid())
+  id           String         @id @default(cuid())
   ticketId     String?
   commentId    String?
   assetId      String?
+  visitId      String?
+  kind         AttachmentKind @default(GENERIC)
   filename     String
   storedPath   String
   mime         String
   size         Int
   uploadedById String
-  createdAt    DateTime @default(now())
+  createdAt    DateTime       @default(now())
 
   ticket     Ticket?        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   comment    TicketComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   asset      Asset?         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  visit      Visit?         @relation(fields: [visitId], references: [id], onDelete: Cascade)
   uploadedBy User           @relation(fields: [uploadedById], references: [id])
 
   @@index([ticketId])
   @@index([commentId])
   @@index([assetId])
+  @@index([visitId])
   @@map("attachments")
 }
 
