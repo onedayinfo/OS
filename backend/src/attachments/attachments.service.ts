@@ -96,6 +96,28 @@ export class AttachmentsService implements OnModuleInit {
       .then((rows) => rows.map(publicAttachment));
   }
 
+  /**
+   * Anexa uma foto ou assinatura a uma visita. Recurso interno: só ADMIN/AGENT
+   * no controller. Não depende do `VisitsService` — checa a existência direto
+   * pelo `prisma`, mesmo padrão de `saveForAsset`.
+   */
+  async saveForVisit(
+    visitId: string,
+    file: UploadedFile,
+    actor: Actor,
+    kind: 'PHOTO_BEFORE' | 'PHOTO_AFTER' | 'SIGNATURE',
+  ): Promise<ReturnType<typeof publicAttachment>> {
+    const visit = await this.prisma.visit.findUnique({ where: { id: visitId }, select: { id: true } });
+    if (!visit) throw new NotFoundException('Visita não encontrada.');
+    return publicAttachment(await this.persist({ visitId }, file, actor, kind));
+  }
+
+  listForVisit(visitId: string) {
+    return this.prisma.attachment
+      .findMany({ where: { visitId }, orderBy: { createdAt: 'asc' } })
+      .then((rows) => rows.map(publicAttachment));
+  }
+
   /** Carrega o anexo validando o acesso do `actor` ao chamado dono. */
   async getForDownload(id: string, actor: Actor): Promise<Attachment> {
     const attachment = await this.prisma.attachment.findUnique({ where: { id } });
@@ -121,6 +143,11 @@ export class AttachmentsService implements OnModuleInit {
       if (actor?.type === 'CLIENT') throw new NotFoundException('Anexo não encontrado.');
       return attachment;
     }
+    // Anexo de visita: recurso interno (fotos/assinatura). Cliente nunca baixa.
+    if (!ticketId && !attachment.commentId && !attachment.assetId && attachment.visitId) {
+      if (actor?.type === 'CLIENT') throw new NotFoundException('Anexo não encontrado.');
+      return attachment;
+    }
     if (!ticketId) throw new NotFoundException('Anexo não encontrado.');
 
     // Sem acesso → NotFoundException (não vaza existência), mesmo escopo do 6.1.
@@ -129,9 +156,10 @@ export class AttachmentsService implements OnModuleInit {
   }
 
   private async persist(
-    link: { ticketId: string } | { commentId: string } | { assetId: string },
+    link: { ticketId: string } | { commentId: string } | { assetId: string } | { visitId: string },
     file: UploadedFile,
     actor?: Actor,
+    kind: 'GENERIC' | 'PHOTO_BEFORE' | 'PHOTO_AFTER' | 'SIGNATURE' | 'REPORT' = 'GENERIC',
   ): Promise<Attachment> {
     if (!file) throw new BadRequestException('Arquivo ausente.');
     if (file.size > MAX_ATTACHMENT_BYTES) {
@@ -150,6 +178,7 @@ export class AttachmentsService implements OnModuleInit {
     return this.prisma.attachment.create({
       data: {
         ...link,
+        kind,
         filename: file.originalname,
         storedPath: key,
         mime: file.mimetype,

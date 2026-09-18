@@ -1,10 +1,12 @@
 import { pipeline } from 'node:stream/promises';
 import {
+  BadRequestException,
   Controller,
   Get,
   NotFoundException,
   Param,
   Post,
+  Query,
   Res,
   UploadedFile,
   UseFilters,
@@ -65,6 +67,28 @@ export class AttachmentsController {
   @Roles('ADMIN', 'AGENT')
   listForAsset(@Param('id') id: string) {
     return this.attachments.listForAsset(id);
+  }
+
+  // Fotos/assinatura de visita: recurso interno. O acesso é checado pelo @Roles.
+  @Post('visits/:id/attachments')
+  @Roles('ADMIN', 'AGENT')
+  @UseInterceptors(interceptor)
+  uploadToVisit(
+    @Param('id') id: string,
+    @Query('kind') kind: 'PHOTO_BEFORE' | 'PHOTO_AFTER' | 'SIGNATURE',
+    @UploadedFile() file: UF,
+    @CurrentUser() actor: CurrentUserData,
+  ) {
+    if (!['PHOTO_BEFORE', 'PHOTO_AFTER', 'SIGNATURE'].includes(kind)) {
+      throw new BadRequestException('kind inválido — use PHOTO_BEFORE, PHOTO_AFTER ou SIGNATURE.');
+    }
+    return this.attachments.saveForVisit(id, file, actor, kind);
+  }
+
+  @Get('visits/:id/attachments')
+  @Roles('ADMIN', 'AGENT')
+  listForVisit(@Param('id') id: string) {
+    return this.attachments.listForVisit(id);
   }
 
   @Get('attachments/:id')

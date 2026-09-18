@@ -49,6 +49,9 @@ export function publicAttachment(a: {
   createdAt: Date;
   ticketId: string | null;
   commentId: string | null;
+  assetId?: string | null;
+  visitId?: string | null;
+  kind?: string;
 }) {
   return {
     id: a.id,
@@ -58,6 +61,9 @@ export function publicAttachment(a: {
     createdAt: a.createdAt,
     ticketId: a.ticketId,
     commentId: a.commentId,
+    assetId: a.assetId ?? null,
+    visitId: a.visitId ?? null,
+    kind: a.kind ?? 'GENERIC',
   };
 }
 

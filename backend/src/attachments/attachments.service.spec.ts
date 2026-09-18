@@ -29,6 +29,7 @@ function makeDeps() {
     },
     ticketComment: { findUnique: vi.fn() },
     asset: { findUnique: vi.fn() },
+    visit: { findUnique: vi.fn() },
   };
   const tickets = { assertAccess: vi.fn().mockResolvedValue({ id: 't1' }) };
   const service = new AttachmentsService(prisma as any, tickets as any, diskStorage());
@@ -236,5 +237,40 @@ describe('AttachmentsService.getForDownload', () => {
     const out = await service.getForDownload('at1', clientActor);
     expect(tickets.assertAccess).toHaveBeenCalledWith('t1', clientActor);
     expect(out.id).toBe('at1');
+  });
+});
+
+describe('AttachmentsService.saveForVisit', () => {
+  it('404 se a visita não existe', async () => {
+    const { service, prisma } = makeDeps();
+    prisma.visit.findUnique.mockResolvedValue(null);
+    await expect(service.saveForVisit('nope', png(), actor, 'SIGNATURE')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('grava com `visitId` e o `kind` informado', async () => {
+    const { service, prisma } = makeDeps();
+    prisma.visit.findUnique.mockResolvedValue({ id: 'v1' });
+    const result = await service.saveForVisit('v1', png(), actor, 'SIGNATURE');
+    expect(prisma.attachment.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ visitId: 'v1', kind: 'SIGNATURE' }) }),
+    );
+    expect(result.kind).toBe('SIGNATURE');
+  });
+});
+
+describe('AttachmentsService.getForDownload — anexo de visita', () => {
+  const clientActor = { id: 'c1', type: 'CLIENT', role: 'CLIENT', clientId: 'cli1' };
+
+  it('cliente não baixa anexo de visita (recurso interno)', async () => {
+    const { service, prisma } = makeDeps();
+    prisma.attachment.findUnique.mockResolvedValue({ id: 'at1', ticketId: null, commentId: null, assetId: null, visitId: 'v1' });
+    await expect(service.getForDownload('at1', clientActor)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('agente baixa anexo de visita', async () => {
+    const { service, prisma } = makeDeps();
+    const att = { id: 'at1', ticketId: null, commentId: null, assetId: null, visitId: 'v1' };
+    prisma.attachment.findUnique.mockResolvedValue(att);
+    await expect(service.getForDownload('at1', actor)).resolves.toBe(att);
   });
 });
