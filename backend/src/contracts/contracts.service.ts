@@ -164,9 +164,46 @@ export class ContractsService {
     return { ...contract, consumption: await this.consumption(id) };
   }
 
-  /** Placeholder até a Task 4 — devolve zero. */
-  async consumption(_contractId: string): Promise<{ unit: string; used: number; franchiseAmount: number; exceeded: boolean }> {
-    return { unit: 'VISITS', used: 0, franchiseAmount: 0, exceeded: false };
+  async consumption(
+    contractId: string,
+  ): Promise<{ unit: 'VISITS' | 'HOURS'; used: number; franchiseAmount: number; exceeded: boolean }> {
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: contractId },
+      select: { franchiseUnit: true, franchiseAmount: true },
+    });
+    if (!contract) throw new NotFoundException('Contrato não encontrado.');
+
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+    let used: number;
+    if (contract.franchiseUnit === 'VISITS') {
+      used = await this.prisma.ticket.count({
+        where: { contractId, createdAt: { gte: monthStart, lt: monthEnd } },
+      });
+    } else {
+      const visits = await this.prisma.visit.findMany({
+        where: {
+          ticket: { contractId },
+          laborStartAt: { gte: monthStart, lt: monthEnd },
+          laborEndAt: { not: null },
+        },
+        select: { laborStartAt: true, laborEndAt: true },
+      });
+      const minutes = visits.reduce(
+        (sum, v) => sum + (v.laborEndAt!.getTime() - v.laborStartAt!.getTime()) / 60000,
+        0,
+      );
+      used = Math.round((minutes / 60) * 100) / 100;
+    }
+
+    return {
+      unit: contract.franchiseUnit,
+      used,
+      franchiseAmount: contract.franchiseAmount,
+      exceeded: used > contract.franchiseAmount,
+    };
   }
 
   async resolveForTicket(

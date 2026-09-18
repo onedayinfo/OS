@@ -150,3 +150,45 @@ describe('ContractsService.resolveForTicket', () => {
     expect(await service.resolveForTicket('cli1', 'loc1', [])).toBeNull();
   });
 });
+
+describe('ContractsService.consumption', () => {
+  it('VISITS: conta chamados do contrato criados no mês corrente', async () => {
+    const prisma = makePrisma({
+      contract: {
+        findUnique: vi.fn().mockResolvedValue({ franchiseUnit: 'VISITS', franchiseAmount: 4 }),
+      },
+      ticket: { count: vi.fn().mockResolvedValue(5) },
+    });
+    const service = new ContractsService(prisma as any);
+    const result = await service.consumption('c1');
+    expect(result).toEqual({ unit: 'VISITS', used: 5, franchiseAmount: 4, exceeded: true });
+    expect(prisma.ticket.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ contractId: 'c1' }) }),
+    );
+  });
+
+  it('HOURS: soma a duração das visitas fechadas no mês corrente', async () => {
+    const prisma = makePrisma({
+      contract: {
+        findUnique: vi.fn().mockResolvedValue({ franchiseUnit: 'HOURS', franchiseAmount: 10 }),
+      },
+      visit: {
+        findMany: vi.fn().mockResolvedValue([
+          { laborStartAt: new Date('2026-09-05T13:00:00.000Z'), laborEndAt: new Date('2026-09-05T14:30:00.000Z') },
+          { laborStartAt: new Date('2026-09-06T09:00:00.000Z'), laborEndAt: new Date('2026-09-06T10:00:00.000Z') },
+        ]),
+      },
+    });
+    const service = new ContractsService(prisma as any);
+    const result = await service.consumption('c1');
+    expect(result.unit).toBe('HOURS');
+    expect(result.used).toBe(2.5);
+    expect(result.exceeded).toBe(false);
+  });
+
+  it('404 se o contrato não existir', async () => {
+    const prisma = makePrisma({ contract: { findUnique: vi.fn().mockResolvedValue(null) } });
+    const service = new ContractsService(prisma as any);
+    await expect(service.consumption('nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
