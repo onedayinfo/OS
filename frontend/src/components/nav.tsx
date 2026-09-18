@@ -7,12 +7,19 @@ import { useSession } from '@/lib/auth';
 import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
 
-const APP_LINKS = [
-  { href: '/app', label: 'Fila' },
-  { href: '/app/clientes', label: 'Clientes' },
-  { href: '/app/ativos', label: 'Ativos' },
-  { href: '/app/config', label: 'Configurações' },
-];
+function appLinks(role: string | undefined) {
+  const links = [
+    { href: '/app', label: 'Fila' },
+    { href: '/app/agenda', label: 'Agenda' },
+  ];
+  if (role === 'AGENT') links.push({ href: '/app/campo', label: 'Campo' });
+  links.push(
+    { href: '/app/clientes', label: 'Clientes' },
+    { href: '/app/ativos', label: 'Ativos' },
+    { href: '/app/config', label: 'Configurações' },
+  );
+  return links;
+}
 
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || (href !== '/app' && pathname.startsWith(`${href}/`));
@@ -21,7 +28,7 @@ function isActive(pathname: string, href: string): boolean {
 export function AppNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useSession();
+  const { logout, user } = useSession();
 
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-muted/40 p-3">
@@ -29,7 +36,7 @@ export function AppNav() {
         <BrandMark />
       </div>
       <nav className="flex flex-col gap-0.5">
-        {APP_LINKS.map((l) => (
+        {appLinks(user?.role).map((l) => (
           <Link
             key={l.href}
             href={l.href}
