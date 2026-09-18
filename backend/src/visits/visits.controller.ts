@@ -59,4 +59,14 @@ export class VisitsController {
   setChecklist(@Param('id') id: string, @Body() dto: SetChecklistDto) {
     return this.visits.setChecklist(id, dto);
   }
+
+  @Post(':id/close')
+  close(@Param('id') id: string) {
+    return this.visits.close(id);
+  }
+
+  @Post(':id/report/resend')
+  resendReport(@Param('id') id: string) {
+    return this.visits.resendReport(id);
+  }
 }

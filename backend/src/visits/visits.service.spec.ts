@@ -209,3 +209,89 @@ describe('VisitsService.setChecklist', () => {
     });
   });
 });
+
+describe('VisitsService.close', () => {
+  function readyVisit(over: Record<string, unknown> = {}) {
+    return {
+      id: 'v1',
+      status: 'IN_PROGRESS',
+      ticketId: 't1',
+      checkOutAt: new Date(),
+      checklistTemplateId: 'tmpl1',
+      ...over,
+    };
+  }
+
+  it('recusa sem checkout, checklist incompleto ou sem assinatura', async () => {
+    const { service } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue(readyVisit({ checkOutAt: null })) },
+      checklistTemplateItem: { findMany: vi.fn().mockResolvedValue([{ id: 'i1' }]) },
+      visitChecklistAnswer: { count: vi.fn().mockResolvedValue(0) },
+      attachment: { count: vi.fn().mockResolvedValue(0) },
+    });
+    await expect(service.close('v1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('fecha quando tudo presente: status DONE, evento e laudo enviado', async () => {
+    const { service, prisma, events, report } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue(readyVisit()) },
+      checklistTemplateItem: { findMany: vi.fn().mockResolvedValue([{ id: 'i1' }]) },
+      visitChecklistAnswer: { count: vi.fn().mockResolvedValue(1) },
+      attachment: { count: vi.fn().mockResolvedValue(1) },
+    });
+    await service.close('v1');
+    expect(prisma.visit.update).toHaveBeenCalledWith({ where: { id: 'v1' }, data: { status: 'DONE' } });
+    expect(events.record).toHaveBeenCalledWith(prisma, 't1', 'VISIT_COMPLETED', { visitId: 'v1' });
+    expect(report.generate).toHaveBeenCalledWith('v1');
+    expect(report.sendEmail).toHaveBeenCalled();
+  });
+
+  it('fecha mesmo se o laudo falhar ao gerar/enviar (não propaga)', async () => {
+    const { service, prisma, report } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue(readyVisit()) },
+      checklistTemplateItem: { findMany: vi.fn().mockResolvedValue([{ id: 'i1' }]) },
+      visitChecklistAnswer: { count: vi.fn().mockResolvedValue(1) },
+      attachment: { count: vi.fn().mockResolvedValue(1) },
+    });
+    report.generate.mockRejectedValue(new Error('storage fora'));
+    await expect(service.close('v1')).resolves.toBeDefined();
+    expect(prisma.visit.update).toHaveBeenCalledWith({ where: { id: 'v1' }, data: { status: 'DONE' } });
+  });
+
+  it('recusa fechar visita que não está IN_PROGRESS', async () => {
+    const { service } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue(readyVisit({ status: 'SCHEDULED' })) },
+    });
+    await expect(service.close('v1')).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+describe('VisitsService.resendReport', () => {
+  it('reaproveita o Attachment REPORT existente e reenvia', async () => {
+    const { service, prisma, report } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', ticketId: 't1' }) },
+      attachment: {
+        count: vi.fn().mockResolvedValue(1),
+        findFirst: vi.fn().mockResolvedValue({ id: 'rep1', kind: 'REPORT' }),
+      },
+    });
+    await service.resendReport('v1');
+    expect(report.generate).not.toHaveBeenCalled();
+    expect(report.sendEmail).toHaveBeenCalledWith('v1', { id: 'rep1', kind: 'REPORT' });
+    expect(prisma.visit.update).toHaveBeenCalledWith({
+      where: { id: 'v1' },
+      data: { reportSentAt: expect.any(Date) },
+    });
+  });
+
+  it('gera o laudo se ainda não existir', async () => {
+    const { service, report } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', ticketId: 't1' }) },
+      attachment: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn().mockResolvedValue(null) },
+    });
+    report.generate.mockResolvedValue({ id: 'rep2', kind: 'REPORT' });
+    await service.resendReport('v1');
+    expect(report.generate).toHaveBeenCalledWith('v1');
+    expect(report.sendEmail).toHaveBeenCalledWith('v1', { id: 'rep2', kind: 'REPORT' });
+  });
+});

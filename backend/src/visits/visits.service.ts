@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
@@ -31,6 +32,8 @@ const VISIT_INCLUDE = {
 
 @Injectable()
 export class VisitsService {
+  private readonly logger = new Logger('VisitsService');
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: TicketEventsService,
@@ -198,6 +201,59 @@ export class VisitsService {
         update: { done: answer.done, note: answer.note ?? null },
       });
     }
+    return this.findOne(id);
+  }
+
+  async close(id: string) {
+    const visit = await this.mustFind(id);
+    if (visit.status !== 'IN_PROGRESS') {
+      throw new ConflictException('Visita precisa estar em andamento pra fechar.');
+    }
+
+    const missing: string[] = [];
+    if (!visit.checkOutAt) missing.push('checkout');
+
+    if (!visit.checklistTemplateId) {
+      missing.push('checklist');
+    } else {
+      const items = await this.prisma.checklistTemplateItem.findMany({
+        where: { templateId: visit.checklistTemplateId },
+        select: { id: true },
+      });
+      const answered = await this.prisma.visitChecklistAnswer.count({ where: { visitId: id } });
+      if (answered < items.length) missing.push('checklist');
+    }
+
+    const hasSignature = await this.prisma.attachment.count({ where: { visitId: id, kind: 'SIGNATURE' } });
+    if (!hasSignature) missing.push('signature');
+
+    if (missing.length) {
+      throw new BadRequestException({ message: 'Visita incompleta para fechar.', missing });
+    }
+
+    await this.prisma.visit.update({ where: { id }, data: { status: 'DONE' } });
+    await this.events.record(this.prisma, visit.ticketId, 'VISIT_COMPLETED', { visitId: id });
+
+    try {
+      const attachment = await this.report.generate(id);
+      await this.report.sendEmail(id, attachment);
+      await this.prisma.visit.update({ where: { id }, data: { reportSentAt: new Date() } });
+    } catch (err) {
+      this.logger.warn(`laudo da visita ${id} falhou: ${(err as Error).message}`);
+    }
+
+    return this.findOne(id);
+  }
+
+  async resendReport(id: string) {
+    await this.mustFind(id);
+    let attachment = await this.prisma.attachment.findFirst({
+      where: { visitId: id, kind: 'REPORT' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!attachment) attachment = await this.report.generate(id);
+    await this.report.sendEmail(id, attachment);
+    await this.prisma.visit.update({ where: { id }, data: { reportSentAt: new Date() } });
     return this.findOne(id);
   }
 
