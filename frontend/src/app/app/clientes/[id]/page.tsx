@@ -11,6 +11,7 @@ import {
   type Asset,
   type AssetStatus,
 } from '@/lib/assets';
+import { CONTRACT_STATUS_LABELS, useContracts } from '@/lib/contracts';
 import { ClientForm, type ClientValues } from '@/components/client-form';
 import { ContactForm, type ContactValues } from '@/components/contact-form';
 import { LocationForm, type LocationValues } from '@/components/location-form';
@@ -338,6 +339,33 @@ function ClientAssetsTab({ clientId }: { clientId: string }) {
   );
 }
 
+function ContractsTab({ clientId }: { clientId: string }) {
+  const { data: contracts } = useContracts({ clientId });
+  return (
+    <div className="flex max-w-xl flex-col gap-3 pt-4">
+      <Link href={`/app/contratos/novo?clientId=${clientId}`}>
+        <Button className="h-9">Novo contrato</Button>
+      </Link>
+      <ul className="flex flex-col gap-1">
+        {contracts?.map((c) => (
+          <li key={c.id}>
+            <Link
+              href={`/app/contratos/${c.id}`}
+              className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
+            >
+              <span className="font-medium">{c.name}</span>
+              <span className="ml-auto text-xs text-muted-foreground">{CONTRACT_STATUS_LABELS[c.status]}</span>
+            </Link>
+          </li>
+        ))}
+        {contracts?.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nenhum contrato.</p>
+        )}
+      </ul>
+    </div>
+  );
+}
+
 export default function ClientDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const qc = useQueryClient();
@@ -386,6 +414,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
           { value: 'contatos', label: 'Contatos' },
           { value: 'locais', label: 'Locais' },
           { value: 'ativos', label: 'Ativos' },
+          { value: 'contratos', label: 'Contratos' },
           { value: 'chamados', label: 'Chamados' },
         ]}
       />
@@ -418,6 +447,8 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       {tab === 'locais' && <LocationsTab clientId={id} />}
 
       {tab === 'ativos' && <ClientAssetsTab clientId={id} />}
+
+      {tab === 'contratos' && <ContractsTab clientId={id} />}
 
       {tab === 'chamados' && (
         <div className="pt-4">

@@ -15,6 +15,7 @@ function appLinks(role: string | undefined) {
   if (role === 'AGENT') links.push({ href: '/app/campo', label: 'Campo' });
   links.push(
     { href: '/app/clientes', label: 'Clientes' },
+    { href: '/app/contratos', label: 'Contratos' },
     { href: '/app/ativos', label: 'Ativos' },
     { href: '/app/config', label: 'Configurações' },
   );

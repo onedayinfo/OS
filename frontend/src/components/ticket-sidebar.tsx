@@ -124,6 +124,15 @@ export function TicketSidebar({ ticket }: { ticket: TicketDetail }) {
               ))
             : '—'}
         </Row>
+        <Row label="Contrato">
+          {ticket.contract ? (
+            <a href={`/app/contratos/${ticket.contract.id}`} className="underline">
+              {ticket.contract.name}
+            </a>
+          ) : (
+            '—'
+          )}
+        </Row>
         {ticket.equipment ? (
           <Row label="Equipamento (legado)">{ticket.equipment}</Row>
         ) : null}
