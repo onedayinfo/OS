@@ -40,6 +40,7 @@ export class ContractPreventiveCron {
     const due = (await this.prisma.contract.findMany({
       where: {
         status: 'ACTIVE',
+        endDate: { gte: new Date() },
         preventiveFrequencyMonths: { not: null },
         nextGenerationAt: { lte: new Date() },
       },
@@ -93,14 +94,16 @@ export class ContractPreventiveCron {
       });
     }
 
+    // Avança até o primeiro ciclo futuro: um contrato com startDate retroativo
+    // gera um chamado só (o desta execução) em vez de um lote diário.
+    let next = contract.nextGenerationAt ?? contract.startDate;
+    do {
+      next = addMonths(next, contract.preventiveFrequencyMonths!);
+    } while (next <= new Date());
+
     await this.prisma.contract.update({
       where: { id: contract.id },
-      data: {
-        nextGenerationAt: addMonths(
-          contract.nextGenerationAt ?? contract.startDate,
-          contract.preventiveFrequencyMonths!,
-        ),
-      },
+      data: { nextGenerationAt: next },
     });
   }
 }

@@ -18,6 +18,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+
+interface Category {
+  id: string;
+  name: string;
+  active?: boolean;
+}
+
+const PREVENTIVE_OPTIONS = [
+  { value: '', label: 'Sem geração automática' },
+  { value: '1', label: 'Mensal' },
+  { value: '2', label: 'Bimestral' },
+  { value: '3', label: 'Trimestral' },
+] as const;
 
 function onErr(e: unknown) {
   toast.error(e instanceof ApiError ? e.message : 'Falha na operação.');
@@ -40,6 +54,12 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
   const [locationIds, setLocationIds] = useState<string[]>([]);
   const [assetIds, setAssetIds] = useState<string[]>([]);
   const [slaHours, setSlaHours] = useState<Record<string, string>>({});
+  const [name, setName] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [monthlyValue, setMonthlyValue] = useState('');
+  const [preventiveFreq, setPreventiveFreq] = useState('');
+  const [defaultCategoryId, setDefaultCategoryId] = useState('');
 
   const { data: locations } = useQuery({
     queryKey: ['locations', contract?.clientId],
@@ -52,9 +72,19 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
     queryFn: () => api<Paged<Asset>>(`/assets?clientId=${contract!.clientId}&pageSize=200`),
     enabled: !!contract,
   });
+  const { data: categories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api<Category[]>('/categories'),
+  });
 
   useEffect(() => {
     if (!contract) return;
+    setName(contract.name);
+    setStartDate(contract.startDate.slice(0, 10));
+    setEndDate(contract.endDate.slice(0, 10));
+    setMonthlyValue(contract.monthlyValue != null ? String(contract.monthlyValue) : '');
+    setPreventiveFreq(contract.preventiveFrequencyMonths ? String(contract.preventiveFrequencyMonths) : '');
+    setDefaultCategoryId(contract.defaultCategoryId ?? '');
     setLocationIds(contract.locations.map((l) => l.id));
     setAssetIds(contract.assets.map((a) => a.id));
     const overrides: Record<string, string> = {};
@@ -68,6 +98,29 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
     update.mutate(
       { locationIds, assetIds },
       { onSuccess: () => toast.success('Escopo atualizado.'), onError: onErr },
+    );
+  }
+
+  function saveContractData() {
+    update.mutate(
+      {
+        name,
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        monthlyValue: monthlyValue.trim() ? Number(monthlyValue) : undefined,
+      },
+      { onSuccess: () => toast.success('Dados do contrato atualizados.'), onError: onErr },
+    );
+  }
+
+  function savePreventive() {
+    update.mutate(
+      {
+        preventiveFrequencyMonths: preventiveFreq ? Number(preventiveFreq) : null,
+        // string vazia = limpar (o backend faz `|| null`).
+        defaultCategoryId,
+      },
+      { onSuccess: () => toast.success('Preventiva atualizada.'), onError: onErr },
     );
   }
 
@@ -94,18 +147,44 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
         </Badge>
       </div>
 
-      <section className="grid max-w-xl grid-cols-2 gap-3 rounded-lg border border-border p-3 text-sm">
-        <div>
-          <span className="text-xs uppercase text-muted-foreground">Vigência</span>
-          <p>
-            {new Date(contract.startDate).toLocaleDateString('pt-BR')} –{' '}
-            {new Date(contract.endDate).toLocaleDateString('pt-BR')}
-          </p>
+      <section className="flex max-w-xl flex-col gap-3 rounded-lg border border-border p-3 text-sm">
+        <h2 className="text-sm font-semibold">Dados do contrato</h2>
+        <div className="flex flex-col gap-1.5">
+          <Label>Nome</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-        <div>
-          <span className="text-xs uppercase text-muted-foreground">Valor mensal</span>
-          <p>{contract.monthlyValue != null ? `R$ ${contract.monthlyValue.toFixed(2)}` : '—'}</p>
+        <div className="flex gap-3">
+          <div className="flex flex-1 flex-col gap-1.5">
+            <Label>Início da vigência</Label>
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </div>
+          <div className="flex flex-1 flex-col gap-1.5">
+            <Label>Fim da vigência</Label>
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </div>
         </div>
+        <div className="flex flex-col gap-1.5">
+          <Label>Valor mensal (R$)</Label>
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            className="w-48"
+            value={monthlyValue}
+            onChange={(e) => setMonthlyValue(e.target.value)}
+          />
+        </div>
+        <Button
+          variant="outline"
+          className="h-9 self-start"
+          disabled={update.isPending}
+          onClick={saveContractData}
+        >
+          Salvar dados do contrato
+        </Button>
+      </section>
+
+      <section className="max-w-xl rounded-lg border border-border p-3 text-sm">
         <div>
           <span className="text-xs uppercase text-muted-foreground">Consumo do mês</span>
           <p>
@@ -118,6 +197,34 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
             )}
           </p>
         </div>
+      </section>
+
+      <section className="flex max-w-xl flex-col gap-3">
+        <h2 className="text-sm font-semibold">Preventiva automática</h2>
+        <div className="flex flex-col gap-1.5">
+          <Label>Frequência</Label>
+          <Select value={preventiveFreq} onChange={(e) => setPreventiveFreq(e.target.value)}>
+            {PREVENTIVE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label>Categoria padrão</Label>
+          <Select value={defaultCategoryId} onChange={(e) => setDefaultCategoryId(e.target.value)}>
+            <option value="">Nenhuma</option>
+            {categories?.filter((c) => c.active !== false).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button variant="outline" className="h-9 self-start" disabled={update.isPending} onClick={savePreventive}>
+          Salvar preventiva
+        </Button>
       </section>
 
       <section className="flex max-w-xl flex-col gap-2">

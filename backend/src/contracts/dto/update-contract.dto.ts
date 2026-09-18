@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { ContractSlaItemInput } from './contract-sla-item.dto.js';
 import { ValidateNested } from 'class-validator';
@@ -19,7 +20,9 @@ export class UpdateContractDto {
   @IsOptional() @IsNumber() monthlyValue?: number;
   @IsOptional() @IsIn(['VISITS', 'HOURS']) franchiseUnit?: 'VISITS' | 'HOURS';
   @IsOptional() @IsInt() @Min(1) franchiseAmount?: number;
-  @IsOptional() @IsInt() @Min(1) preventiveFrequencyMonths?: number;
+  // null = desligar a geração automática de preventiva.
+  @IsOptional() @ValidateIf((o) => o.preventiveFrequencyMonths !== null) @IsInt() @Min(1)
+  preventiveFrequencyMonths?: number | null;
   @IsOptional() @IsString() defaultCategoryId?: string;
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) locationIds?: string[];

@@ -84,7 +84,7 @@ export interface ContractInput {
   monthlyValue?: number;
   franchiseUnit: FranchiseUnit;
   franchiseAmount: number;
-  preventiveFrequencyMonths?: number;
+  preventiveFrequencyMonths?: number | null;
   defaultCategoryId?: string;
   notes?: string;
   locationIds?: string[];

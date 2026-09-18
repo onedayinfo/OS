@@ -107,8 +107,20 @@ export class ContractsService {
     if (dto.franchiseAmount !== undefined) data.franchiseAmount = dto.franchiseAmount;
     if (dto.preventiveFrequencyMonths !== undefined) {
       data.preventiveFrequencyMonths = dto.preventiveFrequencyMonths;
+      if (!dto.preventiveFrequencyMonths) {
+        data.nextGenerationAt = null;
+      } else if (!current.nextGenerationAt) {
+        // Ligando a preventiva: arma o primeiro ciclo pro próximo passe do cron.
+        data.nextGenerationAt = new Date();
+      }
     }
-    if (dto.defaultCategoryId !== undefined) data.defaultCategoryId = dto.defaultCategoryId || null;
+    if (dto.defaultCategoryId !== undefined) {
+      if (dto.defaultCategoryId) {
+        const category = await this.prisma.category.findUnique({ where: { id: dto.defaultCategoryId } });
+        if (!category) throw new BadRequestException('Categoria não encontrada.');
+      }
+      data.defaultCategoryId = dto.defaultCategoryId || null;
+    }
     if (dto.notes !== undefined) data.notes = dto.notes;
 
     await this.prisma.contract.update({ where: { id }, data });
@@ -216,6 +228,7 @@ export class ContractsService {
       where: {
         clientId,
         status: 'ACTIVE',
+        endDate: { gte: new Date() },
         OR: [
           ...(locationId ? [{ locations: { some: { id: locationId } } }] : []),
           ...(assetIds.length ? [{ assets: { some: { id: { in: assetIds } } } }] : []),

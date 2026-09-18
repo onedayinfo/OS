@@ -44,7 +44,7 @@ describe('ContractExpiryCron', () => {
     });
   });
 
-  it('um contrato falhando não impede o aviso dos demais', async () => {
+  it('falha de e-mail não represa a fila: marca renewalWarnedAt mesmo assim', async () => {
     const bad = { id: 'bad', name: 'Ruim', endDate: new Date(), client: { name: 'X' } };
     const good = { id: 'good', name: 'Bom', endDate: new Date(), client: { name: 'Y' } };
     const prisma = {
@@ -60,7 +60,8 @@ describe('ContractExpiryCron', () => {
     };
     const cron = new ContractExpiryCron(prisma as any, email as any);
     await cron.run();
-    expect(prisma.contract.update).toHaveBeenCalledTimes(1);
+    expect(prisma.contract.update).toHaveBeenCalledTimes(2);
+    expect(prisma.contract.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'bad' } }));
     expect(prisma.contract.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'good' } }));
   });
 });

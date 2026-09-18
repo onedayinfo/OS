@@ -37,9 +37,17 @@ export class ContractExpiryCron {
 
     for (const contract of expiring) {
       try {
-        const tpl = contractExpiring(contract, brand);
-        for (const admin of admins) {
-          await this.email.send({ to: admin.email, ...tpl });
+        try {
+          const tpl = contractExpiring(contract, brand);
+          for (const admin of admins) {
+            await this.email.send({ to: admin.email, ...tpl });
+          }
+        } catch (err) {
+          // Falha de e-mail não pode represar a fila: loga e marca mesmo assim (spec §3.6).
+          this.logger.error(
+            `Falha ao enviar aviso de vencimento do contrato ${contract.id}`,
+            err instanceof Error ? err.stack : String(err),
+          );
         }
         await this.prisma.contract.update({
           where: { id: contract.id },
