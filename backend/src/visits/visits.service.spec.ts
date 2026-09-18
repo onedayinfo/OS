@@ -96,3 +96,78 @@ describe('VisitsService.reschedule / cancel', () => {
     await expect(service.cancel('nope')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+describe('VisitsService.checkIn / checkOut / setLabor', () => {
+  it('checkIn: exige status SCHEDULED, grava horário/GPS e vira IN_PROGRESS', async () => {
+    const { service, prisma, events } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', status: 'SCHEDULED', ticketId: 't1' }) },
+    });
+    await service.checkIn('v1', { lat: -23.5, lng: -46.6 });
+    expect(prisma.visit.update).toHaveBeenCalledWith({
+      where: { id: 'v1' },
+      data: expect.objectContaining({
+        status: 'IN_PROGRESS',
+        checkInLat: -23.5,
+        checkInLng: -46.6,
+      }),
+    });
+    expect(events.record).toHaveBeenCalledWith(prisma, 't1', 'VISIT_STARTED', { visitId: 'v1' });
+  });
+
+  it('checkIn: chamado OPEN vira IN_PROGRESS e registra STATUS_CHANGED', async () => {
+    const { service, prisma } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', status: 'SCHEDULED', ticketId: 't1' }) },
+      ticket: {
+        findUnique: vi.fn().mockResolvedValue({ id: 't1', status: 'OPEN' }),
+        update: vi.fn(),
+      },
+    });
+    await service.checkIn('v1', {});
+    expect(prisma.ticket.update).toHaveBeenCalledWith({
+      where: { id: 't1' },
+      data: { status: 'IN_PROGRESS' },
+    });
+  });
+
+  it('checkIn: rejeita visita que não está SCHEDULED', async () => {
+    const { service } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', status: 'DONE', ticketId: 't1' }) },
+    });
+    await expect(service.checkIn('v1', {})).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('checkOut: exige status IN_PROGRESS, grava horário/GPS', async () => {
+    const { service, prisma } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', status: 'IN_PROGRESS', ticketId: 't1' }) },
+    });
+    await service.checkOut('v1', { lat: 1, lng: 2 });
+    expect(prisma.visit.update).toHaveBeenCalledWith({
+      where: { id: 'v1' },
+      data: expect.objectContaining({ checkOutLat: 1, checkOutLng: 2 }),
+    });
+  });
+
+  it('checkOut: rejeita visita que não está IN_PROGRESS', async () => {
+    const { service } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', status: 'SCHEDULED', ticketId: 't1' }) },
+    });
+    await expect(service.checkOut('v1', {})).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('setLabor: rejeita fim antes do início', async () => {
+    const { service } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', status: 'IN_PROGRESS', ticketId: 't1' }) },
+    });
+    await expect(
+      service.setLabor('v1', { laborStartAt: '2026-10-01T12:00:00.000Z', laborEndAt: '2026-10-01T11:00:00.000Z' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('setLabor: aceita correção manual em qualquer status', async () => {
+    const { service, prisma } = makeDeps({
+      visit: { findUnique: vi.fn().mockResolvedValue({ id: 'v1', status: 'DONE', ticketId: 't1' }) },
+    });
+    await service.setLabor('v1', { laborStartAt: '2026-10-01T11:00:00.000Z', laborEndAt: '2026-10-01T12:00:00.000Z' });
+    expect(prisma.visit.update).toHaveBeenCalled();
+  });
+});

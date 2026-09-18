@@ -5,6 +5,8 @@ import { VisitsService } from './visits.service.js';
 import { CreateVisitDto } from './dto/create-visit.dto.js';
 import { UpdateVisitDto } from './dto/update-visit.dto.js';
 import { ListVisitsDto } from './dto/list-visits.dto.js';
+import { GeoDto } from './dto/geo.dto.js';
+import { LaborDto } from './dto/labor.dto.js';
 
 @Controller('visits')
 @Roles('ADMIN', 'AGENT')
@@ -35,5 +37,20 @@ export class VisitsController {
   @Post(':id/cancel')
   cancel(@Param('id') id: string) {
     return this.visits.cancel(id);
+  }
+
+  @Post(':id/check-in')
+  checkIn(@Param('id') id: string, @Body() dto: GeoDto) {
+    return this.visits.checkIn(id, dto);
+  }
+
+  @Post(':id/check-out')
+  checkOut(@Param('id') id: string, @Body() dto: GeoDto) {
+    return this.visits.checkOut(id, dto);
+  }
+
+  @Patch(':id/labor')
+  setLabor(@Param('id') id: string, @Body() dto: LaborDto) {
+    return this.visits.setLabor(id, dto);
   }
 }

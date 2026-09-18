@@ -12,6 +12,8 @@ import type { VisitReportService } from './visit-report.service.js';
 import { CreateVisitDto } from './dto/create-visit.dto.js';
 import { UpdateVisitDto } from './dto/update-visit.dto.js';
 import { ListVisitsDto } from './dto/list-visits.dto.js';
+import { GeoDto } from './dto/geo.dto.js';
+import { LaborDto } from './dto/labor.dto.js';
 
 const VISIT_INCLUDE = {
   ticket: {
@@ -111,6 +113,65 @@ export class VisitsService {
     }
     await this.prisma.visit.update({ where: { id }, data: { status: 'CANCELLED' } });
     await this.events.record(this.prisma, visit.ticketId, 'VISIT_CANCELLED', { visitId: id });
+    return this.findOne(id);
+  }
+
+  async checkIn(id: string, dto: GeoDto) {
+    const visit = await this.mustFind(id);
+    if (visit.status !== 'SCHEDULED') {
+      throw new ConflictException('Visita precisa estar agendada pra dar check-in.');
+    }
+    const now = new Date();
+    await this.prisma.visit.update({
+      where: { id },
+      data: {
+        status: 'IN_PROGRESS',
+        checkInAt: now,
+        checkInLat: dto.lat ?? null,
+        checkInLng: dto.lng ?? null,
+        laborStartAt: now,
+      },
+    });
+    await this.events.record(this.prisma, visit.ticketId, 'VISIT_STARTED', { visitId: id });
+
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: visit.ticketId },
+      select: { status: true },
+    });
+    if (ticket?.status === 'OPEN') {
+      await this.prisma.ticket.update({ where: { id: visit.ticketId }, data: { status: 'IN_PROGRESS' } });
+      await this.events.record(this.prisma, visit.ticketId, 'STATUS_CHANGED', {
+        from: 'OPEN',
+        to: 'IN_PROGRESS',
+      });
+    }
+    return this.findOne(id);
+  }
+
+  async checkOut(id: string, dto: GeoDto) {
+    const visit = await this.mustFind(id);
+    if (visit.status !== 'IN_PROGRESS') {
+      throw new ConflictException('Visita precisa estar em andamento pra dar check-out.');
+    }
+    const now = new Date();
+    await this.prisma.visit.update({
+      where: { id },
+      data: {
+        checkOutAt: now,
+        checkOutLat: dto.lat ?? null,
+        checkOutLng: dto.lng ?? null,
+        laborEndAt: now,
+      },
+    });
+    return this.findOne(id);
+  }
+
+  async setLabor(id: string, dto: LaborDto) {
+    await this.mustFind(id);
+    const start = new Date(dto.laborStartAt);
+    const end = new Date(dto.laborEndAt);
+    if (end <= start) throw new BadRequestException('laborEndAt precisa ser depois de laborStartAt.');
+    await this.prisma.visit.update({ where: { id }, data: { laborStartAt: start, laborEndAt: end } });
     return this.findOne(id);
   }
 
