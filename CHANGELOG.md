@@ -5,6 +5,15 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Adicionado
+- **Contratos de manutenção recorrente**: vigência, valor mensal, escopo de
+  Locais/Ativos, franquia (visitas ou horas/mês), SLA próprio opcional por
+  prioridade.
+- Chamado dentro do escopo de um contrato ativo se vincula sozinho a ele.
+- Geração automática de chamados preventivos no calendário do contrato (um
+  por Local do escopo).
+- Aviso automático por e-mail (ADMIN) 30 dias antes do fim da vigência.
+
 ## [0.4.0] - 2026-09-18
 
 ### Adicionado
