@@ -26,6 +26,7 @@ import { AttachmentsModule } from './attachments/attachments.module.js';
 import { InboundModule } from './inbound/inbound.module.js';
 import { TasksModule } from './tasks/tasks.module.js';
 import { VisitsModule } from './visits/visits.module.js';
+import { ContractsModule } from './contracts/contracts.module.js';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { VisitsModule } from './visits/visits.module.js';
     InboundModule,
     TasksModule,
     VisitsModule,
+    ContractsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
