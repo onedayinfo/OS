@@ -5,6 +5,24 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+## [0.4.0] - 2026-09-18
+
+### Adicionado
+- **Visitas técnicas** vinculadas ao chamado: agendamento (técnico + janela de
+  data/hora), reagendamento e cancelamento.
+- **Agenda** por técnico e dia (`/app/agenda`).
+- **Execução em campo** (`/app/campo`, mobile): check-in/check-out com
+  geolocalização opcional, checklist configurável por categoria com fotos,
+  assinatura do cliente em canvas, apontamento de horas (derivado do
+  check-in/out, editável).
+- **Laudo de atendimento em PDF**, gerado e enviado por e-mail ao cliente
+  automaticamente ao fechar a visita (link pro chamado no portal).
+- Cadastro de **Checklists** por categoria em Configurações.
+
+### Alterado
+- Chamado `OPEN` vira `IN_PROGRESS` automaticamente no check-in da primeira
+  visita.
+
 ## [0.3.0] - 2026-09-10
 
 ### Adicionado
