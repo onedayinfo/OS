@@ -23,6 +23,8 @@ import { VISIT_STATUS_LABELS, useVisits } from '@/lib/visits';
 import { CommentBox } from '@/components/comment-box';
 import { TicketSidebar } from '@/components/ticket-sidebar';
 import { TicketTimeline } from '@/components/ticket-timeline';
+import { TicketMaterialUsages } from '@/components/ticket-material-usages';
+import { TicketQuotes } from '@/components/ticket-quotes';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 
@@ -296,6 +298,10 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
           </section>
 
           <VisitsBlock ticketId={id} />
+
+          <TicketMaterialUsages ticketId={id} />
+
+          <TicketQuotes ticketId={id} />
 
           <section>
             <h2 className="mb-2 text-sm font-semibold">Movimentações</h2>
