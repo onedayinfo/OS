@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateWarehouseDto } from './dto/create-warehouse.dto.js';
 import { UpdateWarehouseDto } from './dto/update-warehouse.dto.js';
 import { ListStockBalancesDto } from './dto/list-stock-balances.dto.js';
+import { CreateStockEntryDto } from './dto/create-stock-entry.dto.js';
 
 @Injectable()
 export class StockService {
@@ -60,6 +61,47 @@ export class StockService {
       where: { catalogItemId_warehouseId: { catalogItemId, warehouseId } },
       create: { catalogItemId, warehouseId, minQuantity },
       update: { minQuantity },
+    });
+  }
+
+  private async mustFindCatalogItem(id: string) {
+    const item = await this.prisma.catalogItem.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException('Item de catálogo não encontrado.');
+    return item;
+  }
+
+  async createEntry(dto: CreateStockEntryDto, createdById: string) {
+    const item = await this.mustFindCatalogItem(dto.catalogItemId);
+    if (item.type !== 'PRODUCT') {
+      throw new BadRequestException('Só itens do tipo PRODUCT participam de estoque.');
+    }
+    await this.mustFindWarehouse(dto.warehouseId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const entry = await tx.stockEntry.create({
+        data: {
+          catalogItemId: dto.catalogItemId,
+          warehouseId: dto.warehouseId,
+          quantity: dto.quantity,
+          unitCost: dto.unitCost,
+          notes: dto.notes ?? null,
+          createdById,
+        },
+      });
+      const balance = await tx.stockBalance.findUnique({
+        where: { catalogItemId_warehouseId: { catalogItemId: dto.catalogItemId, warehouseId: dto.warehouseId } },
+      });
+      const currentQty = balance?.quantity ?? 0;
+      const currentAvg = balance?.avgCost ?? 0;
+      const newQty = currentQty + dto.quantity;
+      const newAvg =
+        currentQty === 0 ? dto.unitCost : (currentQty * currentAvg + dto.quantity * dto.unitCost) / newQty;
+      await tx.stockBalance.upsert({
+        where: { catalogItemId_warehouseId: { catalogItemId: dto.catalogItemId, warehouseId: dto.warehouseId } },
+        create: { catalogItemId: dto.catalogItemId, warehouseId: dto.warehouseId, quantity: dto.quantity, avgCost: dto.unitCost },
+        update: { quantity: newQty, avgCost: newAvg },
+      });
+      return entry;
     });
   }
 }

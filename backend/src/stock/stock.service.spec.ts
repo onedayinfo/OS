@@ -78,3 +78,59 @@ describe('StockService — saldos', () => {
     expect(balances[0].catalogItemId).toBe('ci1');
   });
 });
+
+function makePrismaWithTx(overrides: Record<string, unknown> = {}) {
+  const tx = {
+    stockEntry: { create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'se1', ...data })) },
+    stockBalance: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      upsert: vi.fn().mockImplementation(({ create }: any) => Promise.resolve(create)),
+      update: vi.fn(),
+    },
+    ...overrides,
+  };
+  return {
+    catalogItem: { findUnique: vi.fn().mockResolvedValue({ id: 'ci1', type: 'PRODUCT' }) },
+    warehouse: { findUnique: vi.fn().mockResolvedValue({ id: 'w1', active: true }) },
+    $transaction: vi.fn().mockImplementation((cb: any) => cb(tx)),
+    tx,
+  };
+}
+
+describe('StockService — entrada de estoque', () => {
+  it('rejeita item que não é PRODUCT', async () => {
+    const prisma = makePrismaWithTx({});
+    prisma.catalogItem.findUnique = vi.fn().mockResolvedValue({ id: 'ci1', type: 'SERVICE' });
+    const service = new StockService(prisma as any);
+    await expect(
+      service.createEntry({ catalogItemId: 'ci1', warehouseId: 'w1', quantity: 10, unitCost: 5 }, 'user1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('cria saldo do zero com avgCost = custo da entrada', async () => {
+    const prisma = makePrismaWithTx();
+    const service = new StockService(prisma as any);
+    await service.createEntry({ catalogItemId: 'ci1', warehouseId: 'w1', quantity: 10, unitCost: 5 }, 'user1');
+    expect(prisma.tx.stockBalance.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ quantity: 10, avgCost: 5 }),
+      }),
+    );
+  });
+
+  it('pondera avgCost quando já existe saldo', async () => {
+    const prisma = makePrismaWithTx({
+      stockBalance: {
+        findUnique: vi.fn().mockResolvedValue({ catalogItemId: 'ci1', warehouseId: 'w1', quantity: 10, avgCost: 5 }),
+        upsert: vi.fn().mockImplementation(({ update }: any) => Promise.resolve(update)),
+        update: vi.fn(),
+      },
+    });
+    const service = new StockService(prisma as any);
+    await service.createEntry({ catalogItemId: 'ci1', warehouseId: 'w1', quantity: 10, unitCost: 15 }, 'user1');
+    // (10*5 + 10*15) / 20 = 10
+    expect(prisma.tx.stockBalance.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ update: expect.objectContaining({ quantity: 20, avgCost: 10 }) }),
+    );
+  });
+});
