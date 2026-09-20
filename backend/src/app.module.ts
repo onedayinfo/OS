@@ -28,6 +28,7 @@ import { TasksModule } from './tasks/tasks.module.js';
 import { VisitsModule } from './visits/visits.module.js';
 import { ContractsModule } from './contracts/contracts.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
+import { StockModule } from './stock/stock.module.js';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { CatalogModule } from './catalog/catalog.module.js';
     VisitsModule,
     ContractsModule,
     CatalogModule,
+    StockModule,
   ],
   controllers: [AppController],
   providers: [AppService],
