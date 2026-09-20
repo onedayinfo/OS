@@ -16,6 +16,9 @@ function appLinks(role: string | undefined) {
   links.push(
     { href: '/app/clientes', label: 'Clientes' },
     { href: '/app/contratos', label: 'Contratos' },
+    { href: '/app/catalogo', label: 'Catálogo' },
+    { href: '/app/estoque', label: 'Estoque' },
+    { href: '/app/orcamentos', label: 'Orçamentos' },
     { href: '/app/ativos', label: 'Ativos' },
     { href: '/app/config', label: 'Configurações' },
   );
