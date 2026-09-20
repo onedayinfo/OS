@@ -229,7 +229,7 @@ export class TicketsService {
    */
   async createFromQuote(
     tx: Prisma.TransactionClient,
-    input: { clientId: string; categoryId: string; title: string },
+    input: { clientId: string; categoryId: string; title: string; quoteId: string },
   ): Promise<Ticket> {
     const slaDueAt = await this.sla.dueAt('MEDIUM', new Date());
     const number = await this.ticketNumber.next(tx);
@@ -244,6 +244,7 @@ export class TicketsService {
         priority: 'MEDIUM',
         status: 'OPEN',
         origin: 'QUOTE',
+        originQuoteId: input.quoteId,
         needsTriage: false,
         slaDueAt,
       },

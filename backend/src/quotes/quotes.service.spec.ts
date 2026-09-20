@@ -231,6 +231,7 @@ describe('QuotesService.approve / reject', () => {
       clientId: 'cli1',
       categoryId: 'cat1',
       title: 'Instalação',
+      quoteId: 'q1',
     });
     expect(prisma.tx.quote.update).toHaveBeenCalledWith({
       where: { id: 'q1' },

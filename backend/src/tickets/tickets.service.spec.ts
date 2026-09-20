@@ -270,8 +270,10 @@ describe('TicketsService.createFromQuote', () => {
       clientId: 'cli1',
       categoryId: 'cat1',
       title: 'Instalação nova',
+      quoteId: 'q1',
     });
     expect(ticket.origin).toBe('QUOTE');
+    expect(ticket.originQuoteId).toBe('q1');
     expect(ticket.needsTriage).toBe(false);
     expect(ticket.requesterId).toBeNull();
     expect(events.record).toHaveBeenCalledWith(tx, 't-novo', 'CREATED', {}, undefined);

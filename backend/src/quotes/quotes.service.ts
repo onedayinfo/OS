@@ -201,6 +201,7 @@ export class QuotesService {
           clientId: quote.clientId,
           categoryId: quote.categoryId!,
           title: quote.title!,
+          quoteId: quote.id,
         });
         ticketId = ticket.id;
       }
