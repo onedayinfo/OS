@@ -19,6 +19,17 @@ async function bootstrap() {
     'trust proxy',
     1,
   );
+  // CORS precisa vir ANTES do rate limit: quando o limiter dispara (429), ele
+  // responde direto sem passar pelo middleware seguinte — se `enableCors` só
+  // for registrado depois, a resposta 429 do preflight OPTIONS sai sem
+  // Access-Control-Allow-Origin, o navegador trata como falha de CORS e a
+  // requisição de verdade (POST) nunca chega a ser enviada. Reproduzido via
+  // E2E: `OPTIONS /api/auth/login` tomando 429 travava o login no front sem
+  // erro nenhum aparecer, porque o fetch nunca recebia resposta utilizável.
+  app.enableCors({
+    origin: [process.env.APP_URL, process.env.PORTAL_URL].filter(Boolean),
+    credentials: true,
+  });
   // helmet com config padrão. contentSecurityPolicy desligado: a CSP default do
   // helmet quebraria o front (SPA em origin separada + assets), e o front já é
   // servido pelo Next, não por este backend de API.
@@ -28,10 +39,6 @@ async function bootstrap() {
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   // Guards globais (JwtAuthGuard antes de RolesGuard) são registrados como APP_GUARD no CommonModule.
-  app.enableCors({
-    origin: [process.env.APP_URL, process.env.PORTAL_URL].filter(Boolean),
-    credentials: true,
-  });
   await app.listen(process.env.PORT ?? 3001);
 }
 await bootstrap();
