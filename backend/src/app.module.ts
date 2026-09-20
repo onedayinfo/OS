@@ -29,6 +29,7 @@ import { VisitsModule } from './visits/visits.module.js';
 import { ContractsModule } from './contracts/contracts.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { StockModule } from './stock/stock.module.js';
+import { QuotesModule } from './quotes/quotes.module.js';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { StockModule } from './stock/stock.module.js';
     ContractsModule,
     CatalogModule,
     StockModule,
+    QuotesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

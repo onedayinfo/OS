@@ -271,3 +271,19 @@ describe('QuotesService.approve / reject', () => {
     });
   });
 });
+
+describe('QuotesService.remove', () => {
+  it('rejeita excluir fora de DRAFT', async () => {
+    const prisma = makePrisma();
+    prisma.quote.findUnique = vi.fn().mockResolvedValue({ id: 'q1', status: 'SENT', items: [] });
+    const service = new QuotesService(prisma as any, {} as any, {} as any);
+    await expect(service.remove('q1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('exclui orçamento em DRAFT', async () => {
+    const prisma = makePrisma({ quote: { findUnique: vi.fn().mockResolvedValue({ id: 'q1', status: 'DRAFT', items: [] }), delete: vi.fn() } });
+    const service = new QuotesService(prisma as any, {} as any, {} as any);
+    await service.remove('q1');
+    expect(prisma.quote.delete).toHaveBeenCalledWith({ where: { id: 'q1' } });
+  });
+});

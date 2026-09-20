@@ -220,4 +220,12 @@ export class QuotesService {
     await this.prisma.quote.update({ where: { id: quote.id }, data: { status: 'REJECTED', rejectedAt: new Date() } });
     return this.findOne(quote.id);
   }
+
+  async remove(id: string) {
+    const quote = await this.mustFind(id);
+    if (quote.status !== 'DRAFT') {
+      throw new BadRequestException('Só é possível excluir orçamentos em rascunho.');
+    }
+    await this.prisma.quote.delete({ where: { id } });
+  }
 }
