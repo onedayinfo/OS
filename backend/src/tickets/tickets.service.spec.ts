@@ -245,3 +245,35 @@ describe('TicketsService — local e ativos', () => {
     expect(tx.ticket.update).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('TicketsService.createFromQuote', () => {
+  it('cria o chamado sem exigir actor, origin QUOTE, needsTriage false', async () => {
+    const tx = {
+      ticket: {
+        create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 't-novo', ...data })),
+      },
+    };
+    const prisma = { $transaction: vi.fn().mockImplementation((cb: any) => cb(tx)) };
+    const ticketNumber = { next: vi.fn().mockResolvedValue('2026-0099') };
+    const sla = { dueAt: vi.fn().mockResolvedValue(new Date('2026-01-05T00:00:00.000Z')) };
+    const events = { record: vi.fn() };
+    const service = new TicketsService(
+      prisma as any,
+      ticketNumber as any,
+      sla as any,
+      events as any,
+      {} as any,
+      { created: vi.fn() } as any,
+      {} as any,
+    );
+    const ticket = await service.createFromQuote(tx as any, {
+      clientId: 'cli1',
+      categoryId: 'cat1',
+      title: 'Instalação nova',
+    });
+    expect(ticket.origin).toBe('QUOTE');
+    expect(ticket.needsTriage).toBe(false);
+    expect(ticket.requesterId).toBeNull();
+    expect(events.record).toHaveBeenCalledWith(tx, 't-novo', 'CREATED', {}, undefined);
+  });
+});

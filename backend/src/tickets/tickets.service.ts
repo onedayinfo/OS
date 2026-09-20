@@ -221,6 +221,37 @@ export class TicketsService {
     return ticket;
   }
 
+  /**
+   * Cria o chamado gerado pela aprovação de um orçamento avulso — mesmo
+   * padrão sem `actor` já usado pelo `ContractPreventiveCron`: sem
+   * solicitante humano, `needsTriage: false` (o orçamento já qualificou o
+   * pedido), `origin: 'QUOTE'`.
+   */
+  async createFromQuote(
+    tx: Prisma.TransactionClient,
+    input: { clientId: string; categoryId: string; title: string },
+  ): Promise<Ticket> {
+    const slaDueAt = await this.sla.dueAt('MEDIUM', new Date());
+    const number = await this.ticketNumber.next(tx);
+    const created = await tx.ticket.create({
+      data: {
+        number,
+        title: input.title,
+        description: 'Chamado gerado automaticamente a partir de um orçamento aprovado.',
+        clientId: input.clientId,
+        requesterId: null,
+        categoryId: input.categoryId,
+        priority: 'MEDIUM',
+        status: 'OPEN',
+        origin: 'QUOTE',
+        needsTriage: false,
+        slaDueAt,
+      },
+    });
+    await this.events.record(tx, created.id, 'CREATED', {}, undefined);
+    return created;
+  }
+
   /** Regra: local pertence ao cliente do chamado; todo ativo pertence a esse local. */
   private async validateLocationAndAssets(
     clientId: string | null,
