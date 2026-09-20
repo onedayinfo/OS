@@ -140,3 +140,51 @@ describe('QuotesService.update / send', () => {
     });
   });
 });
+
+describe('QuotesService.revise', () => {
+  function makeSentPrisma() {
+    const prisma = makePrisma();
+    prisma.quote.findUnique = vi.fn().mockResolvedValue({
+      id: 'q1',
+      number: 1,
+      clientId: 'cli1',
+      ticketId: null,
+      categoryId: 'cat1',
+      title: 'Instalação',
+      status: 'SENT',
+      version: 1,
+      rootQuoteId: null,
+      validUntil: null,
+      notes: null,
+      createdById: 'user1',
+      items: [{ catalogItemId: 'ci1', description: null, quantity: 2, unitPrice: 100 }],
+    });
+    prisma.tx.quote.update = vi.fn();
+    return prisma;
+  }
+
+  it('rejeita revisar orçamento em DRAFT', async () => {
+    const prisma = makeSentPrisma();
+    prisma.quote.findUnique = vi.fn().mockResolvedValue({ id: 'q1', status: 'DRAFT', items: [] });
+    const service = new QuotesService(prisma as any, {} as any);
+    await expect(service.revise('q1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('supersede a versão atual e cria uma nova DRAFT com os mesmos itens', async () => {
+    const prisma = makeSentPrisma();
+    const service = new QuotesService(prisma as any, {} as any);
+    await service.revise('q1');
+    expect(prisma.tx.quote.update).toHaveBeenCalledWith({ where: { id: 'q1' }, data: { status: 'SUPERSEDED' } });
+    expect(prisma.tx.quote.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          number: 1,
+          version: 2,
+          rootQuoteId: 'q1',
+          status: 'DRAFT',
+          items: { create: [expect.objectContaining({ catalogItemId: 'ci1', quantity: 2, unitPrice: 100 })] },
+        }),
+      }),
+    );
+  });
+});

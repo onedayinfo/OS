@@ -138,4 +138,40 @@ export class QuotesService {
     await this.prisma.quote.update({ where: { id }, data: { status: 'SENT', sentAt: new Date() } });
     return this.findOne(id);
   }
+
+  async revise(id: string) {
+    const quote = await this.mustFind(id);
+    if (quote.status !== 'SENT' && quote.status !== 'REJECTED') {
+      throw new BadRequestException('Só é possível revisar orçamentos enviados ou rejeitados.');
+    }
+    const rootId = quote.rootQuoteId ?? quote.id;
+    const created = await this.prisma.$transaction(async (tx) => {
+      await tx.quote.update({ where: { id: quote.id }, data: { status: 'SUPERSEDED' } });
+      return tx.quote.create({
+        data: {
+          number: quote.number,
+          clientId: quote.clientId,
+          ticketId: quote.ticketId,
+          categoryId: quote.categoryId,
+          title: quote.title,
+          status: 'DRAFT',
+          version: quote.version + 1,
+          rootQuoteId: rootId,
+          publicToken: randomBytes(24).toString('hex'),
+          validUntil: quote.validUntil,
+          notes: quote.notes,
+          createdById: quote.createdById,
+          items: {
+            create: quote.items.map((i) => ({
+              catalogItemId: i.catalogItemId,
+              description: i.description,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+            })),
+          },
+        },
+      });
+    });
+    return this.findOne(created.id);
+  }
 }
