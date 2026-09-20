@@ -5,14 +5,18 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+## [0.6.0] - 2026-09-20
+
 ### Adicionado
 - **Catálogo** de serviços e produtos (preço, unidade).
-- **Estoque** por depósito: saldo, entrada com custo médio, transferência
-  entre depósitos, requisição de material amarrada ao chamado, alerta
-  visual de estoque mínimo.
-- **Orçamento**: itens do catálogo, nasce de um chamado ou avulso,
-  versionado (revisão = nova versão), aprovação/rejeição do cliente por
-  link público sem login — aprovado vira chamado automaticamente.
+- **Estoque** por depósito (inclusive "van do técnico"): saldo, entrada com
+  custo unitário e custo médio ponderado, transferência atômica entre
+  depósitos, requisição de material amarrada ao chamado (baixa direta, sem
+  aprovação), alerta visual de estoque mínimo.
+- **Orçamento**: itens do catálogo (serviço + material), nasce de um
+  chamado existente ou avulso, versionado (revisão = nova versão ligada à
+  proposta original), aprovação/rejeição do cliente por link público sem
+  login — aprovado (e avulso) vira chamado automaticamente.
 
 ## [0.5.0] - 2026-09-18
 
