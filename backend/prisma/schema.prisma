@@ -41,6 +41,7 @@ enum TicketOrigin {
   PORTAL
   MANUAL
   CONTRACT
+  QUOTE
 }
 
 enum AssetStatus {
@@ -73,6 +74,19 @@ enum ContractStatus {
 enum FranchiseUnit {
   VISITS
   HOURS
+}
+
+enum CatalogItemType {
+  SERVICE
+  PRODUCT
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  SUPERSEDED
 }
 
 enum CommentVisibility {
@@ -138,6 +152,7 @@ model Client {
   locations Location[]
   assets    Asset[]
   contracts Contract[]
+  quotes    Quote[]
 
   @@map("clients")
 }
@@ -152,6 +167,7 @@ model Category {
   tickets Ticket[]
   checklistTemplate ChecklistTemplate?
   contracts Contract[]
+  quotes Quote[]
 
   @@map("categories")
 }
@@ -270,6 +286,160 @@ model ContractSlaPolicy {
   @@map("contract_sla_policies")
 }
 
+model CatalogItem {
+  id        String          @id @default(cuid())
+  name      String
+  type      CatalogItemType
+  unit      String
+  price     Float
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  balances       StockBalance[]
+  stockEntries   StockEntry[]
+  stockTransfers StockTransfer[]
+  materialUsages TicketMaterialUsage[]
+  quoteItems     QuoteItem[]
+
+  @@map("catalog_items")
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  balances       StockBalance[]
+  entries        StockEntry[]
+  transfersOut   StockTransfer[]       @relation("TransferFrom")
+  transfersIn    StockTransfer[]       @relation("TransferTo")
+  materialUsages TicketMaterialUsage[]
+
+  @@map("warehouses")
+}
+
+model StockBalance {
+  catalogItemId String
+  warehouseId   String
+  quantity      Float    @default(0)
+  minQuantity   Float?
+  avgCost       Float    @default(0)
+  updatedAt     DateTime @updatedAt
+
+  catalogItem CatalogItem @relation(fields: [catalogItemId], references: [id])
+  warehouse   Warehouse   @relation(fields: [warehouseId], references: [id])
+
+  @@id([catalogItemId, warehouseId])
+  @@map("stock_balances")
+}
+
+model StockEntry {
+  id            String   @id @default(cuid())
+  catalogItemId String
+  warehouseId   String
+  quantity      Float
+  unitCost      Float
+  notes         String?
+  createdById   String
+  createdAt     DateTime @default(now())
+
+  catalogItem CatalogItem @relation(fields: [catalogItemId], references: [id])
+  warehouse   Warehouse   @relation(fields: [warehouseId], references: [id])
+
+  @@map("stock_entries")
+}
+
+model StockTransfer {
+  id              String   @id @default(cuid())
+  catalogItemId   String
+  fromWarehouseId String
+  toWarehouseId   String
+  quantity        Float
+  notes           String?
+  createdById     String
+  createdAt       DateTime @default(now())
+
+  catalogItem   CatalogItem @relation(fields: [catalogItemId], references: [id])
+  fromWarehouse Warehouse   @relation("TransferFrom", fields: [fromWarehouseId], references: [id])
+  toWarehouse   Warehouse   @relation("TransferTo", fields: [toWarehouseId], references: [id])
+
+  @@map("stock_transfers")
+}
+
+model TicketMaterialUsage {
+  id            String   @id @default(cuid())
+  ticketId      String
+  catalogItemId String
+  warehouseId   String
+  quantity      Float
+  unitCost      Float
+  createdById   String
+  createdAt     DateTime @default(now())
+
+  ticket      Ticket      @relation(fields: [ticketId], references: [id])
+  catalogItem CatalogItem @relation(fields: [catalogItemId], references: [id])
+  warehouse   Warehouse   @relation(fields: [warehouseId], references: [id])
+
+  @@index([ticketId])
+  @@map("ticket_material_usages")
+}
+
+// Sequência própria (não reaproveita `Counter`, que numera chamados) —
+// mesmo padrão transacional do `TicketNumberService`, chave só por ano.
+model QuoteCounter {
+  year  Int @id
+  value Int @default(0)
+
+  @@map("quote_counters")
+}
+
+model Quote {
+  id          String      @id @default(cuid())
+  number      Int
+  clientId    String
+  ticketId    String?
+  categoryId  String?
+  title       String?
+  status      QuoteStatus @default(DRAFT)
+  version     Int         @default(1)
+  rootQuoteId String?
+  publicToken String      @unique
+  validUntil  DateTime?
+  notes       String?
+  sentAt      DateTime?
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  createdById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  client   Client      @relation(fields: [clientId], references: [id])
+  ticket   Ticket?     @relation("QuoteTicket", fields: [ticketId], references: [id])
+  category Category?   @relation(fields: [categoryId], references: [id])
+  items    QuoteItem[]
+  ticketsOriginated Ticket[] @relation("TicketOriginQuote")
+
+  @@index([clientId])
+  @@index([ticketId])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id            String  @id @default(cuid())
+  quoteId       String
+  catalogItemId String
+  description   String?
+  quantity      Float
+  unitPrice     Float
+
+  quote       Quote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  catalogItem CatalogItem @relation(fields: [catalogItemId], references: [id])
+
+  @@map("quote_items")
+}
+
 model Location {
   id           String   @id @default(cuid())
   clientId     String
@@ -360,6 +530,7 @@ model Ticket {
   equipment       String?
   locationId      String?
   contractId      String?
+  originQuoteId   String?
   needsTriage     Boolean        @default(false)
   slaDueAt        DateTime?
   slaBreachNotifiedAt DateTime?
@@ -375,18 +546,22 @@ model Ticket {
   category      Category?       @relation(fields: [categoryId], references: [id])
   location      Location?       @relation(fields: [locationId], references: [id])
   contract      Contract?       @relation(fields: [contractId], references: [id])
+  originQuote   Quote?          @relation("TicketOriginQuote", fields: [originQuoteId], references: [id])
+  quotes        Quote[]         @relation("QuoteTicket")
   assets        Asset[]         @relation("TicketAssets")
   comments      TicketComment[]
   events        TicketEvent[]
   attachments   Attachment[]
   inboundEmails InboundEmail[]
   visits        Visit[]
+  materialUsages TicketMaterialUsage[]
 
   @@index([clientId])
   @@index([assigneeId])
   @@index([requesterId])
   @@index([categoryId])
   @@index([locationId])
+  @@index([originQuoteId])
   @@index([contractId])
   @@map("tickets")
 }
