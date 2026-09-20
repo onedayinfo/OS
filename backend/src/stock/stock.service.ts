@@ -6,6 +6,7 @@ import { UpdateWarehouseDto } from './dto/update-warehouse.dto.js';
 import { ListStockBalancesDto } from './dto/list-stock-balances.dto.js';
 import { CreateStockEntryDto } from './dto/create-stock-entry.dto.js';
 import { CreateStockTransferDto } from './dto/create-stock-transfer.dto.js';
+import { CreateMaterialUsageDto } from './dto/create-material-usage.dto.js';
 
 @Injectable()
 export class StockService {
@@ -151,6 +152,52 @@ export class StockService {
           createdById,
         },
       });
+    });
+  }
+
+  async registerMaterialUsage(ticketId: string, dto: CreateMaterialUsageDto, createdById: string) {
+    const ticket = await this.prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) throw new NotFoundException('Chamado não encontrado.');
+    if (ticket.status === 'CLOSED') {
+      throw new BadRequestException('Chamado fechado não aceita novo material.');
+    }
+    const item = await this.mustFindCatalogItem(dto.catalogItemId);
+    if (item.type !== 'PRODUCT') {
+      throw new BadRequestException('Só itens do tipo PRODUCT participam de estoque.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const balance = await tx.stockBalance.findUnique({
+        where: { catalogItemId_warehouseId: { catalogItemId: dto.catalogItemId, warehouseId: dto.warehouseId } },
+      });
+      if (!balance || balance.quantity < dto.quantity) {
+        throw new BadRequestException('Saldo insuficiente no depósito informado.');
+      }
+      await tx.stockBalance.update({
+        where: { catalogItemId_warehouseId: { catalogItemId: dto.catalogItemId, warehouseId: dto.warehouseId } },
+        data: { quantity: { decrement: dto.quantity } },
+      });
+      return tx.ticketMaterialUsage.create({
+        data: {
+          ticketId,
+          catalogItemId: dto.catalogItemId,
+          warehouseId: dto.warehouseId,
+          quantity: dto.quantity,
+          unitCost: balance.avgCost,
+          createdById,
+        },
+      });
+    });
+  }
+
+  listMaterialUsages(ticketId: string) {
+    return this.prisma.ticketMaterialUsage.findMany({
+      where: { ticketId },
+      include: {
+        catalogItem: { select: { id: true, name: true, unit: true } },
+        warehouse: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 }

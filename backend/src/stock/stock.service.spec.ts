@@ -188,3 +188,58 @@ describe('StockService — transferência', () => {
     );
   });
 });
+
+describe('StockService — requisição de material', () => {
+  function makePrismaForUsage(overrides: Record<string, unknown> = {}) {
+    const tx = {
+      stockBalance: {
+        findUnique: vi.fn().mockResolvedValue({ catalogItemId: 'ci1', warehouseId: 'w1', quantity: 10, avgCost: 7 }),
+        update: vi.fn(),
+      },
+      ticketMaterialUsage: {
+        create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'tmu1', ...data })),
+      },
+      ...overrides,
+    };
+    return {
+      ticket: { findUnique: vi.fn().mockResolvedValue({ id: 't1', status: 'IN_PROGRESS' }) },
+      catalogItem: { findUnique: vi.fn().mockResolvedValue({ id: 'ci1', type: 'PRODUCT' }) },
+      $transaction: vi.fn().mockImplementation((cb: any) => cb(tx)),
+      ticketMaterialUsage: { findMany: vi.fn().mockResolvedValue([]) },
+      tx,
+    };
+  }
+
+  it('rejeita chamado fechado', async () => {
+    const prisma = makePrismaForUsage();
+    prisma.ticket.findUnique = vi.fn().mockResolvedValue({ id: 't1', status: 'CLOSED' });
+    const service = new StockService(prisma as any);
+    await expect(
+      service.registerMaterialUsage('t1', { catalogItemId: 'ci1', warehouseId: 'w1', quantity: 2 }, 'user1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejeita saldo insuficiente', async () => {
+    const prisma = makePrismaForUsage({
+      stockBalance: { findUnique: vi.fn().mockResolvedValue({ catalogItemId: 'ci1', warehouseId: 'w1', quantity: 1, avgCost: 7 }), update: vi.fn() },
+    });
+    const service = new StockService(prisma as any);
+    await expect(
+      service.registerMaterialUsage('t1', { catalogItemId: 'ci1', warehouseId: 'w1', quantity: 5 }, 'user1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('baixa o saldo e grava o custo médio como snapshot', async () => {
+    const prisma = makePrismaForUsage();
+    const service = new StockService(prisma as any);
+    const usage = await service.registerMaterialUsage(
+      't1',
+      { catalogItemId: 'ci1', warehouseId: 'w1', quantity: 3 },
+      'user1',
+    );
+    expect(prisma.tx.stockBalance.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { quantity: { decrement: 3 } } }),
+    );
+    expect(usage.unitCost).toBe(7);
+  });
+});
