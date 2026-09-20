@@ -27,6 +27,7 @@ import { InboundModule } from './inbound/inbound.module.js';
 import { TasksModule } from './tasks/tasks.module.js';
 import { VisitsModule } from './visits/visits.module.js';
 import { ContractsModule } from './contracts/contracts.module.js';
+import { CatalogModule } from './catalog/catalog.module.js';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { ContractsModule } from './contracts/contracts.module.js';
     TasksModule,
     VisitsModule,
     ContractsModule,
+    CatalogModule,
   ],
   controllers: [AppController],
   providers: [AppService],
