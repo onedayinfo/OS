@@ -91,6 +91,22 @@ describe('QuotesService.findOne', () => {
   });
 });
 
+describe('QuotesService.findAll', () => {
+  it('calcula o total de cada orçamento da lista', async () => {
+    const prisma = makePrisma({
+      quote: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'q1', items: [{ catalogItemId: 'ci1', quantity: 2, unitPrice: 100 }] },
+          { id: 'q2', items: [{ catalogItemId: 'ci1', quantity: 1, unitPrice: 50 }] },
+        ]),
+      },
+    });
+    const service = new QuotesService(prisma as any, { next: vi.fn().mockResolvedValue(1) } as any);
+    const quotes = await service.findAll({});
+    expect(quotes.map((q) => q.total)).toEqual([200, 50]);
+  });
+});
+
 describe('QuotesService.update / send', () => {
   function makeDraftPrisma(overrides: Record<string, unknown> = {}) {
     const base = makePrisma(overrides);

@@ -23,6 +23,10 @@ async function cleanup(prisma: InstanceType<typeof PrismaClient>): Promise<void>
   await prisma.ticket.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
   // Contratos (e seus overrides de SLA, em cascata) travam a FK do client se não forem removidos antes.
   await prisma.contract.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
+  // Idem para orçamentos — o chamado gerado por aprovação avulsa já some no
+  // deleteMany de Ticket acima, mas o próprio Quote (itens em cascata) trava
+  // a FK do client se não for removido antes.
+  await prisma.quote.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
   await prisma.asset.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
   await prisma.location.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
   await prisma.user.deleteMany({ where: { email: { in: [E2E_EMAIL, E2E_ADMIN_EMAIL, E2E_AGENT_EMAIL] } } });

@@ -28,12 +28,13 @@ export class QuotesService {
     private readonly tickets: TicketsService,
   ) {}
 
-  findAll(filter: ListQuotesDto) {
+  async findAll(filter: ListQuotesDto) {
     const where: Prisma.QuoteWhereInput = {};
     if (filter.clientId) where.clientId = filter.clientId;
     if (filter.ticketId) where.ticketId = filter.ticketId;
     if (filter.status) where.status = filter.status;
-    return this.prisma.quote.findMany({ where, include: QUOTE_INCLUDE, orderBy: { createdAt: 'desc' } });
+    const quotes = await this.prisma.quote.findMany({ where, include: QUOTE_INCLUDE, orderBy: { createdAt: 'desc' } });
+    return quotes.map(withTotal);
   }
 
   private async mustFind(id: string) {
