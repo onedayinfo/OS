@@ -134,3 +134,57 @@ describe('StockService — entrada de estoque', () => {
     );
   });
 });
+
+describe('StockService — transferência', () => {
+  it('rejeita origem igual ao destino', async () => {
+    const prisma = makePrismaWithTx();
+    const service = new StockService(prisma as any);
+    await expect(
+      service.createTransfer(
+        { catalogItemId: 'ci1', fromWarehouseId: 'w1', toWarehouseId: 'w1', quantity: 5 },
+        'user1',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejeita saldo insuficiente na origem', async () => {
+    const prisma = makePrismaWithTx({
+      stockBalance: {
+        findUnique: vi.fn().mockResolvedValue({ catalogItemId: 'ci1', warehouseId: 'w1', quantity: 2, avgCost: 10 }),
+        update: vi.fn(),
+        upsert: vi.fn(),
+      },
+    });
+    const service = new StockService(prisma as any);
+    await expect(
+      service.createTransfer(
+        { catalogItemId: 'ci1', fromWarehouseId: 'w1', toWarehouseId: 'w2', quantity: 5 },
+        'user1',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('move saldo com o mesmo avgCost quando destino está vazio', async () => {
+    let fromCalls = 0;
+    const prisma = makePrismaWithTx({
+      stockBalance: {
+        findUnique: vi.fn().mockImplementation(() => {
+          fromCalls++;
+          if (fromCalls === 1) return Promise.resolve({ catalogItemId: 'ci1', warehouseId: 'w1', quantity: 20, avgCost: 10 });
+          return Promise.resolve(null); // destino vazio
+        }),
+        update: vi.fn(),
+        upsert: vi.fn().mockImplementation(({ create }: any) => Promise.resolve(create)),
+      },
+      stockTransfer: { create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'st1', ...data })) },
+    });
+    const service = new StockService(prisma as any);
+    await service.createTransfer(
+      { catalogItemId: 'ci1', fromWarehouseId: 'w1', toWarehouseId: 'w2', quantity: 5 },
+      'user1',
+    );
+    expect(prisma.tx.stockBalance.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ quantity: 5, avgCost: 10 }) }),
+    );
+  });
+});

@@ -5,6 +5,7 @@ import { CreateWarehouseDto } from './dto/create-warehouse.dto.js';
 import { UpdateWarehouseDto } from './dto/update-warehouse.dto.js';
 import { ListStockBalancesDto } from './dto/list-stock-balances.dto.js';
 import { CreateStockEntryDto } from './dto/create-stock-entry.dto.js';
+import { CreateStockTransferDto } from './dto/create-stock-transfer.dto.js';
 
 @Injectable()
 export class StockService {
@@ -102,6 +103,54 @@ export class StockService {
         update: { quantity: newQty, avgCost: newAvg },
       });
       return entry;
+    });
+  }
+
+  async createTransfer(dto: CreateStockTransferDto, createdById: string) {
+    if (dto.fromWarehouseId === dto.toWarehouseId) {
+      throw new BadRequestException('Origem e destino não podem ser o mesmo depósito.');
+    }
+    const item = await this.mustFindCatalogItem(dto.catalogItemId);
+    if (item.type !== 'PRODUCT') {
+      throw new BadRequestException('Só itens do tipo PRODUCT participam de estoque.');
+    }
+    await this.mustFindWarehouse(dto.fromWarehouseId);
+    await this.mustFindWarehouse(dto.toWarehouseId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const fromBalance = await tx.stockBalance.findUnique({
+        where: { catalogItemId_warehouseId: { catalogItemId: dto.catalogItemId, warehouseId: dto.fromWarehouseId } },
+      });
+      if (!fromBalance || fromBalance.quantity < dto.quantity) {
+        throw new BadRequestException('Saldo insuficiente no depósito de origem.');
+      }
+      await tx.stockBalance.update({
+        where: { catalogItemId_warehouseId: { catalogItemId: dto.catalogItemId, warehouseId: dto.fromWarehouseId } },
+        data: { quantity: { decrement: dto.quantity } },
+      });
+      const toBalance = await tx.stockBalance.findUnique({
+        where: { catalogItemId_warehouseId: { catalogItemId: dto.catalogItemId, warehouseId: dto.toWarehouseId } },
+      });
+      const currentQty = toBalance?.quantity ?? 0;
+      const currentAvg = toBalance?.avgCost ?? 0;
+      const newQty = currentQty + dto.quantity;
+      const newAvg =
+        currentQty === 0 ? fromBalance.avgCost : (currentQty * currentAvg + dto.quantity * fromBalance.avgCost) / newQty;
+      await tx.stockBalance.upsert({
+        where: { catalogItemId_warehouseId: { catalogItemId: dto.catalogItemId, warehouseId: dto.toWarehouseId } },
+        create: { catalogItemId: dto.catalogItemId, warehouseId: dto.toWarehouseId, quantity: dto.quantity, avgCost: fromBalance.avgCost },
+        update: { quantity: newQty, avgCost: newAvg },
+      });
+      return tx.stockTransfer.create({
+        data: {
+          catalogItemId: dto.catalogItemId,
+          fromWarehouseId: dto.fromWarehouseId,
+          toWarehouseId: dto.toWarehouseId,
+          quantity: dto.quantity,
+          notes: dto.notes ?? null,
+          createdById,
+        },
+      });
     });
   }
 }
