@@ -188,3 +188,86 @@ describe('QuotesService.revise', () => {
     );
   });
 });
+
+describe('QuotesService.approve / reject', () => {
+  function makeSentByTokenPrisma(overrides: Record<string, unknown> = {}) {
+    const state: Record<string, unknown> = {
+      id: 'q1',
+      clientId: 'cli1',
+      ticketId: null,
+      categoryId: 'cat1',
+      title: 'Instalação',
+      status: 'SENT',
+      items: [],
+    };
+    const tx = {
+      quote: {
+        update: vi.fn().mockImplementation(({ data }: any) => {
+          Object.assign(state, data);
+          return Promise.resolve({ ...state });
+        }),
+      },
+    };
+    return {
+      quote: {
+        findUnique: vi.fn().mockImplementation(() => Promise.resolve({ ...state })),
+        update: vi.fn().mockImplementation(({ data }: any) => {
+          Object.assign(state, data);
+          return Promise.resolve({ ...state });
+        }),
+      },
+      $transaction: vi.fn().mockImplementation((cb: any) => cb(tx)),
+      tx,
+      ...overrides,
+    };
+  }
+
+  it('approve cria o chamado quando o orçamento é avulso', async () => {
+    const prisma = makeSentByTokenPrisma();
+    const tickets = { createFromQuote: vi.fn().mockResolvedValue({ id: 'novo-ticket' }) };
+    const service = new QuotesService(prisma as any, {} as any, tickets as any);
+    const result = await service.approve('tok123');
+    expect(tickets.createFromQuote).toHaveBeenCalledWith(prisma.tx, {
+      clientId: 'cli1',
+      categoryId: 'cat1',
+      title: 'Instalação',
+    });
+    expect(prisma.tx.quote.update).toHaveBeenCalledWith({
+      where: { id: 'q1' },
+      data: { status: 'APPROVED', approvedAt: expect.any(Date), ticketId: 'novo-ticket' },
+    });
+    expect(result.status).toBe('APPROVED');
+  });
+
+  it('approve não cria chamado quando o orçamento já tem ticketId', async () => {
+    const prisma = makeSentByTokenPrisma();
+    prisma.quote.findUnique = vi.fn().mockResolvedValue({
+      id: 'q1', clientId: 'cli1', ticketId: 't-existente', categoryId: null, title: null, status: 'SENT', items: [],
+    });
+    const tickets = { createFromQuote: vi.fn() };
+    const service = new QuotesService(prisma as any, {} as any, tickets as any);
+    await service.approve('tok123');
+    expect(tickets.createFromQuote).not.toHaveBeenCalled();
+    expect(prisma.tx.quote.update).toHaveBeenCalledWith({
+      where: { id: 'q1' },
+      data: { status: 'APPROVED', approvedAt: expect.any(Date), ticketId: 't-existente' },
+    });
+  });
+
+  it('approve em token já resolvido é idempotente (409 com status atual)', async () => {
+    const prisma = makeSentByTokenPrisma();
+    prisma.quote.findUnique = vi.fn().mockResolvedValue({ id: 'q1', status: 'APPROVED' });
+    const service = new QuotesService(prisma as any, {} as any, {} as any);
+    await expect(service.approve('tok123')).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('reject marca REJECTED e não mexe em chamado', async () => {
+    const prisma = makeSentByTokenPrisma();
+    const service = new QuotesService(prisma as any, {} as any, {} as any);
+    await service.reject('tok123');
+    expect(prisma.quote.update).toHaveBeenCalledWith({
+      where: { id: 'q1' },
+      data: { status: 'REJECTED', rejectedAt: expect.any(Date) },
+    });
+  });
+});

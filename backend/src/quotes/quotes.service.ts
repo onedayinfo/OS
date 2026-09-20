@@ -1,7 +1,8 @@
 import { randomBytes } from 'node:crypto';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { TicketsService } from '../tickets/tickets.service.js';
 import { QuoteNumberService } from './quote-number.service.js';
 import { CreateQuoteDto } from './dto/create-quote.dto.js';
 import { ListQuotesDto } from './dto/list-quotes.dto.js';
@@ -24,6 +25,7 @@ export class QuotesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly quoteNumber: QuoteNumberService,
+    private readonly tickets: TicketsService,
   ) {}
 
   findAll(filter: ListQuotesDto) {
@@ -173,5 +175,49 @@ export class QuotesService {
       });
     });
     return this.findOne(created.id);
+  }
+
+  async findByToken(token: string) {
+    const quote = await this.prisma.quote.findUnique({ where: { publicToken: token }, include: QUOTE_INCLUDE });
+    if (!quote) throw new NotFoundException('Orçamento não encontrado.');
+    return withTotal(quote);
+  }
+
+  private async mustFindByToken(token: string) {
+    const quote = await this.prisma.quote.findUnique({ where: { publicToken: token } });
+    if (!quote) throw new NotFoundException('Orçamento não encontrado.');
+    return quote;
+  }
+
+  async approve(token: string) {
+    const quote = await this.mustFindByToken(token);
+    if (quote.status !== 'SENT') {
+      throw new ConflictException({ status: quote.status });
+    }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      let ticketId = quote.ticketId;
+      if (!ticketId) {
+        const ticket = await this.tickets.createFromQuote(tx, {
+          clientId: quote.clientId,
+          categoryId: quote.categoryId!,
+          title: quote.title!,
+        });
+        ticketId = ticket.id;
+      }
+      return tx.quote.update({
+        where: { id: quote.id },
+        data: { status: 'APPROVED', approvedAt: new Date(), ticketId },
+      });
+    });
+    return this.findOne(updated.id);
+  }
+
+  async reject(token: string) {
+    const quote = await this.mustFindByToken(token);
+    if (quote.status !== 'SENT') {
+      throw new ConflictException({ status: quote.status });
+    }
+    await this.prisma.quote.update({ where: { id: quote.id }, data: { status: 'REJECTED', rejectedAt: new Date() } });
+    return this.findOne(quote.id);
   }
 }
