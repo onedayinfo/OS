@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { QuoteNumberService } from './quote-number.service.js';
 import { CreateQuoteDto } from './dto/create-quote.dto.js';
 import { ListQuotesDto } from './dto/list-quotes.dto.js';
+import { UpdateQuoteDto } from './dto/update-quote.dto.js';
 
 const QUOTE_INCLUDE = {
   client: { select: { id: true, name: true } },
@@ -89,5 +90,52 @@ export class QuotesService {
       });
     });
     return this.findOne(created.id);
+  }
+
+  async update(id: string, dto: UpdateQuoteDto) {
+    const quote = await this.mustFind(id);
+    if (quote.status !== 'DRAFT') {
+      throw new BadRequestException('Só é possível editar orçamentos em rascunho. Use /revise para enviados.');
+    }
+    let priceById = new Map<string, number>();
+    if (dto.items) {
+      const catalogItems = await this.prisma.catalogItem.findMany({
+        where: { id: { in: dto.items.map((i) => i.catalogItemId) } },
+      });
+      priceById = new Map(catalogItems.map((c) => [c.id, c.price]));
+    }
+    await this.prisma.$transaction(async (tx) => {
+      const data: Prisma.QuoteUncheckedUpdateInput = {};
+      if (dto.title !== undefined) data.title = dto.title;
+      if (dto.categoryId !== undefined) data.categoryId = dto.categoryId;
+      if (dto.validUntil !== undefined) data.validUntil = new Date(dto.validUntil);
+      if (dto.notes !== undefined) data.notes = dto.notes;
+      await tx.quote.update({ where: { id }, data });
+      if (dto.items) {
+        await tx.quoteItem.deleteMany({ where: { quoteId: id } });
+        await tx.quoteItem.createMany({
+          data: dto.items.map((i) => ({
+            quoteId: id,
+            catalogItemId: i.catalogItemId,
+            description: i.description ?? null,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice ?? priceById.get(i.catalogItemId)!,
+          })),
+        });
+      }
+    });
+    return this.findOne(id);
+  }
+
+  async send(id: string) {
+    const quote = await this.mustFind(id);
+    if (quote.status !== 'DRAFT') {
+      throw new BadRequestException('Só é possível enviar orçamentos em rascunho.');
+    }
+    if (quote.items.length === 0) {
+      throw new BadRequestException('Adicione ao menos um item antes de enviar.');
+    }
+    await this.prisma.quote.update({ where: { id }, data: { status: 'SENT', sentAt: new Date() } });
+    return this.findOne(id);
   }
 }

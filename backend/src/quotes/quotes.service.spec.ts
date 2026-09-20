@@ -90,3 +90,53 @@ describe('QuotesService.findOne', () => {
     expect(quote.total).toBe(200);
   });
 });
+
+describe('QuotesService.update / send', () => {
+  function makeDraftPrisma(overrides: Record<string, unknown> = {}) {
+    const base = makePrisma(overrides);
+    base.quote.findUnique = vi.fn().mockResolvedValue({
+      id: 'q1',
+      clientId: 'cli1',
+      status: 'DRAFT',
+      items: [{ catalogItemId: 'ci1', quantity: 2, unitPrice: 100 }],
+    });
+    base.tx.quote.update = vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'q1', ...data }));
+    base.tx.quoteItem = { deleteMany: vi.fn(), createMany: vi.fn() };
+    return base;
+  }
+
+  it('rejeita update fora de DRAFT', async () => {
+    const prisma = makeDraftPrisma();
+    prisma.quote.findUnique = vi.fn().mockResolvedValue({ id: 'q1', status: 'SENT', items: [] });
+    const service = new QuotesService(prisma as any, {} as any);
+    await expect(service.update('q1', { title: 'X' })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('atualiza campos e substitui itens em DRAFT', async () => {
+    const prisma = makeDraftPrisma();
+    const service = new QuotesService(prisma as any, {} as any);
+    await service.update('q1', { title: 'Novo título', items: [{ catalogItemId: 'ci1', quantity: 3, unitPrice: 90 }] });
+    expect(prisma.tx.quoteItem.deleteMany).toHaveBeenCalledWith({ where: { quoteId: 'q1' } });
+    expect(prisma.tx.quoteItem.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ quoteId: 'q1', catalogItemId: 'ci1', quantity: 3, unitPrice: 90 })],
+    });
+  });
+
+  it('rejeita enviar orçamento sem itens', async () => {
+    const prisma = makeDraftPrisma();
+    prisma.quote.findUnique = vi.fn().mockResolvedValue({ id: 'q1', status: 'DRAFT', items: [] });
+    const service = new QuotesService(prisma as any, {} as any);
+    await expect(service.send('q1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('envia DRAFT com itens, marcando SENT + sentAt', async () => {
+    const prisma = makeDraftPrisma();
+    prisma.quote.update = vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'q1', ...data }));
+    const service = new QuotesService(prisma as any, {} as any);
+    await service.send('q1');
+    expect(prisma.quote.update).toHaveBeenCalledWith({
+      where: { id: 'q1' },
+      data: { status: 'SENT', sentAt: expect.any(Date) },
+    });
+  });
+});
