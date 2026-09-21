@@ -19,6 +19,11 @@ const E2E_CLIENT_ID = 'e2e-client';
 const E2E_DOMAIN = 'e2e.test';
 
 async function cleanup(prisma: InstanceType<typeof PrismaClient>): Promise<void> {
+  // TicketSatisfactionSurvey não tem onDelete: Cascade na FK pro ticket —
+  // precisa sumir antes, senão trava o deleteMany de Ticket abaixo.
+  await prisma.ticketSatisfactionSurvey.deleteMany({
+    where: { ticket: { clientId: E2E_CLIENT_ID } },
+  });
   // Eventos/comentários e vínculos m2m somem em cascata com o ticket.
   await prisma.ticket.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
   // Contratos (e seus overrides de SLA, em cascata) travam a FK do client se não forem removidos antes.
