@@ -10,6 +10,10 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   fechar, gera nota 1–5 + comentário opcional via link público sem login
   pro solicitante; a resposta aparece na ficha do chamado. Uma pesquisa por
   chamado — reabrir e fechar de novo não gera segunda.
+- **Dashboard de gestão** (`/app/dashboard`): chamados abertos/vencidos,
+  recorrente vs avulso, tempo médio de atendimento, produtividade por
+  técnico, contratos com franquia estourada e margem por chamado avulso —
+  tudo do mês civil corrente.
 
 ## [0.6.0] - 2026-09-20
 
