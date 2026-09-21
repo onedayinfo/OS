@@ -27,4 +27,17 @@ export class DashboardService {
     ]);
     return { open, overdue, recurring, standalone };
   }
+
+  async avgResolutionHours(monthStart: Date, monthEnd: Date): Promise<number | null> {
+    const resolved = await this.prisma.ticket.findMany({
+      where: { resolvedAt: { gte: monthStart, lt: monthEnd } },
+      select: { createdAt: true, resolvedAt: true },
+    });
+    if (resolved.length === 0) return null;
+    const totalHours = resolved.reduce(
+      (sum, t) => sum + (t.resolvedAt!.getTime() - t.createdAt.getTime()) / 3_600_000,
+      0,
+    );
+    return Math.round((totalHours / resolved.length) * 100) / 100;
+  }
 }

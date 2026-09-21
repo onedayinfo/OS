@@ -50,3 +50,31 @@ describe('DashboardService.ticketsBlock', () => {
     });
   });
 });
+
+describe('DashboardService.avgResolutionHours', () => {
+  it('devolve null se nenhum chamado foi resolvido no mês', async () => {
+    const prisma = makePrisma();
+    const service = new DashboardService(prisma as any, {} as any);
+    const result = await service.avgResolutionHours(MONTH_START, MONTH_END);
+    expect(result).toBeNull();
+    expect(prisma.ticket.findMany).toHaveBeenCalledWith({
+      where: { resolvedAt: { gte: MONTH_START, lt: MONTH_END } },
+      select: { createdAt: true, resolvedAt: true },
+    });
+  });
+
+  it('calcula a média em horas de resolvedAt - createdAt', async () => {
+    const prisma = makePrisma({
+      ticket: {
+        count: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([
+          { createdAt: new Date('2026-09-01T00:00:00Z'), resolvedAt: new Date('2026-09-01T10:00:00Z') }, // 10h
+          { createdAt: new Date('2026-09-02T00:00:00Z'), resolvedAt: new Date('2026-09-02T02:00:00Z') }, // 2h
+        ]),
+      },
+    });
+    const service = new DashboardService(prisma as any, {} as any);
+    const result = await service.avgResolutionHours(MONTH_START, MONTH_END);
+    expect(result).toBe(6); // (10+2)/2
+  });
+});
