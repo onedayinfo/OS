@@ -100,4 +100,42 @@ export class DashboardService {
         franchiseAmount: c.consumption.franchiseAmount,
       }));
   }
+
+  async margin(monthStart: Date, monthEnd: Date) {
+    const quotes = await this.prisma.quote.findMany({
+      where: { status: 'APPROVED', approvedAt: { gte: monthStart, lt: monthEnd } },
+      include: { items: true },
+    });
+    if (quotes.length === 0) {
+      return { ticketsCount: 0, totalRevenue: 0, totalMaterialCost: 0, totalMargin: 0, avgMarginPerTicket: null };
+    }
+
+    const ticketIds = quotes.map((q) => q.ticketId).filter((id): id is string => !!id);
+    const usages = ticketIds.length
+      ? await this.prisma.ticketMaterialUsage.findMany({ where: { ticketId: { in: ticketIds } } })
+      : [];
+    const costByTicket = new Map<string, number>();
+    for (const u of usages) {
+      costByTicket.set(u.ticketId, (costByTicket.get(u.ticketId) ?? 0) + u.quantity * u.unitCost);
+    }
+
+    let totalRevenue = 0;
+    let totalMaterialCost = 0;
+    for (const q of quotes) {
+      totalRevenue += q.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+      totalMaterialCost += q.ticketId ? (costByTicket.get(q.ticketId) ?? 0) : 0;
+    }
+
+    const ticketsCount = quotes.length;
+    const totalMargin = totalRevenue - totalMaterialCost;
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+
+    return {
+      ticketsCount,
+      totalRevenue: round2(totalRevenue),
+      totalMaterialCost: round2(totalMaterialCost),
+      totalMargin: round2(totalMargin),
+      avgMarginPerTicket: round2(totalMargin / ticketsCount),
+    };
+  }
 }

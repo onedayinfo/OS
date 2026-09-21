@@ -161,3 +161,72 @@ describe('DashboardService.contractsExceeded', () => {
     ]);
   });
 });
+
+describe('DashboardService.margin', () => {
+  it('devolve tudo zerado sem orçamento aprovado no mês', async () => {
+    const prisma = makePrisma();
+    const service = new DashboardService(prisma as any, {} as any);
+    const result = await service.margin(MONTH_START, MONTH_END);
+    expect(result).toEqual({
+      ticketsCount: 0,
+      totalRevenue: 0,
+      totalMaterialCost: 0,
+      totalMargin: 0,
+      avgMarginPerTicket: null,
+    });
+    expect(prisma.ticketMaterialUsage.findMany).not.toHaveBeenCalled();
+  });
+
+  it('soma receita dos itens do orçamento e cruza com o custo de material do chamado', async () => {
+    const prisma = makePrisma({
+      quote: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'q1', ticketId: 't1', items: [{ quantity: 2, unitPrice: 100 }] }, // receita 200
+          { id: 'q2', ticketId: 't2', items: [{ quantity: 1, unitPrice: 500 }] }, // receita 500
+        ]),
+      },
+      ticketMaterialUsage: {
+        findMany: vi.fn().mockResolvedValue([
+          { ticketId: 't1', quantity: 3, unitCost: 10 }, // custo 30 pro t1
+          { ticketId: 't2', quantity: 2, unitCost: 50 }, // custo 100 pro t2
+        ]),
+      },
+    });
+    const service = new DashboardService(prisma as any, {} as any);
+    const result = await service.margin(MONTH_START, MONTH_END);
+
+    expect(prisma.quote.findMany).toHaveBeenCalledWith({
+      where: { status: 'APPROVED', approvedAt: { gte: MONTH_START, lt: MONTH_END } },
+      include: { items: true },
+    });
+    expect(prisma.ticketMaterialUsage.findMany).toHaveBeenCalledWith({
+      where: { ticketId: { in: ['t1', 't2'] } },
+    });
+    expect(result).toEqual({
+      ticketsCount: 2,
+      totalRevenue: 700, // 200 + 500
+      totalMaterialCost: 130, // 30 + 100
+      totalMargin: 570,
+      avgMarginPerTicket: 285,
+    });
+  });
+
+  it('chamado com orçamento aprovado mas sem material usado conta custo 0', async () => {
+    const prisma = makePrisma({
+      quote: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'q1', ticketId: 't1', items: [{ quantity: 1, unitPrice: 300 }] },
+        ]),
+      },
+    });
+    const service = new DashboardService(prisma as any, {} as any);
+    const result = await service.margin(MONTH_START, MONTH_END);
+    expect(result).toEqual({
+      ticketsCount: 1,
+      totalRevenue: 300,
+      totalMaterialCost: 0,
+      totalMargin: 300,
+      avgMarginPerTicket: 300,
+    });
+  });
+});
