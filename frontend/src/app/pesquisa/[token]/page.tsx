@@ -12,6 +12,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 export default function PublicSurveyPage() {
   const { token } = useParams<{ token: string }>();
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [score, setScore] = useState<number | null>(null);
   const [comment, setComment] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -27,20 +28,25 @@ export default function PublicSurveyPage() {
 
   async function submit() {
     if (!score) return;
-    const res = await fetch(`${API_BASE}/public/surveys/${token}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ score, comment: comment || undefined }),
-    });
-    if (res.status === 409) {
-      setErrorMsg('Você já respondeu essa pesquisa.');
-      return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/public/surveys/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score, comment: comment || undefined }),
+      });
+      if (res.status === 409) {
+        setErrorMsg('Você já respondeu essa pesquisa.');
+        return;
+      }
+      if (!res.ok) {
+        setErrorMsg('Não foi possível enviar. Tente novamente.');
+        return;
+      }
+      setSubmitted(true);
+    } finally {
+      setSubmitting(false);
     }
-    if (!res.ok) {
-      setErrorMsg('Não foi possível enviar. Tente novamente.');
-      return;
-    }
-    setSubmitted(true);
   }
 
   if (isLoading) return <p className="p-6 text-sm text-muted-foreground">Carregando…</p>;
@@ -54,7 +60,9 @@ export default function PublicSurveyPage() {
       <p className="text-sm text-muted-foreground">{survey.ticketTitle}</p>
 
       {alreadyResponded ? (
-        <p className="text-sm">Obrigado pela resposta!</p>
+        <p className="text-sm">
+          {submitted ? 'Obrigado pela resposta!' : 'Você já respondeu essa pesquisa, obrigado!'}
+        </p>
       ) : (
         <>
           <p className="text-sm">Como você avalia o atendimento?</p>
@@ -76,7 +84,7 @@ export default function PublicSurveyPage() {
             onChange={(e) => setComment(e.target.value)}
           />
           {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
-          <Button className="w-fit" disabled={!score} onClick={submit}>
+          <Button className="w-fit" disabled={!score || submitting} onClick={submit}>
             Enviar
           </Button>
         </>

@@ -576,7 +576,7 @@ model TicketSatisfactionSurvey {
   sentAt      DateTime  @default(now())
   respondedAt DateTime?
 
-  ticket Ticket @relation(fields: [ticketId], references: [id])
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@map("ticket_satisfaction_surveys")
 }

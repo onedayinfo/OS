@@ -1,5 +1,8 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import { SurveysService } from './surveys.service.js';
+import { RespondSurveyDto } from './dto/respond-survey.dto.js';
 
 describe('SurveysService.createForTicket', () => {
   it('não cria nada se o chamado não tem solicitante', async () => {
@@ -53,7 +56,7 @@ describe('SurveysService.findByToken / respond', () => {
           respondedAt: null,
           ticket: { number: '2026-0001', title: 'PC não liga' },
         }),
-        update: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 's1', ...data })),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       ...overrides,
     };
@@ -78,24 +81,45 @@ describe('SurveysService.findByToken / respond', () => {
     });
   });
 
-  it('respond grava score/comment/respondedAt', async () => {
+  it('respond grava score/comment/respondedAt de forma atômica e devolve os dados públicos', async () => {
     const prisma = makePrisma();
     const service = new SurveysService(prisma as any);
-    await service.respond('tok123', { score: 4, comment: 'Ótimo atendimento' });
-    expect(prisma.ticketSatisfactionSurvey.update).toHaveBeenCalledWith({
-      where: { id: 's1' },
+    const result = await service.respond('tok123', { score: 4, comment: 'Ótimo atendimento' });
+    expect(prisma.ticketSatisfactionSurvey.updateMany).toHaveBeenCalledWith({
+      where: { id: 's1', respondedAt: null },
       data: { score: 4, comment: 'Ótimo atendimento', respondedAt: expect.any(Date) },
+    });
+    expect(result).toEqual({
+      ticketNumber: '2026-0001',
+      ticketTitle: 'PC não liga',
+      score: null,
+      comment: null,
+      respondedAt: null,
     });
   });
 
-  it('respond rejeita responder duas vezes', async () => {
+  it('respond rejeita responder duas vezes (guarda atômica via updateMany)', async () => {
     const prisma = makePrisma({
       ticketSatisfactionSurvey: {
         findUnique: vi.fn().mockResolvedValue({ id: 's1', respondedAt: new Date(), ticket: {} }),
-        update: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
     });
     const service = new SurveysService(prisma as any);
     await expect(service.respond('tok123', { score: 3 })).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+describe('RespondSurveyDto', () => {
+  it('rejeita score fora de 1-5', async () => {
+    const dto = plainToInstance(RespondSurveyDto, { score: 6 });
+    const errors = await validate(dto);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('aceita score de 1 a 5', async () => {
+    const dto = plainToInstance(RespondSurveyDto, { score: 3 });
+    const errors = await validate(dto);
+    expect(errors).toHaveLength(0);
   });
 });

@@ -44,12 +44,13 @@ export class SurveysService {
 
   async respond(token: string, dto: RespondSurveyDto) {
     const survey = await this.mustFindByToken(token);
-    if (survey.respondedAt) {
-      throw new ConflictException('Pesquisa já respondida.');
-    }
-    return this.prisma.ticketSatisfactionSurvey.update({
-      where: { id: survey.id },
+    const result = await this.prisma.ticketSatisfactionSurvey.updateMany({
+      where: { id: survey.id, respondedAt: null },
       data: { score: dto.score, comment: dto.comment ?? null, respondedAt: new Date() },
     });
+    if (result.count === 0) {
+      throw new ConflictException('Pesquisa já respondida.');
+    }
+    return this.findByToken(token);
   }
 }
