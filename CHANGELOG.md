@@ -5,6 +5,11 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Adicionado
+- **Pesquisa de satisfação (CSAT)** por chamado: ao fechar, gera nota 1–5 +
+  comentário opcional via link público sem login pro solicitante; a
+  resposta aparece na ficha do chamado.
+
 ## [0.6.0] - 2026-09-20
 
 ### Adicionado
