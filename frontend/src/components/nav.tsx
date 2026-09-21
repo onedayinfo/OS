@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 
 function appLinks(role: string | undefined) {
   const links = [
+    { href: '/app/dashboard', label: 'Dashboard' },
     { href: '/app', label: 'Fila' },
     { href: '/app/agenda', label: 'Agenda' },
   ];
