@@ -133,3 +133,31 @@ describe('DashboardService.technicianProductivity', () => {
     expect(result).toHaveLength(3);
   });
 });
+
+describe('DashboardService.contractsExceeded', () => {
+  it('filtra só os contratos com consumption.exceeded=true e projeta os campos certos', async () => {
+    const contractsService = {
+      findAll: vi.fn().mockResolvedValue([
+        {
+          id: 'c1',
+          name: 'Contrato A',
+          client: { id: 'cli1', name: 'Cliente A' },
+          consumption: { unit: 'VISITS', used: 5, franchiseAmount: 4, exceeded: true },
+        },
+        {
+          id: 'c2',
+          name: 'Contrato B',
+          client: { id: 'cli2', name: 'Cliente B' },
+          consumption: { unit: 'HOURS', used: 3, franchiseAmount: 10, exceeded: false },
+        },
+      ]),
+    };
+    const service = new DashboardService({} as any, contractsService as any);
+    const result = await service.contractsExceeded();
+
+    expect(contractsService.findAll).toHaveBeenCalledWith({ status: 'ACTIVE' });
+    expect(result).toEqual([
+      { contractId: 'c1', name: 'Contrato A', clientName: 'Cliente A', unit: 'VISITS', used: 5, franchiseAmount: 4 },
+    ]);
+  });
+});

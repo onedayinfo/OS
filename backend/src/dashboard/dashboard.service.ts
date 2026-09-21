@@ -86,4 +86,18 @@ export class DashboardService {
       hoursWorked: Math.round(byTech.get(id)!.hoursWorked * 100) / 100,
     }));
   }
+
+  async contractsExceeded() {
+    const contracts = await this.contracts.findAll({ status: 'ACTIVE' });
+    return contracts
+      .filter((c) => c.consumption.exceeded)
+      .map((c) => ({
+        contractId: c.id,
+        name: c.name,
+        clientName: c.client.name,
+        unit: c.consumption.unit,
+        used: c.consumption.used,
+        franchiseAmount: c.consumption.franchiseAmount,
+      }));
+  }
 }
