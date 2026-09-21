@@ -40,4 +40,50 @@ export class DashboardService {
     );
     return Math.round((totalHours / resolved.length) * 100) / 100;
   }
+
+  async technicianProductivity(monthStart: Date, monthEnd: Date) {
+    const [resolvedTickets, visits] = await Promise.all([
+      this.prisma.ticket.findMany({
+        where: { resolvedAt: { gte: monthStart, lt: monthEnd }, assigneeId: { not: null } },
+        select: { assigneeId: true },
+      }),
+      this.prisma.visit.findMany({
+        where: {
+          laborStartAt: { gte: monthStart, lt: monthEnd },
+          laborEndAt: { not: null },
+        },
+        select: { technicianId: true, laborStartAt: true, laborEndAt: true },
+      }),
+    ]);
+
+    const byTech = new Map<string, { ticketsResolved: number; hoursWorked: number }>();
+    for (const t of resolvedTickets) {
+      const id = t.assigneeId!;
+      const entry = byTech.get(id) ?? { ticketsResolved: 0, hoursWorked: 0 };
+      entry.ticketsResolved += 1;
+      byTech.set(id, entry);
+    }
+    for (const v of visits) {
+      const hours = (v.laborEndAt!.getTime() - v.laborStartAt!.getTime()) / 3_600_000;
+      const entry = byTech.get(v.technicianId) ?? { ticketsResolved: 0, hoursWorked: 0 };
+      entry.hoursWorked += hours;
+      byTech.set(v.technicianId, entry);
+    }
+
+    const ids = [...byTech.keys()];
+    if (ids.length === 0) return [];
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true },
+    });
+    const nameById = new Map(users.map((u) => [u.id, u.name]));
+
+    return ids.map((id) => ({
+      technicianId: id,
+      name: nameById.get(id) ?? '—',
+      ticketsResolved: byTech.get(id)!.ticketsResolved,
+      hoursWorked: Math.round(byTech.get(id)!.hoursWorked * 100) / 100,
+    }));
+  }
 }

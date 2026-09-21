@@ -78,3 +78,58 @@ describe('DashboardService.avgResolutionHours', () => {
     expect(result).toBe(6); // (10+2)/2
   });
 });
+
+describe('DashboardService.technicianProductivity', () => {
+  it('devolve lista vazia sem chamados resolvidos nem visitas no mês', async () => {
+    const prisma = makePrisma();
+    const service = new DashboardService(prisma as any, {} as any);
+    const result = await service.technicianProductivity(MONTH_START, MONTH_END);
+    expect(result).toEqual([]);
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+  });
+
+  it('mescla chamados resolvidos e horas trabalhadas por técnico', async () => {
+    const prisma = makePrisma({
+      ticket: {
+        count: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([
+          { assigneeId: 'tec1' },
+          { assigneeId: 'tec1' },
+          { assigneeId: 'tec2' },
+        ]),
+      },
+      visit: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            technicianId: 'tec1',
+            laborStartAt: new Date('2026-09-05T08:00:00Z'),
+            laborEndAt: new Date('2026-09-05T12:00:00Z'), // 4h
+          },
+          {
+            technicianId: 'tec3', // sem chamado resolvido, só visita
+            laborStartAt: new Date('2026-09-06T08:00:00Z'),
+            laborEndAt: new Date('2026-09-06T09:30:00Z'), // 1.5h
+          },
+        ]),
+      },
+      user: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'tec1', name: 'Técnico Um' },
+          { id: 'tec2', name: 'Técnico Dois' },
+          { id: 'tec3', name: 'Técnico Três' },
+        ]),
+      },
+    });
+    const service = new DashboardService(prisma as any, {} as any);
+    const result = await service.technicianProductivity(MONTH_START, MONTH_END);
+
+    expect(result).toEqual(
+      expect.arrayContaining([
+        { technicianId: 'tec1', name: 'Técnico Um', ticketsResolved: 2, hoursWorked: 4 },
+        { technicianId: 'tec2', name: 'Técnico Dois', ticketsResolved: 1, hoursWorked: 0 },
+        { technicianId: 'tec3', name: 'Técnico Três', ticketsResolved: 0, hoursWorked: 1.5 },
+      ]),
+    );
+    expect(result).toHaveLength(3);
+  });
+});
