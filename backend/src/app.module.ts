@@ -30,6 +30,7 @@ import { ContractsModule } from './contracts/contracts.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { StockModule } from './stock/stock.module.js';
 import { QuotesModule } from './quotes/quotes.module.js';
+import { SurveysModule } from './surveys/surveys.module.js';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { QuotesModule } from './quotes/quotes.module.js';
     CatalogModule,
     StockModule,
     QuotesModule,
+    SurveysModule,
   ],
   controllers: [AppController],
   providers: [AppService],
