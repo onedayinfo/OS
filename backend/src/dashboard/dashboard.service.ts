@@ -5,6 +5,15 @@ import { ContractsService } from '../contracts/contracts.service.js';
 
 const TERMINAL_STATUSES: TicketStatus[] = ['RESOLVED', 'CLOSED', 'CANCELLED'];
 
+export interface DashboardOverview {
+  period: { start: string; end: string };
+  tickets: { open: number; overdue: number; recurring: number; standalone: number };
+  avgResolutionHours: number | null;
+  technicianProductivity: Array<{ technicianId: string; name: string; ticketsResolved: number; hoursWorked: number }>;
+  contractsExceeded: Array<{ contractId: string; name: string; clientName: string; unit: 'VISITS' | 'HOURS'; used: number; franchiseAmount: number }>;
+  margin: { ticketsCount: number; totalRevenue: number; totalMaterialCost: number; totalMargin: number; avgMarginPerTicket: number | null };
+}
+
 @Injectable()
 export class DashboardService {
   constructor(
@@ -136,6 +145,29 @@ export class DashboardService {
       totalMaterialCost: round2(totalMaterialCost),
       totalMargin: round2(totalMargin),
       avgMarginPerTicket: round2(totalMargin / ticketsCount),
+    };
+  }
+
+  async overview(): Promise<DashboardOverview> {
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+    const [tickets, avgResolutionHours, technicianProductivity, contractsExceeded, margin] = await Promise.all([
+      this.ticketsBlock(monthStart, monthEnd),
+      this.avgResolutionHours(monthStart, monthEnd),
+      this.technicianProductivity(monthStart, monthEnd),
+      this.contractsExceeded(),
+      this.margin(monthStart, monthEnd),
+    ]);
+
+    return {
+      period: { start: monthStart.toISOString(), end: monthEnd.toISOString() },
+      tickets,
+      avgResolutionHours,
+      technicianProductivity,
+      contractsExceeded,
+      margin,
     };
   }
 }

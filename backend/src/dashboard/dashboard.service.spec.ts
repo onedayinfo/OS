@@ -230,3 +230,42 @@ describe('DashboardService.margin', () => {
     });
   });
 });
+
+describe('DashboardService.overview', () => {
+  it('calcula os limites do mês corrente e agrega os 5 blocos', async () => {
+    const prisma = makePrisma();
+    const contractsService = { findAll: vi.fn().mockResolvedValue([]) };
+    const service = new DashboardService(prisma as any, contractsService as any);
+
+    const spyTickets = vi.spyOn(service, 'ticketsBlock').mockResolvedValue({ open: 1, overdue: 0, recurring: 0, standalone: 1 });
+    const spyAvg = vi.spyOn(service, 'avgResolutionHours').mockResolvedValue(5);
+    const spyTech = vi.spyOn(service, 'technicianProductivity').mockResolvedValue([]);
+    const spyContracts = vi.spyOn(service, 'contractsExceeded').mockResolvedValue([]);
+    const spyMargin = vi.spyOn(service, 'margin').mockResolvedValue({
+      ticketsCount: 0, totalRevenue: 0, totalMaterialCost: 0, totalMargin: 0, avgMarginPerTicket: null,
+    });
+
+    const result = await service.overview();
+
+    expect(result.tickets).toEqual({ open: 1, overdue: 0, recurring: 0, standalone: 1 });
+    expect(result.avgResolutionHours).toBe(5);
+    expect(result.technicianProductivity).toEqual([]);
+    expect(result.contractsExceeded).toEqual([]);
+    expect(result.margin.ticketsCount).toBe(0);
+    expect(result.period.start).toBeTypeOf('string');
+    expect(result.period.end).toBeTypeOf('string');
+
+    // os 4 métodos que recebem período foram chamados com os MESMOS limites
+    const [start1, end1] = spyTickets.mock.calls[0];
+    const [start2, end2] = spyAvg.mock.calls[0];
+    const [start3, end3] = spyTech.mock.calls[0];
+    const [start4, end4] = spyMargin.mock.calls[0];
+    expect(start1).toEqual(start2);
+    expect(start1).toEqual(start3);
+    expect(start1).toEqual(start4);
+    expect(end1).toEqual(end2);
+    expect(end1).toEqual(end3);
+    expect(end1).toEqual(end4);
+    expect(spyContracts).toHaveBeenCalledWith();
+  });
+});
