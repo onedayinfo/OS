@@ -136,6 +136,23 @@ export function contractExpiring(
   };
 }
 
+export function satisfactionSurvey(
+  ticket: Pick<Ticket, 'number' | 'title'>,
+  link: string,
+  brand?: BrandInfo,
+): RenderedEmail {
+  return {
+    subject: `Como foi o atendimento do chamado ${ticketRef(ticket)}?`,
+    html: wrap(
+      'Sua opinião é importante',
+      `<p>O chamado <strong>${esc(ticket.title)}</strong> ${ticketRef(ticket)} foi encerrado.</p>` +
+        `<p>Avalie o atendimento (leva menos de 1 minuto):</p>` +
+        `<p><a href="${esc(link)}">${esc(link)}</a></p>`,
+      brand,
+    ),
+  };
+}
+
 export function contactInvite(
   user: { name: string; email: string },
   link: string,

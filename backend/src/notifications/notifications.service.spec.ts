@@ -82,4 +82,17 @@ describe('NotificationsService', () => {
     vi.spyOn((svc as any).logger, 'warn').mockImplementation(() => {});
     await expect(svc.resolved(ticketBase)).resolves.toBeUndefined();
   });
+
+  it('surveyRequested: manda e-mail pro solicitante com o link da pesquisa', async () => {
+    const { svc, send } = make({ req1: { id: 'req1', email: 'req@a.com' } });
+    await svc.surveyRequested(ticketBase, { publicToken: 'tok123' } as any);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0].to).toBe('req@a.com');
+  });
+
+  it('surveyRequested: não faz nada se o chamado não tem solicitante', async () => {
+    const { svc, send } = make({});
+    await svc.surveyRequested({ ...ticketBase, requesterId: null }, { publicToken: 'tok123' } as any);
+    expect(send).not.toHaveBeenCalled();
+  });
 });

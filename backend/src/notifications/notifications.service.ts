@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { Ticket, TicketComment, User } from '@prisma/client';
+import type { Ticket, TicketComment, TicketSatisfactionSurvey, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { TicketNotifier } from '../tickets/ticket-notifier.js';
 import { EmailService } from '../email/email.service.js';
@@ -10,6 +10,7 @@ import {
   ticketCreatedInternal,
   ticketResolved,
   ticketSlaBreached,
+  satisfactionSurvey,
   type RenderedEmail,
 } from '../email/templates.js';
 
@@ -65,6 +66,13 @@ export class NotificationsService implements TicketNotifier {
     if (requester) {
       await this.deliver(requester.email, ticketResolved(ticket, await this.email.brand()), ticket);
     }
+  }
+
+  async surveyRequested(ticket: Ticket, survey: TicketSatisfactionSurvey): Promise<void> {
+    const requester = await this.userById(ticket.requesterId);
+    if (!requester) return;
+    const link = `${process.env.PORTAL_URL}/pesquisa/${survey.publicToken}`;
+    await this.deliver(requester.email, satisfactionSurvey(ticket, link, await this.email.brand()), ticket);
   }
 
   async slaBreached(ticket: Ticket): Promise<void> {

@@ -1,4 +1,4 @@
-import type { Ticket, TicketComment } from '@prisma/client';
+import type { Ticket, TicketComment, TicketSatisfactionSurvey } from '@prisma/client';
 
 /**
  * Porta de notificação de chamados. Consumida por `TicketsService` e
@@ -11,4 +11,5 @@ export interface TicketNotifier {
   assigned(ticket: Ticket): Promise<void>;
   publicComment(ticket: Ticket, comment: TicketComment): Promise<void>;
   slaBreached(ticket: Ticket): Promise<void>;
+  surveyRequested(ticket: Ticket, survey: TicketSatisfactionSurvey): Promise<void>;
 }
