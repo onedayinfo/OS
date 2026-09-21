@@ -109,6 +109,7 @@ export interface TicketDetail extends TicketListItem {
   comments: TicketComment[];
   events: TicketEvent[];
   attachments: Attachment[];
+  satisfactionSurvey?: { score: number | null; comment: string | null; respondedAt: string | null } | null;
 }
 
 // --- Rótulos pt-BR ------------------------------------------------------------
