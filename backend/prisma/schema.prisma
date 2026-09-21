@@ -555,6 +555,7 @@ model Ticket {
   inboundEmails InboundEmail[]
   visits        Visit[]
   materialUsages TicketMaterialUsage[]
+  satisfactionSurvey TicketSatisfactionSurvey?
 
   @@index([clientId])
   @@index([assigneeId])
@@ -564,6 +565,20 @@ model Ticket {
   @@index([originQuoteId])
   @@index([contractId])
   @@map("tickets")
+}
+
+model TicketSatisfactionSurvey {
+  id          String    @id @default(cuid())
+  ticketId    String    @unique
+  publicToken String    @unique
+  score       Int?
+  comment     String?
+  sentAt      DateTime  @default(now())
+  respondedAt DateTime?
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+
+  @@map("ticket_satisfaction_surveys")
 }
 
 model TicketComment {
