@@ -16,6 +16,7 @@ import type {
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SlaService } from '../sla/sla.service.js';
 import { ContractsService } from '../contracts/contracts.service.js';
+import { SurveysService } from '../surveys/surveys.service.js';
 import { publicUser } from '../users/user-view.js';
 import { TicketNumberService } from './ticket-number.service.js';
 import { TicketEventsService } from './ticket-events.service.js';
@@ -131,6 +132,7 @@ export class TicketsService {
     private readonly statusRules: TicketStatusService,
     @Inject('TicketNotifier') private readonly notifier: TicketNotifier,
     private readonly contracts: ContractsService,
+    private readonly surveys: SurveysService,
   ) {}
 
   async create(input: CreateTicketInput, actor?: Actor): Promise<Ticket> {
@@ -437,6 +439,7 @@ export class TicketsService {
         },
         events: { orderBy: { createdAt: 'asc' } },
         attachments: { orderBy: { createdAt: 'asc' } },
+        satisfactionSurvey: { select: { score: true, comment: true, respondedAt: true } },
       },
     });
     if (!ticket || !this.inScope(ticket, actor)) {
@@ -487,7 +490,7 @@ export class TicketsService {
       data.closedAt = null;
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const { updated, survey } = await this.prisma.$transaction(async (tx) => {
       const u = await tx.ticket.update({ where: { id }, data });
       await this.events.record(
         tx,
@@ -496,10 +499,12 @@ export class TicketsService {
         { from: ticket.status, to: next },
         actor?.id,
       );
-      return u;
+      const survey = next === 'CLOSED' ? await this.surveys.createForTicket(tx, u) : null;
+      return { updated: u, survey };
     });
 
     if (next === 'RESOLVED') await this.notify((n) => n.resolved(updated), updated);
+    if (survey) await this.notify((n) => n.surveyRequested(updated, survey), updated);
     return updated;
   }
 

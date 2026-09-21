@@ -33,6 +33,7 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     statusRules as any,
     notifier as any,
     contracts as any,
+    { createForTicket: vi.fn().mockResolvedValue(null) } as any,
   );
   return { service, prisma, contracts, sla };
 }

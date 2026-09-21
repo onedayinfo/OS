@@ -2,7 +2,7 @@ import { TicketsService } from './tickets.service.js';
 import { TicketEventsService } from './ticket-events.service.js';
 import { TicketStatusService, resolveClientReply } from './ticket-status.service.js';
 
-function makeService(current: any) {
+function makeService(current: any, overrides: Record<string, unknown> = {}) {
   const events: any[] = [];
   const tx = {
     ticket: {
@@ -21,7 +21,13 @@ function makeService(current: any) {
     ticket: { findUnique: vi.fn().mockResolvedValue({ id: 't1', number: '2026-0001', ...current }) },
     $transaction: vi.fn().mockImplementation((cb: any) => cb(tx)),
   };
-  const notifier = { created: vi.fn(), resolved: vi.fn().mockResolvedValue(undefined), assigned: vi.fn() };
+  const notifier = {
+    created: vi.fn(),
+    resolved: vi.fn().mockResolvedValue(undefined),
+    assigned: vi.fn(),
+    surveyRequested: vi.fn().mockResolvedValue(undefined),
+  };
+  const surveys = { createForTicket: vi.fn().mockResolvedValue(null) };
   const service = new TicketsService(
     prisma as any,
     {} as any,
@@ -30,8 +36,9 @@ function makeService(current: any) {
     new TicketStatusService(),
     notifier as any,
     { resolveForTicket: vi.fn().mockResolvedValue(null) } as any,
+    (overrides.surveys as any) ?? surveys,
   );
-  return { service, notifier, events, tx };
+  return { service, notifier, events, tx, surveys };
 }
 
 describe('TicketsService.changeStatus', () => {
@@ -77,6 +84,22 @@ describe('TicketsService.changeStatus', () => {
     const data = tx.ticket.update.mock.calls[0][0].data;
     expect(data.resolvedAt).toBeNull();
     expect(data.closedAt).toBeNull();
+  });
+
+  it('RESOLVED→CLOSED cria a pesquisa e notifica quando há solicitante', async () => {
+    const survey = { id: 's1', publicToken: 'tok123' };
+    const surveys = { createForTicket: vi.fn().mockResolvedValue(survey) };
+    const { service, notifier } = makeService({ status: 'RESOLVED', resolvedAt: new Date() }, { surveys });
+    const res = await service.changeStatus('t1', 'CLOSED', { id: 'ag' });
+    expect(surveys.createForTicket).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: 't1' }));
+    expect(notifier.surveyRequested).toHaveBeenCalledWith(res, survey);
+  });
+
+  it('RESOLVED→CLOSED não notifica pesquisa quando já existe uma (createForTicket devolve null)', async () => {
+    const { service, notifier, surveys } = makeService({ status: 'RESOLVED', resolvedAt: new Date() });
+    await service.changeStatus('t1', 'CLOSED', { id: 'ag' });
+    expect(surveys.createForTicket).toHaveBeenCalled();
+    expect(notifier.surveyRequested).not.toHaveBeenCalled();
   });
 });
 

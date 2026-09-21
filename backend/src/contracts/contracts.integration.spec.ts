@@ -6,6 +6,7 @@ import { TicketEventsService } from '../tickets/ticket-events.service.js';
 import { TicketNumberService } from '../tickets/ticket-number.service.js';
 import { TicketStatusService } from '../tickets/ticket-status.service.js';
 import { TicketsService } from '../tickets/tickets.service.js';
+import { SurveysService } from '../surveys/surveys.service.js';
 
 // Teste de INTEGRAÇÃO: Postgres real. Escopo do contrato → chamado no local
 // coberto → contractId resolvido + SLA do contrato aplicado. Sobe com
@@ -62,7 +63,8 @@ describe('Contracts — vínculo automático e SLA (Postgres real)', () => {
     const ticketNumber = new TicketNumberService();
     const statusRules = new TicketStatusService();
     const notifier = { created: async () => {}, resolved: async () => {}, assigned: async () => {}, publicComment: async () => {}, slaBreached: async () => {} };
-    tickets = new TicketsService(prismaService, ticketNumber, sla, events, statusRules, notifier as any, contracts);
+    const surveys = new SurveysService(prismaService);
+    tickets = new TicketsService(prismaService, ticketNumber, sla, events, statusRules, notifier as any, contracts, surveys);
 
     await prisma.slaPolicy.upsert({
       where: { priority: 'MEDIUM' },

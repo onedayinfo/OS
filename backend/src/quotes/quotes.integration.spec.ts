@@ -8,6 +8,7 @@ import { TicketEventsService } from '../tickets/ticket-events.service.js';
 import { TicketStatusService } from '../tickets/ticket-status.service.js';
 import { SlaService } from '../sla/sla.service.js';
 import { ContractsService } from '../contracts/contracts.service.js';
+import { SurveysService } from '../surveys/surveys.service.js';
 
 // Teste de INTEGRAÇÃO: Postgres real. Criar orçamento avulso → enviar →
 // aprovar por token → chamado criado com origin QUOTE e originQuoteId certo.
@@ -67,7 +68,8 @@ describe('Quotes — aprovação avulsa vira chamado (Postgres real)', () => {
     const statusRules = new TicketStatusService();
     const contracts = new ContractsService(prismaService);
     const notifier = { created: async () => {}, resolved: async () => {}, assigned: async () => {}, publicComment: async () => {}, slaBreached: async () => {} };
-    const tickets = new TicketsService(prismaService, ticketNumber, sla, events, statusRules, notifier as any, contracts);
+    const surveys = new SurveysService(prismaService);
+    const tickets = new TicketsService(prismaService, ticketNumber, sla, events, statusRules, notifier as any, contracts, surveys);
     quotes = new QuotesService(prismaService, new QuoteNumberService(), tickets);
   });
 

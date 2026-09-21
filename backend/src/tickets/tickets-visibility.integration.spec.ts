@@ -23,6 +23,8 @@ function svc() {
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
+    { createForTicket: vi.fn().mockResolvedValue(null) } as any,
   );
 }
 

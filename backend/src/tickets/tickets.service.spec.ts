@@ -55,6 +55,7 @@ function makeDeps() {
     new TicketStatusService(),
     notifier as any,
     { resolveForTicket: vi.fn().mockResolvedValue(null) } as any,
+    { createForTicket: vi.fn().mockResolvedValue(null) } as any,
   );
   return { service, prisma, sla, notifier, events, tx };
 }
@@ -265,6 +266,7 @@ describe('TicketsService.createFromQuote', () => {
       {} as any,
       { created: vi.fn() } as any,
       {} as any,
+      { createForTicket: vi.fn().mockResolvedValue(null) } as any,
     );
     const ticket = await service.createFromQuote(tx as any, {
       clientId: 'cli1',

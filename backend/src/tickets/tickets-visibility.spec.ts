@@ -11,6 +11,9 @@ function makeService() {
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
+    {} as any,
+    { createForTicket: vi.fn().mockResolvedValue(null) } as any,
   );
   return { service, findMany, count };
 }
@@ -111,6 +114,8 @@ function serviceWithTicket(ticket: any) {
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
+    { createForTicket: vi.fn().mockResolvedValue(null) } as any,
   );
   return { service, findUnique };
 }
