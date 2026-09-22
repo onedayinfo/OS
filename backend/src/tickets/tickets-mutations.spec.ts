@@ -54,16 +54,43 @@ function makeService(current: any) {
 
 describe('TicketsService.changePriority', () => {
   it('MEDIUM→URGENT em ticket ativo recalcula slaDueAt para createdAt + 4h', async () => {
-    const { service, sla, tx, events } = makeService({ status: 'IN_PROGRESS', priority: 'MEDIUM' });
+    const { service, sla, tx, events } = makeService({
+      status: 'IN_PROGRESS',
+      priority: 'MEDIUM',
+      slaPausedMs: 0,
+    });
     await service.changePriority('t1', 'URGENT', { id: 'ag' });
 
-    expect(sla.dueAt).toHaveBeenCalledWith('URGENT', CREATED_AT);
+    expect(sla.dueAt).toHaveBeenCalledWith('URGENT', CREATED_AT, undefined, undefined);
     const data = tx.ticket.update.mock.calls[0][0].data;
     expect(data.priority).toBe('URGENT');
     expect((data.slaDueAt as Date).getTime()).toBe(CREATED_AT.getTime() + 4 * HOUR);
     expect(events).toEqual([
       expect.objectContaining({ type: 'PRIORITY_CHANGED', data: { from: 'MEDIUM', to: 'URGENT' } }),
     ]);
+  });
+
+  it('passa contractId e categoryId do ticket pro SlaService.dueAt', async () => {
+    const { service, sla } = makeService({
+      status: 'OPEN',
+      priority: 'MEDIUM',
+      slaPausedMs: 0,
+      contractId: 'c1',
+      categoryId: 'cat1',
+    });
+    await service.changePriority('t1', 'URGENT', { id: 'ag' });
+    expect(sla.dueAt).toHaveBeenCalledWith('URGENT', CREATED_AT, 'c1', 'cat1');
+  });
+
+  it('soma slaPausedMs acumulado de volta ao novo prazo', async () => {
+    const { service, tx } = makeService({
+      status: 'IN_PROGRESS',
+      priority: 'MEDIUM',
+      slaPausedMs: 2 * HOUR,
+    });
+    await service.changePriority('t1', 'URGENT', { id: 'ag' });
+    const data = tx.ticket.update.mock.calls[0][0].data;
+    expect((data.slaDueAt as Date).getTime()).toBe(CREATED_AT.getTime() + 4 * HOUR + 2 * HOUR);
   });
 
   it('em ticket CLOSED NÃO recalcula slaDueAt', async () => {

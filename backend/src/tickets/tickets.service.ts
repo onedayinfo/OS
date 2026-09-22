@@ -565,7 +565,17 @@ export class TicketsService {
       ticket.status === 'CLOSED' ||
       ticket.status === 'CANCELLED';
     if (!terminal) {
-      data.slaDueAt = await this.sla.dueAt(priority, ticket.createdAt);
+      // Soma slaPausedMs de volta: senão trocar a prioridade depois de uma
+      // pausa perderia o tempo já pausado (spec §3.4). Se o chamado está
+      // pausado agora, a pausa em curso só entra quando ela terminar — evita
+      // duplo cálculo, e o cron já ignora WAITING_CLIENT de qualquer forma.
+      const base = await this.sla.dueAt(
+        priority,
+        ticket.createdAt,
+        ticket.contractId ?? undefined,
+        ticket.categoryId ?? undefined,
+      );
+      data.slaDueAt = new Date(base.getTime() + ticket.slaPausedMs);
     }
 
     return this.prisma.$transaction(async (tx) => {
