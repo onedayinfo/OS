@@ -9,10 +9,10 @@ import { Button } from '@/components/ui/button';
 
 function appLinks(role: string | undefined) {
   const links = [
-    { href: '/app/dashboard', label: 'Dashboard' },
     { href: '/app', label: 'Fila' },
     { href: '/app/agenda', label: 'Agenda' },
   ];
+  if (role === 'ADMIN' || role === 'AGENT') links.unshift({ href: '/app/dashboard', label: 'Dashboard' });
   if (role === 'AGENT') links.push({ href: '/app/campo', label: 'Campo' });
   links.push(
     { href: '/app/clientes', label: 'Clientes' },

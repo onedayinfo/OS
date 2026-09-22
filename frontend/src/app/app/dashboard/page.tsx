@@ -15,9 +15,10 @@ function KpiCard({ label, value }: { label: string; value: string }) {
 }
 
 export default function DashboardPage() {
-  const { data, isLoading } = useDashboardOverview();
+  const { data, isLoading, isError } = useDashboardOverview();
 
-  if (isLoading || !data) return <p className="text-sm text-muted-foreground">Carregando…</p>;
+  if (isLoading) return <p className="text-sm text-muted-foreground">Carregando…</p>;
+  if (isError || !data) return <p className="text-sm text-red-600">Não foi possível carregar o dashboard.</p>;
 
   return (
     <div className="flex flex-col gap-6">
