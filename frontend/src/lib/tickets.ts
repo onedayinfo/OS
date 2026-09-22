@@ -146,7 +146,8 @@ export function isOverdue(t: {
   return (
     !!t.slaDueAt &&
     new Date(t.slaDueAt).getTime() < Date.now() &&
-    !TERMINAL_STATUSES.includes(t.status)
+    !TERMINAL_STATUSES.includes(t.status) &&
+    t.status !== 'WAITING_CLIENT'
   );
 }
 

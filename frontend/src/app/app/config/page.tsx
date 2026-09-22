@@ -22,14 +22,87 @@ function errToast(e: unknown) {
   toast.error(e instanceof ApiError ? e.message : 'Falha na operação.');
 }
 
+interface CategorySlaOverride {
+  priority: TicketPriority;
+  hours: number;
+}
 interface Category {
   id: string;
   name: string;
   active: boolean;
+  slaOverrides: CategorySlaOverride[];
 }
+
+const CATEGORY_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
 interface SlaRow {
   priority: TicketPriority;
   hours: number;
+}
+
+function CategoryRow({
+  c,
+  onPatch,
+}: {
+  c: Category;
+  onPatch: (body: Record<string, unknown>) => void;
+}) {
+  const [slaHours, setSlaHours] = useState<Record<string, string>>(() => {
+    const overrides: Record<string, string> = {};
+    for (const o of c.slaOverrides) overrides[o.priority] = String(o.hours);
+    return overrides;
+  });
+
+  function saveSla() {
+    const overrides = CATEGORY_PRIORITIES.filter((p) => slaHours[p]?.trim()).map((p) => ({
+      priority: p,
+      hours: Number(slaHours[p]),
+    }));
+    onPatch({ slaOverrides: overrides });
+  }
+
+  return (
+    <li className="flex flex-col gap-2 rounded-md border border-border px-3 py-2">
+      <div className="flex items-center gap-2">
+        <input
+          defaultValue={c.name}
+          className="flex-1 bg-transparent text-sm outline-none"
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+            if (v && v !== c.name) onPatch({ name: v });
+          }}
+        />
+        <Badge tone={c.active ? 'green' : 'neutral'}>
+          {c.active ? 'Ativa' : 'Inativa'}
+        </Badge>
+        <button
+          type="button"
+          className="text-sm text-primary hover:underline"
+          onClick={() => onPatch({ active: !c.active })}
+        >
+          {c.active ? 'Desativar' : 'Ativar'}
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 border-t border-border pt-2">
+        <span className="text-xs uppercase text-muted-foreground">SLA</span>
+        {CATEGORY_PRIORITIES.map((p) => (
+          <label key={p} className="flex items-center gap-1.5 text-xs">
+            {PRIORITY_LABELS[p]}
+            <Input
+              type="number"
+              min={1}
+              placeholder="global"
+              className="h-7 w-16"
+              value={slaHours[p] ?? ''}
+              onChange={(e) => setSlaHours((prev) => ({ ...prev, [p]: e.target.value }))}
+            />
+          </label>
+        ))}
+        <Button variant="outline" className="h-7 text-xs" onClick={saveSla}>
+          Salvar SLA
+        </Button>
+      </div>
+    </li>
+  );
 }
 
 function CategoriesTab() {
@@ -78,31 +151,13 @@ function CategoriesTab() {
           Adicionar
         </Button>
       </form>
-      <ul className="flex flex-col gap-1">
+      <ul className="flex flex-col gap-2">
         {data?.map((c) => (
-          <li
+          <CategoryRow
             key={c.id}
-            className="flex items-center gap-2 rounded-md border border-border px-3 py-2"
-          >
-            <input
-              defaultValue={c.name}
-              className="flex-1 bg-transparent text-sm outline-none"
-              onBlur={(e) => {
-                const v = e.target.value.trim();
-                if (v && v !== c.name) patch.mutate({ id: c.id, body: { name: v } });
-              }}
-            />
-            <Badge tone={c.active ? 'green' : 'neutral'}>
-              {c.active ? 'Ativa' : 'Inativa'}
-            </Badge>
-            <button
-              type="button"
-              className="text-sm text-primary hover:underline"
-              onClick={() => patch.mutate({ id: c.id, body: { active: !c.active } })}
-            >
-              {c.active ? 'Desativar' : 'Ativar'}
-            </button>
-          </li>
+            c={c}
+            onPatch={(body) => patch.mutate({ id: c.id, body })}
+          />
         ))}
       </ul>
     </div>
