@@ -30,19 +30,31 @@ export class TicketStatusService {
 
 /**
  * Helper de uso interno (comentários / inbound de e-mail): se o chamado está
- * `WAITING_CLIENT`, uma resposta do cliente o traz de volta para `IN_PROGRESS`.
- * No-op caso contrário. Usado pelas Fases 6 e 9.
+ * `WAITING_CLIENT`, uma resposta do cliente o traz de volta para `IN_PROGRESS`
+ * e retoma o SLA pausado (mesma aritmética do `TicketsService.changeStatus`
+ * — duplicada aqui porque esta função não passa pelo `changeStatus`, só tem
+ * acesso ao `PrismaLike`/`tx`, sem `SlaService`). No-op caso contrário.
+ * Usado pelas Fases 6 e 9.
  */
 export async function resolveClientReply(client: PrismaLike, ticketId: string): Promise<void> {
   const ticket = await client.ticket.findUnique({
     where: { id: ticketId },
-    select: { status: true },
+    select: { status: true, slaPausedAt: true, slaPausedMs: true, slaDueAt: true },
   });
   if (!ticket || ticket.status !== 'WAITING_CLIENT') return;
 
+  const data: Prisma.TicketUpdateInput = { status: 'IN_PROGRESS' };
+  if (ticket.slaPausedAt) {
+    const elapsed = Date.now() - ticket.slaPausedAt.getTime();
+    data.slaPausedAt = null;
+    data.slaPausedMs = ticket.slaPausedMs + elapsed;
+    data.slaDueAt = ticket.slaDueAt ? new Date(ticket.slaDueAt.getTime() + elapsed) : null;
+    data.slaBreachNotifiedAt = null;
+  }
+
   await client.ticket.update({
     where: { id: ticketId },
-    data: { status: 'IN_PROGRESS' },
+    data,
   });
   await client.ticketEvent.create({
     data: {

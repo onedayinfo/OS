@@ -175,4 +175,30 @@ describe('resolveClientReply', () => {
     await resolveClientReply(client as any, 't1');
     expect(client.ticket.update).not.toHaveBeenCalled();
   });
+
+  it('em ticket WAITING_CLIENT pausado → soma elapsed a slaDueAt/slaPausedMs, zera slaPausedAt e slaBreachNotifiedAt', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-01T02:00:00.000Z'));
+    const client = {
+      ticket: {
+        findUnique: vi.fn().mockResolvedValue({
+          status: 'WAITING_CLIENT',
+          slaPausedAt: new Date('2026-09-01T00:00:00.000Z'),
+          slaPausedMs: 0,
+          slaDueAt: new Date('2026-09-01T01:00:00.000Z'),
+        }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      ticketEvent: { create: vi.fn() },
+    };
+    await resolveClientReply(client as any, 't1');
+    vi.useRealTimers();
+
+    const data = client.ticket.update.mock.calls[0][0].data;
+    expect(data.status).toBe('IN_PROGRESS');
+    expect(data.slaPausedAt).toBeNull();
+    expect(data.slaPausedMs).toBe(2 * 3600_000);
+    expect((data.slaDueAt as Date).toISOString()).toBe('2026-09-01T03:00:00.000Z');
+    expect(data.slaBreachNotifiedAt).toBeNull();
+  });
 });
