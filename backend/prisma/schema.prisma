@@ -168,6 +168,7 @@ model Category {
   checklistTemplate ChecklistTemplate?
   contracts Contract[]
   quotes Quote[]
+  slaOverrides CategorySlaPolicy[]
 
   @@map("categories")
 }
@@ -284,6 +285,17 @@ model ContractSlaPolicy {
 
   @@id([contractId, priority])
   @@map("contract_sla_policies")
+}
+
+model CategorySlaPolicy {
+  categoryId String
+  priority   TicketPriority
+  hours      Int
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, priority])
+  @@map("category_sla_policies")
 }
 
 model CatalogItem {
@@ -534,6 +546,8 @@ model Ticket {
   needsTriage     Boolean        @default(false)
   slaDueAt        DateTime?
   slaBreachNotifiedAt DateTime?
+  slaPausedAt     DateTime?
+  slaPausedMs     Int            @default(0)
   firstResponseAt DateTime?
   resolvedAt      DateTime?
   closedAt        DateTime?
