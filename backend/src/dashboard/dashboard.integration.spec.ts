@@ -22,6 +22,7 @@ async function cleanup(p: PrismaClient) {
   await p.visit.deleteMany({ where: { ticket: { number: { startsWith: PFX } } } });
   await p.ticket.deleteMany({ where: { number: { startsWith: PFX } } });
   await p.contract.deleteMany({ where: { name: { startsWith: PFX } } });
+  await p.warehouse.deleteMany({ where: { name: { startsWith: PFX } } });
   await p.catalogItem.deleteMany({ where: { name: { startsWith: PFX } } });
   await p.location.deleteMany({ where: { name: { startsWith: PFX } } });
   await p.user.deleteMany({ where: { email: { endsWith: `@${EMAIL_DOMAIN}` } } });
@@ -93,8 +94,9 @@ describe('Dashboard — overview com dados reais (Postgres real)', () => {
         items: { create: [{ catalogItemId: item.id, quantity: 1, unitPrice: 500 }] },
       },
     });
+    const warehouse = await prisma.warehouse.create({ data: { name: `${PFX} Depósito` } });
     await prisma.ticketMaterialUsage.create({
-      data: { ticketId: standaloneTicket.id, catalogItemId: item.id, warehouseId: (await prisma.warehouse.create({ data: { name: `${PFX} Depósito` } })).id, quantity: 1, unitCost: 100, createdById: technician.id },
+      data: { ticketId: standaloneTicket.id, catalogItemId: item.id, warehouseId: warehouse.id, quantity: 1, unitCost: 100, createdById: technician.id },
     });
 
     // 2 chamados de contrato no mês → estoura a franquia de 1.
