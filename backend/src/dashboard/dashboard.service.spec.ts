@@ -196,7 +196,7 @@ describe('DashboardService.margin', () => {
     const result = await service.margin(MONTH_START, MONTH_END);
 
     expect(prisma.quote.findMany).toHaveBeenCalledWith({
-      where: { status: 'APPROVED', approvedAt: { gte: MONTH_START, lt: MONTH_END } },
+      where: { status: 'APPROVED', approvedAt: { gte: MONTH_START, lt: MONTH_END }, ticket: { contractId: null } },
       include: { items: true },
     });
     expect(prisma.ticketMaterialUsage.findMany).toHaveBeenCalledWith({
@@ -209,6 +209,26 @@ describe('DashboardService.margin', () => {
       totalMargin: 570,
       avgMarginPerTicket: 285,
     });
+  });
+
+  it('dois orçamentos aprovados pro mesmo chamado não duplicam custo nem contagem', async () => {
+    const prisma = makePrisma({
+      quote: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'q1', ticketId: 't1', items: [{ quantity: 1, unitPrice: 100 }] },
+          { id: 'q2', ticketId: 't1', items: [{ quantity: 1, unitPrice: 50 }] },
+        ]),
+      },
+      ticketMaterialUsage: {
+        findMany: vi.fn().mockResolvedValue([{ ticketId: 't1', quantity: 2, unitCost: 10 }]), // custo 20
+      },
+    });
+    const service = new DashboardService(prisma as any, {} as any);
+    const result = await service.margin(MONTH_START, MONTH_END);
+    expect(result.ticketsCount).toBe(1);
+    expect(result.totalRevenue).toBe(150); // 100 + 50, receita soma os dois orçamentos
+    expect(result.totalMaterialCost).toBe(20); // custo contado 1x, não 2x
+    expect(result.totalMargin).toBe(130);
   });
 
   it('chamado com orçamento aprovado mas sem material usado conta custo 0', async () => {

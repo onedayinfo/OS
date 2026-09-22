@@ -112,7 +112,7 @@ export class DashboardService {
 
   async margin(monthStart: Date, monthEnd: Date) {
     const quotes = await this.prisma.quote.findMany({
-      where: { status: 'APPROVED', approvedAt: { gte: monthStart, lt: monthEnd } },
+      where: { status: 'APPROVED', approvedAt: { gte: monthStart, lt: monthEnd }, ticket: { contractId: null } },
       include: { items: true },
     });
     if (quotes.length === 0) {
@@ -120,22 +120,21 @@ export class DashboardService {
     }
 
     const ticketIds = quotes.map((q) => q.ticketId).filter((id): id is string => !!id);
-    const usages = ticketIds.length
-      ? await this.prisma.ticketMaterialUsage.findMany({ where: { ticketId: { in: ticketIds } } })
+    const uniqueTicketIds = [...new Set(ticketIds)];
+    const usages = uniqueTicketIds.length
+      ? await this.prisma.ticketMaterialUsage.findMany({ where: { ticketId: { in: uniqueTicketIds } } })
       : [];
     const costByTicket = new Map<string, number>();
     for (const u of usages) {
       costByTicket.set(u.ticketId, (costByTicket.get(u.ticketId) ?? 0) + u.quantity * u.unitCost);
     }
 
-    let totalRevenue = 0;
-    let totalMaterialCost = 0;
-    for (const q of quotes) {
-      totalRevenue += q.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
-      totalMaterialCost += q.ticketId ? (costByTicket.get(q.ticketId) ?? 0) : 0;
-    }
-
-    const ticketsCount = quotes.length;
+    const totalRevenue = quotes.reduce(
+      (sum, q) => sum + q.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0),
+      0,
+    );
+    const totalMaterialCost = uniqueTicketIds.reduce((sum, id) => sum + (costByTicket.get(id) ?? 0), 0);
+    const ticketsCount = uniqueTicketIds.length;
     const totalMargin = totalRevenue - totalMaterialCost;
     const round2 = (n: number) => Math.round(n * 100) / 100;
 
