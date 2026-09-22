@@ -495,6 +495,24 @@ export class TicketsService {
       data.closedAt = null;
     }
 
+    // Pausa/retomada de SLA em WAITING_CLIENT (spec §3.3): entra pausa;
+    // sai soma o tempo pausado a slaDueAt/slaPausedMs e libera novo aviso
+    // de estouro; reabertura de terminal com pausa órfã só zera (não soma
+    // — o chamado estava fechado, não "esperando resposta").
+    if (next === 'WAITING_CLIENT' && ticket.status !== 'WAITING_CLIENT') {
+      data.slaPausedAt = new Date();
+    } else if (ticket.status === 'WAITING_CLIENT' && next !== 'WAITING_CLIENT') {
+      if (ticket.slaPausedAt) {
+        const elapsed = Date.now() - ticket.slaPausedAt.getTime();
+        data.slaPausedMs = ticket.slaPausedMs + elapsed;
+        data.slaDueAt = ticket.slaDueAt ? new Date(ticket.slaDueAt.getTime() + elapsed) : null;
+        data.slaBreachNotifiedAt = null;
+      }
+      data.slaPausedAt = null;
+    } else if (TERMINAL_STATUSES.includes(ticket.status) && !TERMINAL_STATUSES.includes(next) && ticket.slaPausedAt) {
+      data.slaPausedAt = null;
+    }
+
     const { updated, survey } = await this.prisma.$transaction(async (tx) => {
       const u = await tx.ticket.update({ where: { id }, data });
       await this.events.record(

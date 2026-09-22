@@ -101,6 +101,49 @@ describe('TicketsService.changeStatus', () => {
     expect(surveys.createForTicket).toHaveBeenCalled();
     expect(notifier.surveyRequested).not.toHaveBeenCalled();
   });
+
+  it('OPEN→WAITING_CLIENT seta slaPausedAt', async () => {
+    const { service, tx } = makeService({ status: 'OPEN' });
+    const before = Date.now();
+    await service.changeStatus('t1', 'WAITING_CLIENT', { id: 'ag' });
+    const data = tx.ticket.update.mock.calls[0][0].data;
+    expect(data.slaPausedAt).toBeInstanceOf(Date);
+    expect((data.slaPausedAt as Date).getTime()).toBeGreaterThanOrEqual(before);
+  });
+
+  it('WAITING_CLIENT→IN_PROGRESS soma o tempo pausado a slaDueAt/slaPausedMs, zera slaPausedAt e slaBreachNotifiedAt', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-01T02:00:00.000Z'));
+    const { service, tx } = makeService({
+      status: 'WAITING_CLIENT',
+      slaPausedAt: new Date('2026-09-01T00:00:00.000Z'),
+      slaPausedMs: 0,
+      slaDueAt: new Date('2026-09-01T01:00:00.000Z'),
+      slaBreachNotifiedAt: new Date('2026-09-01T01:30:00.000Z'),
+    });
+    await service.changeStatus('t1', 'IN_PROGRESS', { id: 'ag' });
+    const data = tx.ticket.update.mock.calls[0][0].data;
+    vi.useRealTimers();
+
+    expect(data.slaPausedAt).toBeNull();
+    expect(data.slaPausedMs).toBe(2 * 3600_000);
+    expect((data.slaDueAt as Date).toISOString()).toBe('2026-09-01T03:00:00.000Z');
+    expect(data.slaBreachNotifiedAt).toBeNull();
+  });
+
+  it('CLOSED→OPEN (reabertura) com slaPausedAt órfão zera sem somar elapsed', async () => {
+    const { service, tx } = makeService({
+      status: 'CLOSED',
+      slaPausedAt: new Date('2026-08-01T00:00:00.000Z'),
+      slaPausedMs: 0,
+      slaDueAt: new Date('2026-08-02T00:00:00.000Z'),
+    });
+    await service.changeStatus('t1', 'OPEN', { id: 'ag' });
+    const data = tx.ticket.update.mock.calls[0][0].data;
+    expect(data.slaPausedAt).toBeNull();
+    expect(data.slaPausedMs).toBeUndefined();
+    expect(data.slaDueAt).toBeUndefined();
+  });
 });
 
 describe('resolveClientReply', () => {
