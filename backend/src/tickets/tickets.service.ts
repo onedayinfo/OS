@@ -33,7 +33,7 @@ const INTERNAL_EVENT_TYPES = new Set<TicketEventType>([
 
 const TERMINAL_STATUSES: TicketStatus[] = ['RESOLVED', 'CLOSED', 'CANCELLED'];
 const NON_TERMINAL_ONLY: Prisma.TicketWhereInput['status'] = {
-  notIn: TERMINAL_STATUSES,
+  notIn: [...TERMINAL_STATUSES, 'WAITING_CLIENT'],
 };
 
 export type Actor = { id: string; type?: string; role?: string; clientId?: string | null };
@@ -354,7 +354,7 @@ export class TicketsService {
       where.slaDueAt = { lt: new Date() };
       // Combina com um `?status=` explícito em vez de sobrescrevê-lo.
       where.status = query.status
-        ? { equals: query.status, notIn: TERMINAL_STATUSES }
+        ? { equals: query.status, notIn: [...TERMINAL_STATUSES, 'WAITING_CLIENT'] }
         : NON_TERMINAL_ONLY;
     }
 

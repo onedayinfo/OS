@@ -23,7 +23,7 @@ describe('SlaBreachCron', () => {
     expect(prisma.ticket.findMany).toHaveBeenCalledWith({
       where: {
         slaDueAt: { lt: expect.any(Date) },
-        status: { notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'] },
+        status: { notIn: ['RESOLVED', 'CLOSED', 'CANCELLED', 'WAITING_CLIENT'] },
         slaBreachNotifiedAt: null,
       },
     });

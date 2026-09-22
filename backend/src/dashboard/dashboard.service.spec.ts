@@ -38,7 +38,7 @@ describe('DashboardService.ticketsBlock', () => {
     // open: status fora dos terminais, sem filtro de data
     expect(calls[0][0]).toEqual({ where: { status: { notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'] } } });
     // overdue: idem + slaDueAt vencido
-    expect(calls[1][0].where.status).toEqual({ notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'] });
+    expect(calls[1][0].where.status).toEqual({ notIn: ['RESOLVED', 'CLOSED', 'CANCELLED', 'WAITING_CLIENT'] });
     expect(calls[1][0].where.slaDueAt).toEqual({ lt: expect.any(Date) });
     // recorrente: criado no mês, contractId preenchido
     expect(calls[2][0]).toEqual({

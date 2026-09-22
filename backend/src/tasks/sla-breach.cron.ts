@@ -28,7 +28,7 @@ export class SlaBreachCron {
     const overdue = await this.prisma.ticket.findMany({
       where: {
         slaDueAt: { lt: new Date() },
-        status: { notIn: [...SLA_TERMINAL_STATUSES] },
+        status: { notIn: [...SLA_TERMINAL_STATUSES, 'WAITING_CLIENT'] },
         slaBreachNotifiedAt: null,
       },
     });

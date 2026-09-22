@@ -25,7 +25,7 @@ export class DashboardService {
     const [open, overdue, recurring, standalone] = await Promise.all([
       this.prisma.ticket.count({ where: { status: { notIn: TERMINAL_STATUSES } } }),
       this.prisma.ticket.count({
-        where: { status: { notIn: TERMINAL_STATUSES }, slaDueAt: { lt: new Date() } },
+        where: { status: { notIn: [...TERMINAL_STATUSES, 'WAITING_CLIENT'] }, slaDueAt: { lt: new Date() } },
       }),
       this.prisma.ticket.count({
         where: { createdAt: { gte: monthStart, lt: monthEnd }, contractId: { not: null } },

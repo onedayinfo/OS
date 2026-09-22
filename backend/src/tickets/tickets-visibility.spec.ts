@@ -48,7 +48,7 @@ describe('TicketsService.findAll — escopo por papel', () => {
     await service.findAll({ overdue: true } as any, { id: 'a', type: 'INTERNAL', role: 'AGENT', clientId: null });
     const where = whereOf(findMany);
     expect(where.slaDueAt.lt).toBeInstanceOf(Date);
-    expect(where.status.notIn).toEqual(['RESOLVED', 'CLOSED', 'CANCELLED']);
+    expect(where.status.notIn).toEqual(['RESOLVED', 'CLOSED', 'CANCELLED', 'WAITING_CLIENT']);
   });
 
   it('MANAGER sem clientId → escopo vazio (não casa clientId=null de triagem)', async () => {
@@ -65,7 +65,7 @@ describe('TicketsService.findAll — escopo por papel', () => {
       id: 'a', type: 'INTERNAL', role: 'AGENT', clientId: null,
     });
     const where = whereOf(findMany);
-    expect(where.status).toEqual({ equals: 'OPEN', notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'] });
+    expect(where.status).toEqual({ equals: 'OPEN', notIn: ['RESOLVED', 'CLOSED', 'CANCELLED', 'WAITING_CLIENT'] });
     expect(where.slaDueAt.lt).toBeInstanceOf(Date);
   });
 
