@@ -68,7 +68,12 @@ export class ContractPreventiveCron {
 
     for (const locationId of locationIds) {
       const assetIds = contract.assets.filter((a) => a.locationId === locationId).map((a) => a.id);
-      const slaDueAt = await this.sla.dueAt('MEDIUM', new Date(), contract.id);
+      const slaDueAt = await this.sla.dueAt(
+        'MEDIUM',
+        new Date(),
+        contract.id,
+        contract.defaultCategoryId ?? undefined,
+      );
 
       await this.prisma.$transaction(async (tx) => {
         const number = await this.ticketNumber.next(tx);

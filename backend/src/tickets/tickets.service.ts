@@ -576,6 +576,7 @@ export class TicketsService {
         ticket.categoryId ?? undefined,
       );
       data.slaDueAt = new Date(base.getTime() + ticket.slaPausedMs);
+      data.slaBreachNotifiedAt = null;
     }
 
     return this.prisma.$transaction(async (tx) => {

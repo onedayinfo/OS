@@ -54,7 +54,7 @@ describe('TicketsService — vínculo automático a contrato', () => {
       actor,
     );
     expect(contracts.resolveForTicket).toHaveBeenCalledWith('cli1', 'loc1', []);
-    expect(sla.dueAt).toHaveBeenCalledWith('MEDIUM', expect.any(Date), 'c1');
+    expect(sla.dueAt).toHaveBeenCalledWith('MEDIUM', expect.any(Date), 'c1', undefined);
     expect(prisma.ticket.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ contractId: 'c1' }) }),
     );

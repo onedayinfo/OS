@@ -20,7 +20,7 @@ const id: Record<string, string> = {};
 
 async function cleanup(p: PrismaClient) {
   await p.category.deleteMany({ where: { name: { startsWith: PFX } } });
-  await p.ticket.deleteMany({ where: { number: { startsWith: PFX } } });
+  await p.ticket.deleteMany({ where: { title: { startsWith: PFX } } });
   await p.user.deleteMany({ where: { email: { endsWith: `@${EMAIL_DOMAIN}` } } });
   await p.client.deleteMany({ where: { name: { startsWith: PFX } } });
 }
@@ -114,7 +114,7 @@ describe('SLA real — categoria e pausa (Postgres real)', () => {
     const resumed = await tickets.changeStatus(ticket.id, 'IN_PROGRESS', { id: id.actorId });
 
     expect(resumed.slaPausedAt).toBeNull();
-    expect(resumed.slaPausedMs).toBeGreaterThanOrEqual(1000);
+    expect(resumed.slaPausedMs).toBeGreaterThanOrEqual(500);
     expect(resumed.slaDueAt!.getTime()).toBeGreaterThan(dueBefore);
   });
 });

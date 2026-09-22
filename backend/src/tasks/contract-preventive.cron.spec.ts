@@ -58,6 +58,29 @@ describe('ContractPreventiveCron', () => {
     });
   });
 
+  it('calcula o SLA usando a categoria padrão do contrato', async () => {
+    const contract = {
+      id: 'c1',
+      clientId: 'cli1',
+      name: 'Contrato X',
+      defaultCategoryId: 'cat1',
+      startDate: new Date('2026-01-01T00:00:00.000Z'),
+      nextGenerationAt: new Date('2026-09-01T00:00:00.000Z'),
+      preventiveFrequencyMonths: 1,
+      locations: [{ id: 'loc1' }],
+      assets: [],
+    };
+    const { cron, prisma, sla } = makeDeps({
+      contract: { findMany: vi.fn().mockResolvedValue([contract]), update: vi.fn() },
+    });
+    await cron.run();
+
+    expect(sla.dueAt).toHaveBeenCalledWith('MEDIUM', expect.any(Date), 'c1', 'cat1');
+    expect(prisma.ticket.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ categoryId: 'cat1' }) }),
+    );
+  });
+
   it('falha num contrato não impede os demais', async () => {
     const bad = {
       id: 'bad',

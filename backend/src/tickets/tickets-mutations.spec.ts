@@ -100,6 +100,31 @@ describe('TicketsService.changePriority', () => {
     expect(sla.dueAt).not.toHaveBeenCalled();
     expect(tx.ticket.update.mock.calls[0][0].data.slaDueAt).toBeUndefined();
   });
+
+  it('zera slaBreachNotifiedAt em ticket ativo (o prazo foi empurrado pra frente)', async () => {
+    const { tx, service } = makeService({
+      status: 'IN_PROGRESS',
+      priority: 'MEDIUM',
+      slaPausedMs: 0,
+      slaBreachNotifiedAt: new Date('2026-01-02T00:00:00.000Z'),
+    });
+    await service.changePriority('t1', 'URGENT', { id: 'ag' });
+    const data = tx.ticket.update.mock.calls[0][0].data;
+    expect(data.slaBreachNotifiedAt).toBeNull();
+  });
+
+  it('trocar prioridade durante pausa em curso não soma o tempo da pausa atual (só slaPausedMs já concluído)', async () => {
+    const { service, tx } = makeService({
+      status: 'WAITING_CLIENT',
+      priority: 'MEDIUM',
+      slaPausedMs: 0,
+      slaPausedAt: new Date('2026-01-01T01:00:00.000Z'),
+    });
+    await service.changePriority('t1', 'URGENT', { id: 'ag' });
+    const data = tx.ticket.update.mock.calls[0][0].data;
+    // URGENT = 4h (mock), slaPausedMs = 0 → não conta a pausa em curso.
+    expect((data.slaDueAt as Date).getTime()).toBe(CREATED_AT.getTime() + 4 * HOUR);
+  });
 });
 
 describe('TicketsService.assign', () => {
