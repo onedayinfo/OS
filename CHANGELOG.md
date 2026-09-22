@@ -14,6 +14,10 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   recorrente vs avulso, tempo médio de atendimento, produtividade por
   técnico, contratos com franquia estourada e margem por chamado avulso —
   tudo do mês civil corrente.
+- **SLA real**: o prazo pausa enquanto o chamado está "Aguardando
+  cliente" (o tempo pausado é somado de volta ao sair do estado) e
+  ganha um terceiro nível de SLA por categoria (Contrato > Categoria >
+  Global).
 
 ## [0.6.0] - 2026-09-20
 
