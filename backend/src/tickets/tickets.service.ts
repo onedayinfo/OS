@@ -185,7 +185,12 @@ export class TicketsService {
     const contractId = await this.contracts.resolveForTicket(clientId, locationId, assetIds);
 
     // read-only, pode ficar fora da transação
-    const slaDueAt = await this.sla.dueAt(priority, new Date(), contractId ?? undefined);
+    const slaDueAt = await this.sla.dueAt(
+      priority,
+      new Date(),
+      contractId ?? undefined,
+      input.categoryId ?? undefined,
+    );
 
     const ticket = await this.prisma.$transaction(async (tx) => {
       const number = await this.ticketNumber.next(tx);
@@ -233,7 +238,7 @@ export class TicketsService {
     tx: Prisma.TransactionClient,
     input: { clientId: string; categoryId: string; title: string; quoteId: string },
   ): Promise<Ticket> {
-    const slaDueAt = await this.sla.dueAt('MEDIUM', new Date());
+    const slaDueAt = await this.sla.dueAt('MEDIUM', new Date(), undefined, input.categoryId);
     const number = await this.ticketNumber.next(tx);
     const created = await tx.ticket.create({
       data: {

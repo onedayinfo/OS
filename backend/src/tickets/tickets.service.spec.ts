@@ -77,7 +77,7 @@ describe('TicketsService.create', () => {
     );
 
     expect(ticket.number).toMatch(/^\d{4}-\d{4}$/);
-    expect(sla.dueAt).toHaveBeenCalledWith('MEDIUM', expect.any(Date), undefined);
+    expect(sla.dueAt).toHaveBeenCalledWith('MEDIUM', expect.any(Date), undefined, undefined);
     expect(ticket.slaDueAt.getTime()).toBeGreaterThanOrEqual(before + 24 * HOUR - 1000);
     expect(ticket.slaDueAt.getTime()).toBeLessThanOrEqual(Date.now() + 24 * HOUR + 1000);
 
