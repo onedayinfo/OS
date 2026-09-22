@@ -16,14 +16,25 @@ export class SlaService {
   }
 
   /**
-   * `from + hours*3600_000`. Com `contractId`, checa antes o SLA próprio do
-   * contrato (`ContractSlaPolicy`); sem override, cai no `SlaPolicy` global —
-   * comportamento idêntico ao de antes quando `contractId` é omitido.
+   * `from + hours*3600_000`. Precedência: `ContractSlaPolicy` (contrato) >
+   * `CategorySlaPolicy` (categoria) > `SlaPolicy` (global) — cada nível só
+   * é consultado se o de cima não tiver override pra essa prioridade.
    */
-  async dueAt(priority: TicketPriority, from: Date, contractId?: string): Promise<Date> {
+  async dueAt(
+    priority: TicketPriority,
+    from: Date,
+    contractId?: string | null,
+    categoryId?: string | null,
+  ): Promise<Date> {
     if (contractId) {
       const override = await this.prisma.contractSlaPolicy.findUnique({
         where: { contractId_priority: { contractId, priority } },
+      });
+      if (override) return new Date(from.getTime() + override.hours * 3600_000);
+    }
+    if (categoryId) {
+      const override = await this.prisma.categorySlaPolicy.findUnique({
+        where: { categoryId_priority: { categoryId, priority } },
       });
       if (override) return new Date(from.getTime() + override.hours * 3600_000);
     }

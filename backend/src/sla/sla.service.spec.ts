@@ -64,3 +64,52 @@ describe('SlaService.dueAt — override de contrato', () => {
     expect(prisma.contractSlaPolicy.findUnique).not.toHaveBeenCalled();
   });
 });
+
+describe('SlaService.dueAt — override de categoria', () => {
+  const makePrisma = (overrides: Record<string, unknown> = {}) => ({
+    slaPolicy: { findUnique: vi.fn().mockResolvedValue({ priority: 'MEDIUM', hours: 8 }) },
+    contractSlaPolicy: { findUnique: vi.fn().mockResolvedValue(null) },
+    categorySlaPolicy: { findUnique: vi.fn().mockResolvedValue(null) },
+    ...overrides,
+  });
+
+  it('usa o override da categoria quando não há override de contrato', async () => {
+    const prisma = makePrisma({
+      categorySlaPolicy: { findUnique: vi.fn().mockResolvedValue({ hours: 3 }) },
+    });
+    const service = new SlaService(prisma as any);
+    const from = new Date('2026-01-01T00:00:00.000Z');
+    const due = await service.dueAt('MEDIUM', from, null, 'cat1');
+    expect(due.toISOString()).toBe('2026-01-01T03:00:00.000Z');
+    expect(prisma.categorySlaPolicy.findUnique).toHaveBeenCalledWith({
+      where: { categoryId_priority: { categoryId: 'cat1', priority: 'MEDIUM' } },
+    });
+  });
+
+  it('contrato vence categoria quando os dois têm override', async () => {
+    const prisma = makePrisma({
+      contractSlaPolicy: { findUnique: vi.fn().mockResolvedValue({ hours: 2 }) },
+      categorySlaPolicy: { findUnique: vi.fn().mockResolvedValue({ hours: 3 }) },
+    });
+    const service = new SlaService(prisma as any);
+    const from = new Date('2026-01-01T00:00:00.000Z');
+    const due = await service.dueAt('MEDIUM', from, 'c1', 'cat1');
+    expect(due.toISOString()).toBe('2026-01-01T02:00:00.000Z');
+    expect(prisma.categorySlaPolicy.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('categoria sem override pra prioridade específica cai no global', async () => {
+    const prisma = makePrisma();
+    const service = new SlaService(prisma as any);
+    const from = new Date('2026-01-01T00:00:00.000Z');
+    const due = await service.dueAt('MEDIUM', from, null, 'cat1');
+    expect(due.toISOString()).toBe('2026-01-01T08:00:00.000Z');
+  });
+
+  it('sem categoryId, comportamento idêntico ao de antes', async () => {
+    const prisma = makePrisma();
+    const service = new SlaService(prisma as any);
+    await service.dueAt('MEDIUM', new Date('2026-01-01T00:00:00.000Z'));
+    expect(prisma.categorySlaPolicy.findUnique).not.toHaveBeenCalled();
+  });
+});
