@@ -133,6 +133,7 @@ model User {
   attachments      Attachment[]
   refreshTokens    RefreshToken[]
   visits           Visit[]
+  knowledgeArticles KnowledgeArticle[]
 
   @@map("users")
 }
@@ -169,6 +170,7 @@ model Category {
   contracts Contract[]
   quotes Quote[]
   slaOverrides CategorySlaPolicy[]
+  knowledgeArticles KnowledgeArticle[]
 
   @@map("categories")
 }
@@ -199,6 +201,27 @@ model ChecklistTemplateItem {
 
   @@index([templateId])
   @@map("checklist_template_items")
+}
+
+model KnowledgeArticle {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  categoryId  String?
+  assetTypeId String?
+  active      Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category    Category?    @relation(fields: [categoryId], references: [id])
+  assetType   AssetType?   @relation(fields: [assetTypeId], references: [id])
+  createdBy   User         @relation(fields: [createdById], references: [id])
+  attachments Attachment[]
+
+  @@index([categoryId])
+  @@index([assetTypeId])
+  @@map("knowledge_articles")
 }
 
 model Visit {
@@ -482,6 +505,7 @@ model AssetType {
   updatedAt DateTime @updatedAt
 
   assets Asset[]
+  knowledgeArticles KnowledgeArticle[]
 
   @@map("asset_types")
 }
@@ -632,6 +656,7 @@ model Attachment {
   commentId    String?
   assetId      String?
   visitId      String?
+  articleId    String?
   kind         AttachmentKind @default(GENERIC)
   filename     String
   storedPath   String
@@ -640,16 +665,18 @@ model Attachment {
   uploadedById String
   createdAt    DateTime       @default(now())
 
-  ticket     Ticket?        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  comment    TicketComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  asset      Asset?         @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  visit      Visit?         @relation(fields: [visitId], references: [id], onDelete: Cascade)
-  uploadedBy User           @relation(fields: [uploadedById], references: [id])
+  ticket     Ticket?           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  comment    TicketComment?    @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  asset      Asset?            @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  visit      Visit?            @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  article    KnowledgeArticle? @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  uploadedBy User              @relation(fields: [uploadedById], references: [id])
 
   @@index([ticketId])
   @@index([commentId])
   @@index([assetId])
   @@index([visitId])
+  @@index([articleId])
   @@map("attachments")
 }
 
