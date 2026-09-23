@@ -32,6 +32,7 @@ import { StockModule } from './stock/stock.module.js';
 import { QuotesModule } from './quotes/quotes.module.js';
 import { SurveysModule } from './surveys/surveys.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
+import { KnowledgeModule } from './knowledge/knowledge.module.js';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { DashboardModule } from './dashboard/dashboard.module.js';
     QuotesModule,
     SurveysModule,
     DashboardModule,
+    KnowledgeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
