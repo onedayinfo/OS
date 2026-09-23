@@ -273,8 +273,12 @@ frontend/src/lib/knowledge.ts   # tipos + hooks
   deixar o Prisma interpretar `OR: []` como "sem filtro").
 - Categoria/tipo de ativo inativado (não excluído) → não afeta o artigo,
   mesmo padrão de contrato/categoria inativos em outras partes do sistema.
-- Artigo `active: false` → some da busca padrão e das sugestões, mas
-  continua acessível por link direto (`/app/base-conhecimento/:id`).
+- Artigo `active: false` → some das sugestões automáticas (`suggestFor`
+  filtra `active: true`), mas continua listado na busca/lista de gestão
+  (`/app/base-conhecimento`) com o badge "Inativo" — mesmo padrão já usado
+  nas telas de gestão de Categoria/Tipo de ativo/Checklist deste sistema
+  (listam tudo, pra quem administra poder reativar) — e continua acessível
+  por link direto (`/app/base-conhecimento/:id`).
 - Anexo de artigo: mesmas regras já existentes de `AttachmentsService`
   (10 MB, mimes permitidos) — nenhuma regra nova.
 - Download de anexo de artigo por `CLIENT` → `NotFoundException` (recurso
