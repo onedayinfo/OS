@@ -18,6 +18,9 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   cliente" (o tempo pausado é somado de volta ao sair do estado) e
   ganha um terceiro nível de SLA por categoria (Contrato > Categoria >
   Global).
+- **Base de conhecimento**: artigos de procedimento/manual vinculados
+  opcionalmente a categoria e/ou tipo de ativo, com busca dedicada
+  (`/app/base-conhecimento`) e sugestão automática na ficha do chamado.
 
 ## [0.6.0] - 2026-09-20
 
