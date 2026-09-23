@@ -125,7 +125,7 @@ export default function BackupTab() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-red-600">
+        <h2 className="text-sm font-semibold text-destructive-foreground">
           Restaurar (apaga todos os dados atuais)
         </h2>
         <p className="text-xs text-muted-foreground">
@@ -141,7 +141,7 @@ export default function BackupTab() {
         />
         <Button
           variant="ghost"
-          className="self-start text-red-600 hover:bg-red-50"
+          className="self-start text-destructive-foreground hover:bg-destructive"
           disabled={confirm !== 'RESTAURAR' || doImport.isPending}
           onClick={() => doImport.mutate()}
         >

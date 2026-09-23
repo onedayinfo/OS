@@ -82,7 +82,7 @@ export default function PortalHomePage() {
             )}
             {isError && (
               <tr>
-                <td colSpan={4} className="px-3 py-8 text-center text-red-600">
+                <td colSpan={4} className="px-3 py-8 text-center text-destructive-foreground">
                   Erro ao carregar chamados.
                 </td>
               </tr>

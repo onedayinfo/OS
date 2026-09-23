@@ -149,7 +149,7 @@ export default function VisitExecutionPage({ params }: { params: { visitId: stri
           <section className="flex flex-col gap-2">
             <h2 className="text-sm font-semibold">Assinatura do cliente</h2>
             {hasSignature ? (
-              <p className="text-sm text-green-700">Assinatura registrada.</p>
+              <p className="text-sm text-success-foreground">Assinatura registrada.</p>
             ) : (
               <SignaturePad
                 onCapture={(file) => upload.mutate({ file, kind: 'SIGNATURE' }, { onError: onErr })}
@@ -170,7 +170,7 @@ export default function VisitExecutionPage({ params }: { params: { visitId: stri
           )}
 
           {visit.status === 'DONE' && (
-            <p className="text-sm text-green-700">
+            <p className="text-sm text-success-foreground">
               Visita concluída{visit.reportSentAt ? ' — laudo enviado.' : '.'}
             </p>
           )}

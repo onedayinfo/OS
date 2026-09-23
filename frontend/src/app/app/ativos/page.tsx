@@ -245,7 +245,7 @@ export default function AssetsPage() {
                 <td
                   className={`px-3 py-2 ${
                     isExpired(a.warrantyEndsAt)
-                      ? 'text-red-600'
+                      ? 'text-destructive-foreground'
                       : 'text-muted-foreground'
                   }`}
                 >

@@ -77,7 +77,7 @@ export function LoginForm({ area }: { area: 'app' | 'portal' }) {
               <Label htmlFor="email">E-mail</Label>
               <Input id="email" type="email" autoComplete="email" {...register('email')} />
               {errors.email && (
-                <p className="text-sm text-red-600">{errors.email.message}</p>
+                <p className="text-sm text-destructive-foreground">{errors.email.message}</p>
               )}
             </div>
             <div className="flex flex-col gap-1.5">
@@ -89,7 +89,7 @@ export function LoginForm({ area }: { area: 'app' | 'portal' }) {
                 {...register('password')}
               />
               {errors.password && (
-                <p className="text-sm text-red-600">{errors.password.message}</p>
+                <p className="text-sm text-destructive-foreground">{errors.password.message}</p>
               )}
             </div>
             <Button type="submit" disabled={isSubmitting}>

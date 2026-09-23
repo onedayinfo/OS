@@ -187,7 +187,7 @@ function VisitRow({ visit }: { visit: Visit }) {
           </button>
           <button
             type="button"
-            className="text-red-600 hover:underline"
+            className="text-destructive-foreground hover:underline"
             onClick={() =>
               cancel.mutate(undefined, { onSuccess: () => toast.success('Visita cancelada.'), onError: onErr })
             }

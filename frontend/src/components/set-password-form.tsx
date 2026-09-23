@@ -66,7 +66,7 @@ export function SetPasswordForm({ area }: { area: 'app' | 'portal' }) {
                   {...register('password')}
                 />
                 {errors.password && (
-                  <p className="text-sm text-red-600">{errors.password.message}</p>
+                  <p className="text-sm text-destructive-foreground">{errors.password.message}</p>
                 )}
               </div>
               <div className="flex flex-col gap-1.5">
@@ -78,7 +78,7 @@ export function SetPasswordForm({ area }: { area: 'app' | 'portal' }) {
                   {...register('confirm')}
                 />
                 {errors.confirm && (
-                  <p className="text-sm text-red-600">{errors.confirm.message}</p>
+                  <p className="text-sm text-destructive-foreground">{errors.confirm.message}</p>
                 )}
               </div>
               <Button type="submit" disabled={isSubmitting}>

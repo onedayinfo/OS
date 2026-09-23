@@ -83,7 +83,7 @@ export default function PublicSurveyPage() {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
           />
-          {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
+          {errorMsg && <p className="text-sm text-destructive-foreground">{errorMsg}</p>}
           <Button className="w-fit" disabled={!score || submitting} onClick={submit}>
             Enviar
           </Button>

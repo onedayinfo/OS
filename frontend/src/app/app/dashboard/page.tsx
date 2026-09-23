@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboardOverview();
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Carregando…</p>;
-  if (isError || !data) return <p className="text-sm text-red-600">Não foi possível carregar o dashboard.</p>;
+  if (isError || !data) return <p className="text-sm text-destructive-foreground">Não foi possível carregar o dashboard.</p>;
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,7 +68,7 @@ export default function DashboardPage() {
         ) : (
           <ul className="flex flex-col gap-1">
             {data.contractsExceeded.map((c) => (
-              <li key={c.contractId} className="flex justify-between rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-sm">
+              <li key={c.contractId} className="flex justify-between rounded-md border border-warning bg-warning px-3 py-2 text-sm">
                 <span>{c.clientName} — {c.name}</span>
                 <span>
                   {c.used}/{c.franchiseAmount} {c.unit === 'VISITS' ? 'visitas' : 'horas'}

@@ -48,7 +48,7 @@ export default function StockPage() {
             {balances?.map((b) => (
               <li
                 key={`${b.catalogItemId}-${b.warehouseId}`}
-                className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm ${b.belowMinimum ? 'border-amber-400 bg-amber-50' : 'border-border'}`}
+                className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm ${b.belowMinimum ? 'border-warning bg-warning' : 'border-border'}`}
               >
                 <span>
                   {b.catalogItem.name} — {b.warehouse.name}: <strong>{b.quantity} {b.catalogItem.unit}</strong>

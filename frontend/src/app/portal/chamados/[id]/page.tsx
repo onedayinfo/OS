@@ -16,7 +16,7 @@ export default function PortalTicketDetailPage({ params }: { params: { id: strin
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Carregando…</p>;
   if (isError || !ticket)
-    return <p className="text-sm text-red-600">Chamado não encontrado.</p>;
+    return <p className="text-sm text-destructive-foreground">Chamado não encontrado.</p>;
 
   return (
     <div className="flex flex-col gap-6">

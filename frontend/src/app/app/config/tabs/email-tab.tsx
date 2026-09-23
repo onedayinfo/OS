@@ -45,7 +45,7 @@ export default function EmailTab() {
   return (
     <div className="flex max-w-lg flex-col gap-4 pt-4">
       {data && data.encryptionKeySet === false && (
-        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="rounded-md border border-warning bg-warning px-3 py-2 text-sm text-warning-foreground">
           Defina a variável <code>APP_ENCRYPTION_KEY</code> no servidor para poder salvar segredos.
         </p>
       )}

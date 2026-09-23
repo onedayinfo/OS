@@ -291,7 +291,7 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
       {contract.status === 'ACTIVE' && (
         <Button
           variant="outline"
-          className="h-9 w-fit text-red-600"
+          className="h-9 w-fit text-destructive-foreground"
           disabled={cancel.isPending}
           onClick={() => {
             if (confirm('Cancelar este contrato?')) {

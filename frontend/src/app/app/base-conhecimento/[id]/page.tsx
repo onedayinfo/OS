@@ -57,7 +57,7 @@ export default function ArticleDetailPage({ params }: { params: { id: string } }
   }
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Carregando…</p>;
-  if (isError || !article) return <p className="text-sm text-red-600">Artigo não encontrado.</p>;
+  if (isError || !article) return <p className="text-sm text-destructive-foreground">Artigo não encontrado.</p>;
 
   return (
     <div className="flex max-w-2xl flex-col gap-4">
