@@ -47,3 +47,42 @@ export function useCreateArticle() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['knowledge-articles'] }),
   });
 }
+
+export interface KnowledgeArticleDetail {
+  id: string;
+  title: string;
+  body: string;
+  active: boolean;
+  categoryId: string | null;
+  assetTypeId: string | null;
+  category: { id: string; name: string } | null;
+  assetType: { id: string; name: string } | null;
+}
+
+export function useArticle(id: string) {
+  return useQuery({
+    queryKey: ['knowledge-article', id],
+    queryFn: () => api<KnowledgeArticleDetail>(`/knowledge-articles/${id}`),
+    enabled: !!id,
+  });
+}
+
+export interface UpdateArticleInput {
+  title?: string;
+  body?: string;
+  categoryId?: string;
+  assetTypeId?: string;
+  active?: boolean;
+}
+
+export function useUpdateArticle(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateArticleInput) =>
+      api<KnowledgeArticleDetail>(`/knowledge-articles/${id}`, { method: 'PATCH', body: input }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['knowledge-article', id] });
+      qc.invalidateQueries({ queryKey: ['knowledge-articles'] });
+    },
+  });
+}
