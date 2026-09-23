@@ -26,6 +26,7 @@ import { TicketTimeline } from '@/components/ticket-timeline';
 import { TicketMaterialUsages } from '@/components/ticket-material-usages';
 import { TicketQuotes } from '@/components/ticket-quotes';
 import { TicketSatisfaction } from '@/components/ticket-satisfaction';
+import { KnowledgeSuggestions } from '@/components/knowledge-suggestions';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 
@@ -305,6 +306,8 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
           <TicketQuotes ticketId={id} />
 
           <TicketSatisfaction ticket={ticket} />
+
+          <KnowledgeSuggestions ticketId={id} />
 
           <section>
             <h2 className="mb-2 text-sm font-semibold">Movimentações</h2>

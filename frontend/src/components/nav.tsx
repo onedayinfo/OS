@@ -21,8 +21,11 @@ function appLinks(role: string | undefined) {
     { href: '/app/estoque', label: 'Estoque' },
     { href: '/app/orcamentos', label: 'Orçamentos' },
     { href: '/app/ativos', label: 'Ativos' },
-    { href: '/app/config', label: 'Configurações' },
   );
+  if (role === 'ADMIN' || role === 'AGENT') {
+    links.push({ href: '/app/base-conhecimento', label: 'Base de conhecimento' });
+  }
+  links.push({ href: '/app/config', label: 'Configurações' });
   return links;
 }
 
