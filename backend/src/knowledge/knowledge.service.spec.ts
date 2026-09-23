@@ -97,3 +97,63 @@ describe('KnowledgeService.update', () => {
     });
   });
 });
+
+describe('KnowledgeService.suggestFor', () => {
+  function makeTicketPrisma(ticket: any, articles: any[] = []) {
+    return makePrisma({
+      ticket: { findUnique: vi.fn().mockResolvedValue(ticket) },
+      knowledgeArticle: {
+        ...makePrisma().knowledgeArticle,
+        findMany: vi.fn().mockResolvedValue(articles),
+      },
+    });
+  }
+
+  it('chamado inexistente → NotFoundException', async () => {
+    const prisma = makeTicketPrisma(null);
+    const service = new KnowledgeService(prisma as any);
+    await expect(service.suggestFor('nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('chamado sem categoria e sem ativos → devolve [] sem consultar o banco de artigos', async () => {
+    const prisma = makeTicketPrisma({ categoryId: null, assets: [] });
+    const service = new KnowledgeService(prisma as any);
+    const result = await service.suggestFor('t1');
+    expect(result).toEqual([]);
+    expect(prisma.knowledgeArticle.findMany).not.toHaveBeenCalled();
+  });
+
+  it('bate por categoria', async () => {
+    const prisma = makeTicketPrisma({ categoryId: 'c1', assets: [] }, [{ id: 'a1' }]);
+    const service = new KnowledgeService(prisma as any);
+    const result = await service.suggestFor('t1');
+    expect(prisma.knowledgeArticle.findMany).toHaveBeenCalledWith({
+      where: { active: true, OR: [{ categoryId: 'c1' }] },
+      orderBy: { title: 'asc' },
+    });
+    expect(result).toEqual([{ id: 'a1' }]);
+  });
+
+  it('bate por tipo de ativo (dedup de tipos repetidos entre ativos)', async () => {
+    const prisma = makeTicketPrisma(
+      { categoryId: null, assets: [{ typeId: 't1' }, { typeId: 't1' }, { typeId: 't2' }] },
+      [{ id: 'a1' }],
+    );
+    const service = new KnowledgeService(prisma as any);
+    await service.suggestFor('t1');
+    expect(prisma.knowledgeArticle.findMany).toHaveBeenCalledWith({
+      where: { active: true, OR: [{ assetTypeId: { in: ['t1', 't2'] } }] },
+      orderBy: { title: 'asc' },
+    });
+  });
+
+  it('bate pelos dois (categoria e tipo de ativo) → OR com as duas condições', async () => {
+    const prisma = makeTicketPrisma({ categoryId: 'c1', assets: [{ typeId: 't1' }] });
+    const service = new KnowledgeService(prisma as any);
+    await service.suggestFor('t1');
+    expect(prisma.knowledgeArticle.findMany).toHaveBeenCalledWith({
+      where: { active: true, OR: [{ categoryId: 'c1' }, { assetTypeId: { in: ['t1'] } }] },
+      orderBy: { title: 'asc' },
+    });
+  });
+});

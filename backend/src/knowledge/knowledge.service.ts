@@ -58,4 +58,23 @@ export class KnowledgeService {
     if (dto.active !== undefined) data.active = dto.active;
     return this.prisma.knowledgeArticle.update({ where: { id }, data });
   }
+
+  async suggestFor(ticketId: string) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { categoryId: true, assets: { select: { typeId: true } } },
+    });
+    if (!ticket) throw new NotFoundException('Chamado não encontrado.');
+
+    const assetTypeIds = [...new Set(ticket.assets.map((a) => a.typeId))];
+    const or: Prisma.KnowledgeArticleWhereInput[] = [];
+    if (ticket.categoryId) or.push({ categoryId: ticket.categoryId });
+    if (assetTypeIds.length) or.push({ assetTypeId: { in: assetTypeIds } });
+    if (or.length === 0) return [];
+
+    return this.prisma.knowledgeArticle.findMany({
+      where: { active: true, OR: or },
+      orderBy: { title: 'asc' },
+    });
+  }
 }
