@@ -16,6 +16,8 @@ const id: Record<string, string> = {};
 async function cleanup(p: PrismaClient) {
   await p.knowledgeArticle.deleteMany({ where: { title: { startsWith: PFX } } });
   await p.ticket.deleteMany({ where: { title: { startsWith: PFX } } });
+  await p.asset.deleteMany({ where: { label: { startsWith: PFX } } });
+  await p.location.deleteMany({ where: { name: { startsWith: PFX } } });
   await p.assetType.deleteMany({ where: { name: { startsWith: PFX } } });
   await p.category.deleteMany({ where: { name: { startsWith: PFX } } });
   await p.user.deleteMany({ where: { email: { endsWith: `@${EMAIL_DOMAIN}` } } });
