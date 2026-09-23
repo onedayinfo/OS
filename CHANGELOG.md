@@ -3,7 +3,7 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
-## [Não lançado]
+## [0.7.0] - 2026-09-23
 
 ### Adicionado
 - **Pesquisa de satisfação (CSAT)** por chamado (fase 0.7.0, parte 1/4): ao
