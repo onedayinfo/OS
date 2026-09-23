@@ -30,6 +30,7 @@ function makeDeps() {
     ticketComment: { findUnique: vi.fn() },
     asset: { findUnique: vi.fn() },
     visit: { findUnique: vi.fn() },
+    knowledgeArticle: { findUnique: vi.fn() },
   };
   const tickets = { assertAccess: vi.fn().mockResolvedValue({ id: 't1' }) };
   const service = new AttachmentsService(prisma as any, tickets as any, diskStorage());
@@ -270,6 +271,59 @@ describe('AttachmentsService.getForDownload — anexo de visita', () => {
   it('agente baixa anexo de visita', async () => {
     const { service, prisma } = makeDeps();
     const att = { id: 'at1', ticketId: null, commentId: null, assetId: null, visitId: 'v1' };
+    prisma.attachment.findUnique.mockResolvedValue(att);
+    await expect(service.getForDownload('at1', actor)).resolves.toBe(att);
+  });
+});
+
+describe('AttachmentsService.saveForArticle', () => {
+  it('rejeita artigo inexistente → NotFoundException', async () => {
+    const { service, prisma } = makeDeps();
+    prisma.knowledgeArticle.findUnique.mockResolvedValue(null);
+    await expect(service.saveForArticle('art1', png(), actor)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('persiste o anexo com articleId e devolve publicAttachment', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'att-'));
+    const prev = process.env.STORAGE_PATH;
+    process.env.STORAGE_PATH = dir;
+    try {
+      const { service, prisma } = makeDeps();
+      prisma.knowledgeArticle.findUnique.mockResolvedValue({ id: 'art1' });
+
+      const out = await service.saveForArticle('art1', png(), actor);
+
+      expect(prisma.knowledgeArticle.findUnique).toHaveBeenCalledWith({
+        where: { id: 'art1' },
+        select: { id: true },
+      });
+      const persisted = prisma.attachment.create.mock.calls[0][0].data;
+      expect(persisted.articleId).toBe('art1');
+      expect(out).not.toHaveProperty('storedPath');
+      expect(out).toMatchObject({ filename: 'foto.png', mime: 'image/png' });
+    } finally {
+      process.env.STORAGE_PATH = prev;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('AttachmentsService.getForDownload — anexo de artigo', () => {
+  const clientActor = { id: 'c1', type: 'CLIENT', role: 'CLIENT', clientId: 'cli1' };
+
+  it('cliente não baixa anexo de artigo (recurso interno)', async () => {
+    const { service, prisma } = makeDeps();
+    prisma.attachment.findUnique.mockResolvedValue({
+      id: 'at1', ticketId: null, commentId: null, assetId: null, visitId: null, articleId: 'art1',
+    });
+    await expect(service.getForDownload('at1', clientActor)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('agente baixa anexo de artigo', async () => {
+    const { service, prisma } = makeDeps();
+    const att = { id: 'at1', ticketId: null, commentId: null, assetId: null, visitId: null, articleId: 'art1' };
     prisma.attachment.findUnique.mockResolvedValue(att);
     await expect(service.getForDownload('at1', actor)).resolves.toBe(att);
   });

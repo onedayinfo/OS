@@ -91,6 +91,24 @@ export class AttachmentsController {
     return this.attachments.listForVisit(id);
   }
 
+  // Anexo de artigo da base de conhecimento: recurso interno. O acesso é checado pelo @Roles.
+  @Post('knowledge-articles/:id/attachments')
+  @Roles('ADMIN', 'AGENT')
+  @UseInterceptors(interceptor)
+  uploadToArticle(
+    @Param('id') id: string,
+    @UploadedFile() file: UF,
+    @CurrentUser() actor: CurrentUserData,
+  ) {
+    return this.attachments.saveForArticle(id, file, actor);
+  }
+
+  @Get('knowledge-articles/:id/attachments')
+  @Roles('ADMIN', 'AGENT')
+  listForArticle(@Param('id') id: string) {
+    return this.attachments.listForArticle(id);
+  }
+
   @Get('attachments/:id')
   async download(
     @Param('id') id: string,

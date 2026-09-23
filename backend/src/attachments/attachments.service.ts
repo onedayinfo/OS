@@ -118,6 +118,31 @@ export class AttachmentsService implements OnModuleInit {
       .then((rows) => rows.map(publicAttachment));
   }
 
+  /**
+   * Anexa um arquivo a um artigo da base de conhecimento (manual, foto).
+   * Recurso interno: só ADMIN/AGENT no controller. Não depende de
+   * `KnowledgeService` — checa a existência direto pelo `prisma`, mesmo
+   * padrão de `saveForAsset`/`saveForVisit`.
+   */
+  async saveForArticle(
+    articleId: string,
+    file: UploadedFile,
+    actor: Actor,
+  ): Promise<ReturnType<typeof publicAttachment>> {
+    const article = await this.prisma.knowledgeArticle.findUnique({
+      where: { id: articleId },
+      select: { id: true },
+    });
+    if (!article) throw new NotFoundException('Artigo não encontrado.');
+    return publicAttachment(await this.persist({ articleId }, file, actor));
+  }
+
+  listForArticle(articleId: string) {
+    return this.prisma.attachment
+      .findMany({ where: { articleId }, orderBy: { createdAt: 'asc' } })
+      .then((rows) => rows.map(publicAttachment));
+  }
+
   /** Carrega o anexo validando o acesso do `actor` ao chamado dono. */
   async getForDownload(id: string, actor: Actor): Promise<Attachment> {
     const attachment = await this.prisma.attachment.findUnique({ where: { id } });
@@ -148,6 +173,11 @@ export class AttachmentsService implements OnModuleInit {
       if (actor?.type === 'CLIENT') throw new NotFoundException('Anexo não encontrado.');
       return attachment;
     }
+    // Anexo de artigo da base de conhecimento: recurso interno. Cliente nunca baixa.
+    if (!ticketId && !attachment.commentId && !attachment.assetId && !attachment.visitId && attachment.articleId) {
+      if (actor?.type === 'CLIENT') throw new NotFoundException('Anexo não encontrado.');
+      return attachment;
+    }
     if (!ticketId) throw new NotFoundException('Anexo não encontrado.');
 
     // Sem acesso → NotFoundException (não vaza existência), mesmo escopo do 6.1.
@@ -156,7 +186,7 @@ export class AttachmentsService implements OnModuleInit {
   }
 
   private async persist(
-    link: { ticketId: string } | { commentId: string } | { assetId: string } | { visitId: string },
+    link: { ticketId: string } | { commentId: string } | { assetId: string } | { visitId: string } | { articleId: string },
     file: UploadedFile,
     actor?: Actor,
     kind: 'GENERIC' | 'PHOTO_BEFORE' | 'PHOTO_AFTER' | 'SIGNATURE' | 'REPORT' = 'GENERIC',
