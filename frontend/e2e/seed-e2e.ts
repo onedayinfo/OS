@@ -34,6 +34,17 @@ async function cleanup(prisma: InstanceType<typeof PrismaClient>): Promise<void>
   await prisma.quote.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
   await prisma.asset.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
   await prisma.location.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
+  // Attachment.uploadedBy e KnowledgeArticle.createdBy não têm onDelete:
+  // Cascade — artigos/anexos deixados por testes da base de conhecimento
+  // travariam o deleteMany de User abaixo se não somem antes.
+  const e2eUserIds = (
+    await prisma.user.findMany({
+      where: { email: { in: [E2E_EMAIL, E2E_ADMIN_EMAIL, E2E_AGENT_EMAIL] } },
+      select: { id: true },
+    })
+  ).map((u) => u.id);
+  await prisma.attachment.deleteMany({ where: { uploadedById: { in: e2eUserIds } } });
+  await prisma.knowledgeArticle.deleteMany({ where: { createdById: { in: e2eUserIds } } });
   await prisma.user.deleteMany({ where: { email: { in: [E2E_EMAIL, E2E_ADMIN_EMAIL, E2E_AGENT_EMAIL] } } });
   await prisma.client.deleteMany({ where: { id: E2E_CLIENT_ID } });
   await prisma.assetType.deleteMany({ where: { name: E2E_ASSET_TYPE } });
