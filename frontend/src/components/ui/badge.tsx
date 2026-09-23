@@ -6,10 +6,10 @@ type Tone = 'neutral' | 'blue' | 'green' | 'amber' | 'red';
 
 const TONES: Record<Tone, string> = {
   neutral: 'bg-muted text-muted-foreground',
-  blue: 'bg-blue-50 text-blue-700',
-  green: 'bg-green-50 text-green-700',
-  amber: 'bg-amber-50 text-amber-700',
-  red: 'bg-red-50 text-red-700',
+  blue: 'bg-info text-info-foreground',
+  green: 'bg-success text-success-foreground',
+  amber: 'bg-warning text-warning-foreground',
+  red: 'bg-destructive text-destructive-foreground',
 };
 
 export function Badge({

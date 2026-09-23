@@ -44,7 +44,7 @@ function TriageBlock({ ticket }: { ticket: TicketDetail }) {
   });
 
   return (
-    <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3">
+    <div className="mt-3 rounded-md border border-warning bg-warning p-3">
       <p className="text-sm font-medium text-amber-800">Chamado em triagem</p>
       <p className="mb-2 text-xs text-amber-700">Vincule a um cliente e solicitante.</p>
       <div className="flex flex-col gap-2">

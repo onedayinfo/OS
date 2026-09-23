@@ -33,9 +33,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-screen">
       <AppNav />
-      <main className="flex-1 p-8">{children}</main>
+      <main className="p-8">{children}</main>
     </div>
   );
 }

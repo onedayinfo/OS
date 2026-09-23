@@ -1,19 +1,11 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { fetchBranding } from "@/lib/branding";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const manrope = Manrope({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--font-heading" });
 
 export async function generateMetadata(): Promise<Metadata> {
   const b = await fetchBranding();
@@ -38,7 +30,7 @@ export default async function RootLayout({
           <style>{`:root{--primary:${b.primaryColor};--ring:${b.primaryColor}}`}</style>
         </head>
       )}
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${inter.variable} ${manrope.variable} antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

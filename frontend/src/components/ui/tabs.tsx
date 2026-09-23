@@ -13,17 +13,17 @@ export function Tabs({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex gap-1 border-b border-border">
+    <div className="flex gap-1 rounded-full border border-border bg-muted/40 p-1">
       {tabs.map((t) => (
         <button
           key={t.value}
           type="button"
           onClick={() => onChange(t.value)}
           className={cn(
-            '-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+            'rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors',
             value === t.value
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:text-foreground',
           )}
         >
           {t.label}

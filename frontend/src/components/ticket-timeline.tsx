@@ -117,7 +117,7 @@ export function TicketTimeline({
             className={cn(
               'rounded-lg border p-3',
               allowInternal && it.data.visibility === 'INTERNAL'
-                ? 'border-amber-200 bg-amber-50'
+                ? 'border-warning bg-warning'
                 : 'border-border bg-background',
             )}
           >

@@ -15,12 +15,12 @@ export default function AppearanceTab() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ['settings'], queryFn: () => api<SettingsView>('/settings') });
   const [name, setName] = useState('');
-  const [color, setColor] = useState('#2563eb');
+  const [color, setColor] = useState('#4F6B49');
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!data) return;
     setName((data['branding.companyName'] as string) ?? '');
-    setColor((data['branding.primaryColor'] as string) || '#2563eb');
+    setColor((data['branding.primaryColor'] as string) || '#4F6B49');
   }, [data]);
 
   const refresh = () => {
@@ -85,7 +85,7 @@ export default function AppearanceTab() {
         <Label>Cor primária</Label>
         <input
           type="color"
-          value={/^#[0-9a-fA-F]{6}$/.test(color) ? color : '#2563eb'}
+          value={/^#[0-9a-fA-F]{6}$/.test(color) ? color : '#4F6B49'}
           onChange={(e) => setColor(e.target.value)}
           className="h-9 w-16 rounded border border-border bg-transparent"
         />

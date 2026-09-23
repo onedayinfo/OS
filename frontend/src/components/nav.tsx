@@ -39,39 +39,41 @@ export function AppNav() {
   const { logout, user } = useSession();
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-muted/40 p-3">
-      <div className="px-2 py-3">
-        <BrandMark />
+    <header className="bg-nav">
+      <div className="flex items-center gap-4 px-6 py-3">
+        <Link href="/app" className="shrink-0">
+          <BrandMark className="h-7 w-auto text-nav-foreground" />
+        </Link>
+        <div className="ml-auto flex items-center gap-3">
+          <Button
+            variant="ghost"
+            className="text-nav-muted hover:bg-white/10 hover:text-nav-foreground"
+            onClick={async () => {
+              await logout();
+              router.replace('/app/login');
+            }}
+          >
+            Sair
+          </Button>
+        </div>
       </div>
-      <nav className="flex flex-col gap-0.5">
+      <nav className="flex gap-1 overflow-x-auto px-4 pb-3">
         {appLinks(user?.role).map((l) => (
           <Link
             key={l.href}
             href={l.href}
             className={cn(
-              'rounded-md px-3 py-2 text-sm transition-colors',
+              'shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors',
               isActive(pathname, l.href)
-                ? 'bg-primary/10 font-medium text-primary'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                ? 'bg-nav-active text-nav-active-foreground'
+                : 'text-nav-muted hover:text-nav-foreground',
             )}
           >
             {l.label}
           </Link>
         ))}
       </nav>
-      <div className="mt-auto">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-muted-foreground"
-          onClick={async () => {
-            await logout();
-            router.replace('/app/login');
-          }}
-        >
-          Sair
-        </Button>
-      </div>
-    </aside>
+    </header>
   );
 }
 
@@ -80,13 +82,13 @@ export function PortalNav() {
   const { logout } = useSession();
 
   return (
-    <header className="flex items-center justify-between border-b border-border px-6 py-3">
+    <header className="flex items-center justify-between bg-nav px-6 py-4">
       <Link href="/portal">
-        <BrandMark />
+        <BrandMark className="h-7 w-auto text-nav-foreground" />
       </Link>
       <Button
         variant="ghost"
-        className="text-muted-foreground"
+        className="text-nav-muted hover:bg-white/10 hover:text-nav-foreground"
         onClick={async () => {
           await logout();
           router.replace('/portal/login');

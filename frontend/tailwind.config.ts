@@ -26,6 +26,34 @@ const config: Config = {
           DEFAULT: "var(--primary)",
           foreground: "var(--primary-foreground)",
         },
+        card: "var(--card)",
+        success: {
+          DEFAULT: "var(--success)",
+          foreground: "var(--success-foreground)",
+        },
+        warning: {
+          DEFAULT: "var(--warning)",
+          foreground: "var(--warning-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+        },
+        info: {
+          DEFAULT: "var(--info)",
+          foreground: "var(--info-foreground)",
+        },
+        nav: {
+          DEFAULT: "var(--nav)",
+          foreground: "var(--nav-foreground)",
+          muted: "var(--nav-muted)",
+          active: "var(--nav-active)",
+          "active-foreground": "var(--nav-active-foreground)",
+        },
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        heading: ["var(--font-heading)", "var(--font-sans)", "sans-serif"],
       },
     },
   },

@@ -2,26 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Paleta neutra (cinzas) + um azul de destaque. Sem dark mode no MVP. */
+/* Paleta sage quente + neutros creme. Tokens já prontos para modo escuro
+   (ainda não ativado por padrão — ver --font-heading e data-theme). */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --accent: #f5f5f5;
-  --accent-foreground: #171717;
-  --primary: #2563eb; /* blue-600 */
-  --primary-foreground: #ffffff;
-  --ring: #2563eb;
+  --background: #f6f5f0;
+  --foreground: #232920;
+  --card: #ffffff;
+  --muted: #edebe2;
+  --muted-foreground: #6c7268;
+  --border: #e2dfd3;
+  --input: #e2dfd3;
+  --accent: #edebe2;
+  --accent-foreground: #232920;
+  --primary: #4f6b49;
+  --primary-foreground: #fafaf3;
+  --ring: #4f6b49;
+
+  --success: #e3ebde;
+  --success-foreground: #3e5639;
+  --warning: #f3e9d4;
+  --warning-foreground: #b7791f;
+  --destructive: #f5dfda;
+  --destructive-foreground: #b23b30;
+  --info: #dee9f0;
+  --info-foreground: #3e6b8c;
+
+  --nav: #211f1a;
+  --nav-foreground: #f4f2e9;
+  --nav-muted: #8c897e;
+  --nav-active: var(--primary);
+  --nav-active-foreground: var(--primary-foreground);
+}
+
+:root[data-theme="dark"] {
+  --background: #171a15;
+  --foreground: #edebe1;
+  --card: #1e2219;
+  --muted: #262b20;
+  --muted-foreground: #9b988c;
+  --border: #31352a;
+  --input: #31352a;
+  --accent: #262b20;
+  --accent-foreground: #edebe1;
+  --primary: #8fb588;
+  --primary-foreground: #12160f;
+  --ring: #8fb588;
+
+  --success: #28331f;
+  --success-foreground: #a6c89f;
+  --warning: #3a3120;
+  --warning-foreground: #d9a94a;
+  --destructive: #3a2320;
+  --destructive-foreground: #e08277;
+  --info: #1e2c33;
+  --info-foreground: #7fadcc;
+
+  --nav: #12140f;
+  --nav-foreground: #edebe1;
+  --nav-muted: #7a776c;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading), var(--font-sans), sans-serif;
+  text-wrap: balance;
 }
 
 @layer utilities {
