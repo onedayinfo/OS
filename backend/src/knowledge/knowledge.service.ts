@@ -41,7 +41,7 @@ export class KnowledgeService {
   async findOne(id: string) {
     const article = await this.prisma.knowledgeArticle.findUnique({
       where: { id },
-      include: { category: true, assetType: true, attachments: true },
+      include: { category: true, assetType: true },
     });
     if (!article) throw new NotFoundException('Artigo não encontrado.');
     return article;
