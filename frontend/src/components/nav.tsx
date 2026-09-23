@@ -6,6 +6,10 @@ import { cn } from '@/lib/utils';
 import { useSession } from '@/lib/auth';
 import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/theme-toggle';
+
+const themeButtonClass =
+  'flex h-8 w-8 items-center justify-center rounded-full text-nav-muted transition-colors hover:bg-white/10 hover:text-nav-foreground';
 
 function appLinks(role: string | undefined) {
   const links = [
@@ -44,7 +48,8 @@ export function AppNav() {
         <Link href="/app" className="shrink-0">
           <BrandMark className="h-7 w-auto text-nav-foreground" />
         </Link>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle className={themeButtonClass} />
           <Button
             variant="ghost"
             className="text-nav-muted hover:bg-white/10 hover:text-nav-foreground"
@@ -86,16 +91,19 @@ export function PortalNav() {
       <Link href="/portal">
         <BrandMark className="h-7 w-auto text-nav-foreground" />
       </Link>
-      <Button
-        variant="ghost"
-        className="text-nav-muted hover:bg-white/10 hover:text-nav-foreground"
-        onClick={async () => {
-          await logout();
-          router.replace('/portal/login');
-        }}
-      >
-        Sair
-      </Button>
+      <div className="flex items-center gap-2">
+        <ThemeToggle className={themeButtonClass} />
+        <Button
+          variant="ghost"
+          className="text-nav-muted hover:bg-white/10 hover:text-nav-foreground"
+          onClick={async () => {
+            await logout();
+            router.replace('/portal/login');
+          }}
+        >
+          Sair
+        </Button>
+      </div>
     </header>
   );
 }
