@@ -3,6 +3,19 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.8.0] - 2026-09-23
+
+### Adicionado
+- **Modo escuro**: alternância manual pelo cabeçalho (`/app` e `/portal`),
+  com detecção automática do tema do sistema operacional quando o usuário
+  ainda não escolheu, e preferência salva no navegador.
+
+### Alterado
+- **Novo sistema de design**: paleta sage + creme no lugar do azul/cinza
+  genérico, tipografia Manrope (títulos) + Inter (corpo), navegação por
+  pílulas no topo em vez do menu lateral. Cores de status (erro, alerta,
+  sucesso) unificadas em tokens semânticos únicos em todo o front-end.
+
 ## [0.7.0] - 2026-09-23
 
 ### Adicionado
