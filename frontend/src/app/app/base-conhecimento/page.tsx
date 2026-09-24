@@ -2,11 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useArticles } from '@/lib/knowledge';
+import { NewArticleForm } from '@/components/new-article-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 
@@ -14,9 +17,11 @@ interface Category { id: string; name: string }
 interface AssetType { id: string; name: string }
 
 export default function KnowledgeListPage() {
+  const router = useRouter();
   const [q, setQ] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [assetTypeId, setAssetTypeId] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const { data: articles } = useArticles({ q: q || undefined, categoryId: categoryId || undefined, assetTypeId: assetTypeId || undefined });
   const { data: categories } = useQuery({ queryKey: ['categories'], queryFn: () => api<Category[]>('/categories') });
@@ -26,10 +31,19 @@ export default function KnowledgeListPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Base de conhecimento</h1>
-        <Link href="/app/base-conhecimento/novo">
-          <Button className="h-9">Novo artigo</Button>
-        </Link>
+        <Button className="h-9" onClick={() => setCreating(true)}>
+          Novo artigo
+        </Button>
       </div>
+
+      <Dialog open={creating} onClose={() => setCreating(false)} title="Novo artigo">
+        <NewArticleForm
+          onCreated={(id) => {
+            setCreating(false);
+            router.push(`/app/base-conhecimento/${id}`);
+          }}
+        />
+      </Dialog>
 
       <div className="flex flex-wrap gap-2">
         <Input
@@ -52,7 +66,7 @@ export default function KnowledgeListPage() {
         </Select>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
             <tr>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
@@ -14,8 +13,7 @@ import { Select } from '@/components/ui/select';
 interface Category { id: string; name: string }
 interface AssetType { id: string; name: string }
 
-export default function NewArticlePage() {
-  const router = useRouter();
+export function NewArticleForm({ onCreated }: { onCreated: (articleId: string) => void }) {
   const create = useCreateArticle();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -35,7 +33,7 @@ export default function NewArticlePage() {
       {
         onSuccess: (created) => {
           toast.success('Artigo criado.');
-          router.replace(`/app/base-conhecimento/${created.id}`);
+          onCreated(created.id);
         },
         onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Falha ao criar artigo.'),
       },
@@ -43,8 +41,7 @@ export default function NewArticlePage() {
   }
 
   return (
-    <div className="flex max-w-2xl flex-col gap-4">
-      <h1 className="text-lg font-semibold">Novo artigo</h1>
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <Label>Título</Label>
         <Input value={title} onChange={(e) => setTitle(e.target.value)} />

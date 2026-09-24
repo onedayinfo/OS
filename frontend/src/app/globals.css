@@ -96,11 +96,25 @@
 }
 
 body {
+  position: relative;
   color: var(--foreground);
   background: var(--background);
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-variant-numeric: tabular-nums;
+}
+
+/* ponytail: fundo liso por padrão; --page-bg-image fica pronto pra quando
+   tiver uma imagem de fundo desfocada por tenant (ainda sem UI pra isso). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -40px;
+  z-index: -1;
+  background-image: var(--page-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  filter: blur(40px);
 }
 
 h1, h2, h3, h4 {

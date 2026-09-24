@@ -19,6 +19,7 @@ import { AssetForm, type AssetFormPayload } from '@/components/asset-form';
 import { TicketTable } from '@/components/ticket-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { Tabs } from '@/components/ui/tabs';
 
 interface Client {
@@ -91,18 +92,16 @@ function ContactsTab({ clientId }: { clientId: string }) {
   return (
     <div className="flex flex-col gap-4 pt-4">
       <div className="flex justify-end">
-        <Button onClick={() => setAdding((v) => !v)}>
-          {adding ? 'Fechar' : 'Novo contato'}
-        </Button>
+        <Button onClick={() => setAdding(true)}>Novo contato</Button>
       </div>
-      {adding && (
+      <Dialog open={adding} onClose={() => setAdding(false)} title="Novo contato">
         <ContactForm
           busy={create.isPending}
           onSubmit={(v) => create.mutate(v)}
           onCancel={() => setAdding(false)}
         />
-      )}
-      <div className="overflow-x-auto rounded-lg border border-border">
+      </Dialog>
+      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -196,21 +195,17 @@ function LocationsTab({ clientId }: { clientId: string }) {
   return (
     <div className="flex flex-col gap-4 pt-4">
       <div className="flex justify-end">
-        <Button onClick={() => setAdding((v) => !v)}>
-          {adding ? 'Fechar' : 'Novo local'}
-        </Button>
+        <Button onClick={() => setAdding(true)}>Novo local</Button>
       </div>
-      {adding && (
-        <div className="max-w-xl rounded-lg border border-border p-4">
-          <LocationForm
-            submitLabel="Criar local"
-            busy={create.isPending}
-            onSubmit={(v) => create.mutate(v)}
-            onCancel={() => setAdding(false)}
-          />
-        </div>
-      )}
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <Dialog open={adding} onClose={() => setAdding(false)} title="Novo local">
+        <LocationForm
+          submitLabel="Criar local"
+          busy={create.isPending}
+          onSubmit={(v) => create.mutate(v)}
+          onCancel={() => setAdding(false)}
+        />
+      </Dialog>
+      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -278,22 +273,18 @@ function ClientAssetsTab({ clientId }: { clientId: string }) {
   return (
     <div className="flex flex-col gap-4 pt-4">
       <div className="flex justify-end">
-        <Button onClick={() => setAdding((v) => !v)}>
-          {adding ? 'Fechar' : 'Novo ativo'}
-        </Button>
+        <Button onClick={() => setAdding(true)}>Novo ativo</Button>
       </div>
-      {adding && (
-        <div className="max-w-2xl rounded-lg border border-border p-4">
-          <AssetForm
-            lockedClientId={clientId}
-            submitLabel="Criar ativo"
-            busy={create.isPending}
-            onSubmit={(v) => create.mutate(v)}
-            onCancel={() => setAdding(false)}
-          />
-        </div>
-      )}
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <Dialog open={adding} onClose={() => setAdding(false)} title="Novo ativo">
+        <AssetForm
+          lockedClientId={clientId}
+          submitLabel="Criar ativo"
+          busy={create.isPending}
+          onSubmit={(v) => create.mutate(v)}
+          onCancel={() => setAdding(false)}
+        />
+      </Dialog>
+      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -343,7 +334,7 @@ function ContractsTab({ clientId }: { clientId: string }) {
   const { data: contracts } = useContracts({ clientId });
   return (
     <div className="flex max-w-xl flex-col gap-3 pt-4">
-      <Link href={`/app/contratos/novo?clientId=${clientId}`}>
+      <Link href={`/app/contratos?novoContrato=1&clientId=${clientId}`}>
         <Button className="h-9">Novo contrato</Button>
       </Link>
       <ul className="flex flex-col gap-1">

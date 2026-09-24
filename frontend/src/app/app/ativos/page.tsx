@@ -16,6 +16,7 @@ import { AssetForm, type AssetFormPayload } from '@/components/asset-form';
 import { AssetImportDialog } from '@/components/asset-import-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 
@@ -107,38 +108,25 @@ export default function AssetsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Ativos</h1>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setImporting((v) => !v);
-              setCreating(false);
-            }}
-          >
-            {importing ? 'Fechar' : 'Importar CSV'}
+          <Button variant="outline" onClick={() => setImporting(true)}>
+            Importar CSV
           </Button>
-          <Button
-            onClick={() => {
-              setCreating((v) => !v);
-              setImporting(false);
-            }}
-          >
-            {creating ? 'Fechar' : 'Novo ativo'}
-          </Button>
+          <Button onClick={() => setCreating(true)}>Novo ativo</Button>
         </div>
       </div>
 
-      {importing && <AssetImportDialog onClose={() => setImporting(false)} />}
+      <Dialog open={importing} onClose={() => setImporting(false)} title="Importar ativos por CSV">
+        <AssetImportDialog />
+      </Dialog>
 
-      {creating && (
-        <div className="rounded-lg border border-border p-4">
-          <AssetForm
-            submitLabel="Criar ativo"
-            busy={create.isPending}
-            onSubmit={(v) => create.mutate(v)}
-            onCancel={() => setCreating(false)}
-          />
-        </div>
-      )}
+      <Dialog open={creating} onClose={() => setCreating(false)} title="Novo ativo">
+        <AssetForm
+          submitLabel="Criar ativo"
+          busy={create.isPending}
+          onSubmit={(v) => create.mutate(v)}
+          onCancel={() => setCreating(false)}
+        />
+      </Dialog>
 
       <div className="flex flex-wrap gap-2">
         <Select
@@ -198,7 +186,7 @@ export default function AssetsPage() {
         />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
             <tr>

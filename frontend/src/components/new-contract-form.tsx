@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
@@ -16,12 +15,19 @@ function onErr(e: unknown) {
   toast.error(e instanceof ApiError ? e.message : 'Falha na operação.');
 }
 
-export default function NewContractPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export function NewContractForm({
+  defaultClientId,
+  onCreated,
+  onCancel,
+}: {
+  defaultClientId?: string;
+  onCreated: (contractId: string) => void;
+  onCancel: () => void;
+}) {
   const create = useCreateContract();
+  const lockClient = !!defaultClientId;
 
-  const [clientId, setClientId] = useState(searchParams.get('clientId') ?? '');
+  const [clientId, setClientId] = useState(defaultClientId ?? '');
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -52,7 +58,7 @@ export default function NewContractPage() {
       {
         onSuccess: (created) => {
           toast.success('Contrato criado.');
-          router.push(`/app/contratos/${created.id}`);
+          onCreated(created.id);
         },
         onError: onErr,
       },
@@ -60,12 +66,10 @@ export default function NewContractPage() {
   }
 
   return (
-    <div className="flex max-w-lg flex-col gap-4">
-      <h1 className="text-lg font-semibold">Novo contrato</h1>
-
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <Label>Cliente</Label>
-        <Select value={clientId} onChange={(e) => setClientId(e.target.value)} disabled={!!searchParams.get('clientId')}>
+        <Select value={clientId} onChange={(e) => setClientId(e.target.value)} disabled={lockClient}>
           <option value="">Selecione…</option>
           {clients?.data.map((c) => (
             <option key={c.id} value={c.id}>
@@ -114,9 +118,14 @@ export default function NewContractPage() {
         Escopo (Locais/Ativos) e SLA por prioridade se editam na ficha, depois de criar.
       </p>
 
-      <Button className="h-9" disabled={create.isPending} onClick={submit}>
-        Criar contrato
-      </Button>
+      <div className="flex gap-2">
+        <Button disabled={create.isPending} onClick={submit}>
+          Criar contrato
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancelar
+        </Button>
+      </div>
     </div>
   );
 }

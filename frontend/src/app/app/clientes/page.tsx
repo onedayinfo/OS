@@ -9,6 +9,7 @@ import type { Paged } from '@/lib/tickets';
 import { ClientForm, type ClientValues } from '@/components/client-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 
 interface Client {
@@ -62,21 +63,17 @@ export default function ClientsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Clientes</h1>
-        <Button onClick={() => setCreating((v) => !v)}>
-          {creating ? 'Fechar' : 'Novo cliente'}
-        </Button>
+        <Button onClick={() => setCreating(true)}>Novo cliente</Button>
       </div>
 
-      {creating && (
-        <div className="rounded-lg border border-border p-4">
-          <ClientForm
-            submitLabel="Criar cliente"
-            busy={create.isPending}
-            onSubmit={(v) => create.mutate(v)}
-            onCancel={() => setCreating(false)}
-          />
-        </div>
-      )}
+      <Dialog open={creating} onClose={() => setCreating(false)} title="Novo cliente">
+        <ClientForm
+          submitLabel="Criar cliente"
+          busy={create.isPending}
+          onSubmit={(v) => create.mutate(v)}
+          onCancel={() => setCreating(false)}
+        />
+      </Dialog>
 
       <Input
         placeholder="Buscar por nome"
@@ -85,7 +82,7 @@ export default function ClientsPage() {
         onChange={(e) => setQ(e.target.value)}
       />
 
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
             <tr>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { type Paged } from '@/lib/tickets';
@@ -12,8 +13,10 @@ import {
   type Contract,
   type ContractStatus,
 } from '@/lib/contracts';
+import { NewContractForm } from '@/components/new-contract-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { Select } from '@/components/ui/select';
 
 function statusTone(s: ContractStatus) {
@@ -21,8 +24,22 @@ function statusTone(s: ContractStatus) {
 }
 
 export default function ContractsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [clientId, setClientId] = useState('');
   const [status, setStatus] = useState<ContractStatus | ''>('');
+  const [creating, setCreating] = useState(false);
+  const [prefillClientId, setPrefillClientId] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (searchParams.get('novoContrato') === '1') {
+      setPrefillClientId(searchParams.get('clientId') ?? undefined);
+      setCreating(true);
+      router.replace('/app/contratos');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const { data: contracts, isLoading } = useContracts({
     clientId: clientId || undefined,
     status: status || undefined,
@@ -36,10 +53,27 @@ export default function ContractsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Contratos</h1>
-        <Link href="/app/contratos/novo">
-          <Button className="h-9">Novo contrato</Button>
-        </Link>
+        <Button
+          className="h-9"
+          onClick={() => {
+            setPrefillClientId(undefined);
+            setCreating(true);
+          }}
+        >
+          Novo contrato
+        </Button>
       </div>
+
+      <Dialog open={creating} onClose={() => setCreating(false)} title="Novo contrato">
+        <NewContractForm
+          defaultClientId={prefillClientId}
+          onCreated={(id) => {
+            setCreating(false);
+            router.push(`/app/contratos/${id}`);
+          }}
+          onCancel={() => setCreating(false)}
+        />
+      </Dialog>
 
       <div className="flex gap-2">
         <Select className="h-9 w-56" value={clientId} onChange={(e) => setClientId(e.target.value)}>

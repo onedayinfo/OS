@@ -11,7 +11,7 @@ interface ImportResult {
   errors: { line: number; message: string }[];
 }
 
-export function AssetImportDialog({ onClose }: { onClose?: () => void }) {
+export function AssetImportDialog() {
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -33,20 +33,7 @@ export function AssetImportDialog({ onClose }: { onClose?: () => void }) {
   });
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Importar ativos por CSV</h2>
-        {onClose && (
-          <button
-            type="button"
-            className="text-sm text-primary hover:underline"
-            onClick={onClose}
-          >
-            Fechar
-          </button>
-        )}
-      </div>
-
+    <div className="flex flex-col gap-3">
       <a href="/modelo-ativos.csv" download className="text-sm text-primary hover:underline">
         Baixar modelo
       </a>
@@ -76,7 +63,7 @@ export function AssetImportDialog({ onClose }: { onClose?: () => void }) {
         <div className="flex flex-col gap-2">
           <p className="text-sm">{result.created} criados</p>
           {result.errors.length > 0 && (
-            <div className="overflow-x-auto rounded-lg border border-border">
+            <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
                   <tr>
