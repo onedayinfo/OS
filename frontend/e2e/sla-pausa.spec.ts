@@ -20,12 +20,13 @@ test('pausar em Aguardando cliente e voltar empurra o prazo de SLA pra frente', 
 
   await loginAsAdmin(page);
 
-  await page.goto('/app/chamados/novo');
-  await page.locator('select').nth(0).selectOption({ label: 'Cliente E2E' });
-  await page.locator('select').nth(1).selectOption({ index: 1 });
-  await page.locator('#title').fill(titulo);
-  await page.locator('#desc').fill('Descrição de teste E2E.');
-  await page.getByRole('button', { name: 'Criar chamado' }).click();
+  await page.getByRole('button', { name: 'Novo chamado' }).click();
+  const novoChamado = page.getByRole('dialog', { name: 'Novo chamado' });
+  await novoChamado.locator('select').nth(0).selectOption({ label: 'Cliente E2E' });
+  await novoChamado.locator('select').nth(1).selectOption({ index: 1 });
+  await novoChamado.locator('#title').fill(titulo);
+  await novoChamado.locator('#desc').fill('Descrição de teste E2E.');
+  await novoChamado.getByRole('button', { name: 'Criar chamado' }).click();
   await page.waitForURL(/\/app\/chamados\/(?!novo)[^/]+$/);
 
   const before = await slaText(page);

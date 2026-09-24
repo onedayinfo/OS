@@ -20,12 +20,13 @@ test('agenda uma visita e o técnico executa até fechar', async ({ page }) => {
 
   // 1. ADMIN abre um chamado e agenda uma visita pro Agente E2E, hoje.
   await login(page, E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD);
-  await page.goto('/app/chamados/novo');
-  await page.locator('select').nth(0).selectOption({ label: 'Cliente E2E' });
-  await page.locator('select').nth(1).selectOption({ index: 1 });
-  await page.locator('#title').fill(titulo);
-  await page.locator('#desc').fill('Chamado gerado pelo smoke E2E de visita.');
-  await page.getByRole('button', { name: 'Criar chamado' }).click();
+  await page.getByRole('button', { name: 'Novo chamado' }).click();
+  const novoChamado = page.getByRole('dialog', { name: 'Novo chamado' });
+  await novoChamado.locator('select').nth(0).selectOption({ label: 'Cliente E2E' });
+  await novoChamado.locator('select').nth(1).selectOption({ index: 1 });
+  await novoChamado.locator('#title').fill(titulo);
+  await novoChamado.locator('#desc').fill('Chamado gerado pelo smoke E2E de visita.');
+  await novoChamado.getByRole('button', { name: 'Criar chamado' }).click();
   await page.waitForURL(/\/app\/chamados\/(?!novo)[^/]+$/);
   const ticketNumber = (await page.locator('p.font-mono').first().textContent())?.trim();
 

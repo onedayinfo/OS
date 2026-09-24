@@ -26,7 +26,8 @@ test('orçamento avulso aprovado pelo link público vira chamado', async ({ page
   await expect(page.getByText(itemNome)).toBeVisible();
 
   // Orçamento avulso
-  await page.goto('/app/orcamentos/novo');
+  await page.goto('/app/orcamentos');
+  await page.getByRole('button', { name: 'Novo orçamento' }).click();
   await page.getByLabel('Cliente').selectOption({ label: 'Cliente E2E' });
   await page.getByLabel('Categoria (chamado gerado na aprovação)').selectOption({ index: 1 });
   await page.getByLabel('Título do chamado').fill(tituloChamado);

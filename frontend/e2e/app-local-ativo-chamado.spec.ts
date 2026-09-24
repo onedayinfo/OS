@@ -39,15 +39,17 @@ test('ADMIN cria local + ativo e abre chamado vinculado', async ({ page }) => {
   await expect(page.getByRole('link', { name: ativo })).toBeVisible();
 
   // 3. Novo chamado → cliente + local + ativo
-  await page.goto('/app/chamados/novo');
+  await page.goto('/app');
+  await page.getByRole('button', { name: 'Novo chamado' }).click();
+  const novoChamado = page.getByRole('dialog', { name: 'Novo chamado' });
   // selects na ordem do form: 0 Cliente, 1 Solicitante, 2 Categoria, 3 Prioridade, 4 Local
-  await page.locator('select').nth(0).selectOption({ label: 'Cliente E2E' });
-  await page.locator('select').nth(1).selectOption({ index: 1 }); // solicitante (único contato)
-  await page.locator('#title').fill(titulo);
-  await page.locator('#desc').fill('Chamado gerado pelo smoke E2E.');
-  await page.locator('select').nth(4).selectOption({ label: local });
-  await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: 'Criar chamado' }).click();
+  await novoChamado.locator('select').nth(0).selectOption({ label: 'Cliente E2E' });
+  await novoChamado.locator('select').nth(1).selectOption({ index: 1 }); // solicitante (único contato)
+  await novoChamado.locator('#title').fill(titulo);
+  await novoChamado.locator('#desc').fill('Chamado gerado pelo smoke E2E.');
+  await novoChamado.locator('select').nth(4).selectOption({ label: local });
+  await novoChamado.getByRole('checkbox').check();
+  await novoChamado.getByRole('button', { name: 'Criar chamado' }).click();
 
   // 4. Detalhe do chamado mostra o ativo na sidebar
   await page.waitForURL(/\/app\/chamados\/(?!novo)[^/]+$/);

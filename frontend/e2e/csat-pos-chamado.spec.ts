@@ -21,12 +21,14 @@ test('fechar chamado gera pesquisa; responder pelo link mostra a nota na ficha',
 
   // Novo chamado — selects na ordem do form: 0 Cliente, 1 Solicitante, 2
   // Categoria, 3 Prioridade, 4 Local (mesmo padrão de app-local-ativo-chamado).
-  await page.goto('/app/chamados/novo');
-  await page.locator('select').nth(0).selectOption({ label: 'Cliente E2E' });
-  await page.locator('select').nth(1).selectOption({ index: 1 }); // solicitante (único contato)
-  await page.locator('#title').fill(titulo);
-  await page.locator('#desc').fill('Descrição de teste E2E.');
-  await page.getByRole('button', { name: 'Criar chamado' }).click();
+  await page.goto('/app');
+  await page.getByRole('button', { name: 'Novo chamado' }).click();
+  const novoChamado = page.getByRole('dialog', { name: 'Novo chamado' });
+  await novoChamado.locator('select').nth(0).selectOption({ label: 'Cliente E2E' });
+  await novoChamado.locator('select').nth(1).selectOption({ index: 1 }); // solicitante (único contato)
+  await novoChamado.locator('#title').fill(titulo);
+  await novoChamado.locator('#desc').fill('Descrição de teste E2E.');
+  await novoChamado.getByRole('button', { name: 'Criar chamado' }).click();
   await page.waitForURL(/\/app\/chamados\/(?!novo)[^/]+$/);
 
   const ticketId = page.url().split('/').pop()!;

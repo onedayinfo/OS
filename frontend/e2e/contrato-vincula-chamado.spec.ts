@@ -30,13 +30,14 @@ test('contrato com local no escopo vincula o chamado automaticamente', async ({ 
   // 2. Cliente E2E → aba Contratos → novo contrato cobrindo esse local
   await page.getByRole('button', { name: 'Contratos' }).click();
   await page.getByRole('button', { name: 'Novo contrato' }).click();
-  await page.waitForURL(/\/app\/contratos\/novo/);
-  await page.locator('#name').fill(nomeContrato);
+  await page.waitForURL(/\/app\/contratos(\?|$)/);
+  const novoContrato = page.getByRole('dialog', { name: 'Novo contrato' });
+  await novoContrato.locator('#name').fill(nomeContrato);
   const hoje = new Date().toISOString().slice(0, 10);
   const proximoAno = new Date(Date.now() + 365 * 24 * 3600_000).toISOString().slice(0, 10);
-  await page.locator('input[type="date"]').nth(0).fill(hoje);
-  await page.locator('input[type="date"]').nth(1).fill(proximoAno);
-  await page.getByRole('button', { name: 'Criar contrato' }).click();
+  await novoContrato.locator('input[type="date"]').nth(0).fill(hoje);
+  await novoContrato.locator('input[type="date"]').nth(1).fill(proximoAno);
+  await novoContrato.getByRole('button', { name: 'Criar contrato' }).click();
   await page.waitForURL(/\/app\/contratos\/(?!novo)[^/]+$/);
 
   // 3. Ficha do contrato → marca o local no escopo → salva
@@ -45,13 +46,15 @@ test('contrato com local no escopo vincula o chamado automaticamente', async ({ 
   await expect(page.getByText('Escopo atualizado.')).toBeVisible();
 
   // 4. Novo chamado nesse local → detalhe mostra o contrato vinculado
-  await page.goto('/app/chamados/novo');
-  await page.locator('select').nth(0).selectOption({ label: 'Cliente E2E' });
-  await page.locator('select').nth(1).selectOption({ index: 1 });
-  await page.locator('#title').fill(titulo);
-  await page.locator('#desc').fill('Chamado gerado pelo smoke E2E de contrato.');
-  await page.locator('select').nth(4).selectOption({ label: local });
-  await page.getByRole('button', { name: 'Criar chamado' }).click();
+  await page.goto('/app');
+  await page.getByRole('button', { name: 'Novo chamado' }).click();
+  const novoChamado = page.getByRole('dialog', { name: 'Novo chamado' });
+  await novoChamado.locator('select').nth(0).selectOption({ label: 'Cliente E2E' });
+  await novoChamado.locator('select').nth(1).selectOption({ index: 1 });
+  await novoChamado.locator('#title').fill(titulo);
+  await novoChamado.locator('#desc').fill('Chamado gerado pelo smoke E2E de contrato.');
+  await novoChamado.locator('select').nth(4).selectOption({ label: local });
+  await novoChamado.getByRole('button', { name: 'Criar chamado' }).click();
   await page.waitForURL(/\/app\/chamados\/(?!novo)[^/]+$/);
   await expect(page.getByRole('link', { name: nomeContrato })).toBeVisible();
 });
