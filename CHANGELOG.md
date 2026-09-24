@@ -3,6 +3,15 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.9.0] - 2026-09-24
+
+### Alterado
+- **Menu volta a ser lateral** (grupos Operação/Cadastros/Sistema, item
+  ativo em pílula), no lugar da navegação em pílulas no topo da 0.8.0.
+- **Cadastros abrem em modal**: chamado, contrato, orçamento, artigo da
+  base de conhecimento, cliente, ativo, contato e local — no lugar de
+  rotas "/novo" dedicadas ou painéis que expandiam na própria página.
+
 ## [0.8.1] - 2026-09-23
 
 ### Corrigido
