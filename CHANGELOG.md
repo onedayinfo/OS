@@ -3,6 +3,15 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.8.1] - 2026-09-23
+
+### Corrigido
+- `cn()` (utilitário de classes dos componentes `ui/*`) não mesclava
+  classes Tailwind de verdade — só concatenava. Um `className="w-40"`
+  passado por fora perdia pra `w-full` da base, esticando filtros,
+  inputs e selects em telas de lista (Fila de chamados e outras) que
+  deveriam ficar compactos, como no protótipo do novo design.
+
 ## [0.8.0] - 2026-09-23
 
 ### Adicionado
