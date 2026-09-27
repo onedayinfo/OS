@@ -125,15 +125,17 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  client           Client?         @relation(fields: [clientId], references: [id])
-  ticketsRequested Ticket[]        @relation("TicketRequester")
-  ticketsAssigned  Ticket[]        @relation("TicketAssignee")
-  comments         TicketComment[]
-  events           TicketEvent[]
-  attachments      Attachment[]
-  refreshTokens    RefreshToken[]
-  visits           Visit[]
-  knowledgeArticles KnowledgeArticle[]
+  client               Client?              @relation(fields: [clientId], references: [id])
+  ticketsRequested     Ticket[]             @relation("TicketRequester")
+  ticketsAssigned      Ticket[]             @relation("TicketAssignee")
+  comments             TicketComment[]
+  events               TicketEvent[]
+  attachments          Attachment[]
+  refreshTokens        RefreshToken[]
+  visits               Visit[]
+  knowledgeArticles    KnowledgeArticle[]
+  opportunitiesOwned   Opportunity[]
+  opportunityNotes     OpportunityNote[]
 
   @@map("users")
 }
@@ -148,12 +150,13 @@ model Client {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  users     User[]
-  tickets   Ticket[]
-  locations Location[]
-  assets    Asset[]
-  contracts Contract[]
-  quotes    Quote[]
+  users           User[]
+  tickets         Ticket[]
+  locations       Location[]
+  assets          Asset[]
+  contracts       Contract[]
+  quotes          Quote[]
+  opportunities   Opportunity[]
 
   @@map("clients")
 }
@@ -450,11 +453,12 @@ model Quote {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  client   Client      @relation(fields: [clientId], references: [id])
-  ticket   Ticket?     @relation("QuoteTicket", fields: [ticketId], references: [id])
-  category Category?   @relation(fields: [categoryId], references: [id])
-  items    QuoteItem[]
-  ticketsOriginated Ticket[] @relation("TicketOriginQuote")
+  client            Client      @relation(fields: [clientId], references: [id])
+  ticket            Ticket?     @relation("QuoteTicket", fields: [ticketId], references: [id])
+  category          Category?   @relation(fields: [categoryId], references: [id])
+  items             QuoteItem[]
+  ticketsOriginated Ticket[]    @relation("TicketOriginQuote")
+  opportunity       Opportunity?
 
   @@index([clientId])
   @@index([ticketId])
@@ -473,6 +477,59 @@ model QuoteItem {
   catalogItem CatalogItem @relation(fields: [catalogItemId], references: [id])
 
   @@map("quote_items")
+}
+
+enum OpportunityStage {
+  NEW
+  CONTACTED
+  PROPOSAL
+  WON
+  LOST
+}
+
+model Opportunity {
+  id               String           @id @default(cuid())
+  title            String
+  stage            OpportunityStage @default(NEW)
+  value            Float?
+  clientId         String?
+  leadName         String?
+  leadCompany      String?
+  leadPhone        String?
+  leadEmail        String?
+  ownerId          String
+  quoteId          String?          @unique
+  lostReason       String?
+  nextFollowUpAt   DateTime?
+  nextFollowUpNote String?
+  wonAt            DateTime?
+  lostAt           DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  client Client?           @relation(fields: [clientId], references: [id])
+  owner  User              @relation(fields: [ownerId], references: [id])
+  quote  Quote?            @relation(fields: [quoteId], references: [id])
+  notes  OpportunityNote[]
+
+  @@index([clientId])
+  @@index([ownerId])
+  @@index([stage])
+  @@map("opportunities")
+}
+
+model OpportunityNote {
+  id            String   @id @default(cuid())
+  opportunityId String
+  authorId      String
+  text          String
+  createdAt     DateTime @default(now())
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id])
+
+  @@index([opportunityId])
+  @@map("opportunity_notes")
 }
 
 model Location {
