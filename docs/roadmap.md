@@ -80,6 +80,16 @@ e dá custo real ao chamado.
 - CSAT/NPS pós-chamado
 - Base de conhecimento (procedimentos, manuais por modelo de equipamento)
 
+### CRM — funil de vendas e relacionamento *(inserida fora da sequência original, entre 0.7.0 e 0.8.0)*
+- `Opportunity` único (lead ou cliente existente), estágios fixos, timeline
+  de notas, follow-up agendado
+- Ganho sem cliente prévio cria Cliente automaticamente; link opcional a
+  Orçamento
+- 100% interno (`ADMIN`/`AGENT`)
+
+Fora de escopo por ora: metas/comissão de vendedor (isso é 0.8.0), relatórios
+de funil, importação de leads, estágios configuráveis.
+
 ### 0.8.0 — Financeiro e fiscal
 - Faturamento recorrente (contrato) + avulso (orçamento aprovado)
 - Contas a receber, baixa de pagamento, inadimplência

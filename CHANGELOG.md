@@ -3,6 +3,15 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não lançado]
+
+### Adicionado
+- **CRM** (`/app/crm`): funil de vendas por estágio (Novo → Contato →
+  Proposta → Ganho/Perdido) para leads e oportunidades sobre clientes
+  existentes. Timeline de notas, follow-up agendado com lista de
+  atrasados/hoje, link opcional a um Orçamento. Ao marcar "Ganho", uma
+  oportunidade de lead vira Cliente automaticamente.
+
 ## [0.9.0] - 2026-09-24
 
 ### Alterado
