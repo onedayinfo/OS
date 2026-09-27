@@ -5,6 +5,7 @@ import { CreateOpportunityDto } from './dto/create-opportunity.dto.js';
 import { UpdateOpportunityDto } from './dto/update-opportunity.dto.js';
 import { ListOpportunitiesDto } from './dto/list-opportunities.dto.js';
 import { ChangeStageDto } from './dto/change-stage.dto.js';
+import { CreateNoteDto } from './dto/create-note.dto.js';
 
 export const OPPORTUNITY_INCLUDE = {
   client: { select: { id: true, name: true } },
@@ -135,6 +136,38 @@ export class OpportunitiesService {
     return tx.opportunity.update({
       where: { id: opp.id },
       data: { clientId: client.id, stage: 'WON', wonAt: new Date() },
+    });
+  }
+
+  async addNote(opportunityId: string, dto: CreateNoteDto, authorId: string) {
+    await this.mustFind(opportunityId);
+    return this.prisma.opportunityNote.create({
+      data: { opportunityId, authorId, text: dto.text },
+    });
+  }
+
+  async followUps(scope: 'today' | 'overdue') {
+    const now = new Date();
+    const cutoff =
+      scope === 'today'
+        ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+        : now;
+    return this.prisma.opportunity.findMany({
+      where: {
+        stage: { notIn: ['WON', 'LOST'] },
+        nextFollowUpAt: scope === 'today' ? { lte: cutoff } : { lt: cutoff },
+      },
+      select: {
+        id: true,
+        title: true,
+        clientId: true,
+        leadName: true,
+        ownerId: true,
+        nextFollowUpAt: true,
+        nextFollowUpNote: true,
+        client: { select: { id: true, name: true } },
+      },
+      orderBy: { nextFollowUpAt: 'asc' },
     });
   }
 }

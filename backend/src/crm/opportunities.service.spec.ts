@@ -113,3 +113,38 @@ describe('OpportunitiesService.changeStage', () => {
     expect(updated).toMatchObject({ stage: 'WON', clientId: 'c1' });
   });
 });
+
+describe('OpportunitiesService.addNote', () => {
+  it('cria nota vinculada à oportunidade e ao autor', async () => {
+    const prisma = makePrisma({
+      opportunityNote: { create: vi.fn().mockResolvedValue({ id: 'n1', text: 'Ligou de volta' }) },
+    });
+    const service = new OpportunitiesService(prisma as any);
+    const note = await service.addNote('o1', { text: 'Ligou de volta' }, 'u1');
+    expect(note).toMatchObject({ id: 'n1', text: 'Ligou de volta' });
+    expect((prisma as any).opportunityNote.create).toHaveBeenCalledWith({
+      data: { opportunityId: 'o1', authorId: 'u1', text: 'Ligou de volta' },
+    });
+  });
+});
+
+describe('OpportunitiesService.followUps', () => {
+  it('filtra por nextFollowUpAt <= agora e exclui WON/LOST', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const prisma = makePrisma({ opportunity: { findMany } });
+    const service = new OpportunitiesService(prisma as any);
+    await service.followUps('overdue');
+    const where = findMany.mock.calls[0][0].where;
+    expect(where.stage.notIn).toEqual(['WON', 'LOST']);
+    expect(where.nextFollowUpAt.lt).toBeInstanceOf(Date);
+  });
+
+  it('scope "today" filtra até o fim do dia', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const prisma = makePrisma({ opportunity: { findMany } });
+    const service = new OpportunitiesService(prisma as any);
+    await service.followUps('today');
+    const where = findMany.mock.calls[0][0].where;
+    expect(where.nextFollowUpAt.lte).toBeInstanceOf(Date);
+  });
+});
