@@ -228,11 +228,13 @@ título, cliente/lead, valor (do `quote.total` se linkado, senão `value`),
 responsável, badge de follow-up atrasado. Card tem menu "mover para →
 {próximo estágio válido}" (sem drag-and-drop). Filtros: responsável (select,
 default "meus"), toggle "mostrar ganhos/perdidos". Bloco fixo no topo:
-**Follow-ups de hoje/atrasados** (lista compacta, link pra ficha).
-
-**`/app/crm/novo`** — form: título, valor estimado, responsável, e um
-toggle "Lead novo" vs "Cliente existente" (select de `Client` no segundo
-caso; campos nome/empresa/telefone/e-mail no primeiro).
+**Follow-ups de hoje/atrasados** (lista compacta, link pra ficha). Botão
+**Nova oportunidade** abre um `Dialog` com o form de criação — cadastro em
+modal na própria lista, mesmo padrão adotado na 0.9.0 pra chamado/contrato/
+orçamento/cliente (não uma rota `/novo` dedicada). Form: título, valor
+estimado, responsável, e um toggle "Lead novo" vs "Cliente existente"
+(select de `Client` no segundo caso; campos nome/empresa/telefone/e-mail no
+primeiro).
 
 **`/app/crm/[id]`** — ficha: dados da oportunidade (editáveis), seletor de
 próximo estágio (com campo `lostReason` condicional quando escolhe
@@ -314,8 +316,8 @@ E2E Playwright (fumaça): criar oportunidade de lead pelo board → abrir ficha
 5. `opportunities.controller` + `crm.module` + registro no `app.module.ts`.
 6. Integração + CHANGELOG.
 7. Frontend: `lib/crm.ts` (tipos + hooks).
-8. Frontend: `/app/crm` (board) + `/app/crm/novo` + `/app/crm/[id]` (ficha
-   com timeline/notas/follow-up).
+8. Frontend: `/app/crm` (board + modal "Nova oportunidade") + `/app/crm/[id]`
+   (ficha com timeline/notas/follow-up).
 9. Frontend: aba Oportunidades no cliente.
 10. E2E + release.
 
