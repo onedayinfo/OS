@@ -33,6 +33,7 @@ import { QuotesModule } from './quotes/quotes.module.js';
 import { SurveysModule } from './surveys/surveys.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { KnowledgeModule } from './knowledge/knowledge.module.js';
+import { CrmModule } from './crm/crm.module.js';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { KnowledgeModule } from './knowledge/knowledge.module.js';
     SurveysModule,
     DashboardModule,
     KnowledgeModule,
+    CrmModule,
   ],
   controllers: [AppController],
   providers: [AppService],
