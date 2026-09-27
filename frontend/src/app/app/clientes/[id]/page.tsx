@@ -12,6 +12,7 @@ import {
   type AssetStatus,
 } from '@/lib/assets';
 import { CONTRACT_STATUS_LABELS, useContracts } from '@/lib/contracts';
+import { STAGE_LABELS, useOpportunities } from '@/lib/crm';
 import { ClientForm, type ClientValues } from '@/components/client-form';
 import { ContactForm, type ContactValues } from '@/components/contact-form';
 import { LocationForm, type LocationValues } from '@/components/location-form';
@@ -357,6 +358,30 @@ function ContractsTab({ clientId }: { clientId: string }) {
   );
 }
 
+function OpportunitiesTab({ clientId }: { clientId: string }) {
+  const { data: opportunities } = useOpportunities({ clientId });
+  return (
+    <div className="flex max-w-xl flex-col gap-3 pt-4">
+      <ul className="flex flex-col gap-1">
+        {opportunities?.map((o) => (
+          <li key={o.id}>
+            <Link
+              href={`/app/crm/${o.id}`}
+              className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
+            >
+              <span className="font-medium">{o.title}</span>
+              <span className="ml-auto text-xs text-muted-foreground">{STAGE_LABELS[o.stage]}</span>
+            </Link>
+          </li>
+        ))}
+        {opportunities?.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nenhuma oportunidade.</p>
+        )}
+      </ul>
+    </div>
+  );
+}
+
 export default function ClientDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const qc = useQueryClient();
@@ -406,6 +431,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
           { value: 'locais', label: 'Locais' },
           { value: 'ativos', label: 'Ativos' },
           { value: 'contratos', label: 'Contratos' },
+          { value: 'oportunidades', label: 'Oportunidades' },
           { value: 'chamados', label: 'Chamados' },
         ]}
       />
@@ -440,6 +466,8 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       {tab === 'ativos' && <ClientAssetsTab clientId={id} />}
 
       {tab === 'contratos' && <ContractsTab clientId={id} />}
+
+      {tab === 'oportunidades' && <OpportunitiesTab clientId={id} />}
 
       {tab === 'chamados' && (
         <div className="pt-4">
