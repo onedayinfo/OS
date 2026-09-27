@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateOpportunityDto } from './dto/create-opportunity.dto.js';
 import { UpdateOpportunityDto } from './dto/update-opportunity.dto.js';
 import { ListOpportunitiesDto } from './dto/list-opportunities.dto.js';
+import { ChangeStageDto } from './dto/change-stage.dto.js';
 
 export const OPPORTUNITY_INCLUDE = {
   client: { select: { id: true, name: true } },
@@ -102,5 +103,38 @@ export class OpportunitiesService {
       throw new BadRequestException('Não é possível excluir uma oportunidade ganha.');
     }
     await this.prisma.opportunity.delete({ where: { id } });
+  }
+
+  async changeStage(id: string, dto: ChangeStageDto) {
+    if (dto.stage === 'LOST' && !dto.lostReason) {
+      throw new BadRequestException('Informe o motivo da perda.');
+    }
+    const opp = await this.mustFind(id);
+    if (dto.stage === 'WON' && !opp.clientId) {
+      return this.prisma.$transaction((tx) => this.winWithoutClient(tx, opp));
+    }
+    return this.prisma.opportunity.update({
+      where: { id },
+      data: {
+        stage: dto.stage,
+        lostReason: dto.stage === 'LOST' ? dto.lostReason : opp.lostReason,
+        lostAt: dto.stage === 'LOST' ? new Date() : opp.lostAt,
+        wonAt: dto.stage === 'WON' && !opp.wonAt ? new Date() : opp.wonAt,
+      },
+    });
+  }
+
+  private async winWithoutClient(tx: Prisma.TransactionClient, opp: { id: string; leadName: string | null; leadCompany: string | null; leadPhone: string | null; leadEmail: string | null; title: string }) {
+    const contactLine = [opp.leadName, opp.leadPhone, opp.leadEmail].filter(Boolean).join(' — ');
+    const client = await tx.client.create({
+      data: {
+        name: opp.leadCompany ?? opp.leadName ?? opp.title,
+        notes: contactLine ? `Contato original (CRM): ${contactLine}` : null,
+      },
+    });
+    return tx.opportunity.update({
+      where: { id: opp.id },
+      data: { clientId: client.id, stage: 'WON', wonAt: new Date() },
+    });
   }
 }
