@@ -121,7 +121,11 @@ export function useUpdateOpportunity(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (
-      body: Partial<Omit<OpportunityInput, 'quoteId'>> & {
+      body: Partial<Omit<OpportunityInput, 'quoteId' | 'value' | 'leadCompany' | 'leadPhone' | 'leadEmail'>> & {
+        value?: number | null;
+        leadCompany?: string | null;
+        leadPhone?: string | null;
+        leadEmail?: string | null;
         quoteId?: string | null;
         nextFollowUpAt?: string | null;
         nextFollowUpNote?: string | null;

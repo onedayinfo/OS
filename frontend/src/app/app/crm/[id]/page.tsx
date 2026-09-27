@@ -80,14 +80,14 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
     update.mutate(
       {
         title: title.trim(),
-        value: value ? Number(value) : undefined,
+        value: value ? Number(value) : null,
         ownerId,
         quoteId: quoteId || null,
         ...(!opportunity!.clientId && {
           leadName: leadName.trim(),
-          leadCompany: leadCompany.trim() || undefined,
-          leadPhone: leadPhone.trim() || undefined,
-          leadEmail: leadEmail.trim() || undefined,
+          leadCompany: leadCompany.trim() || null,
+          leadPhone: leadPhone.trim() || null,
+          leadEmail: leadEmail.trim() || null,
         }),
       },
       { onSuccess: () => toast.success('Dados atualizados.'), onError: onErr },

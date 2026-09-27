@@ -109,7 +109,14 @@ export class OpportunitiesService {
   private mapQuoteError(e: unknown) {
     const code = (e as { code?: string }).code;
     if (code === 'P2002') return new BadRequestException('Este orçamento já está vinculado a outra oportunidade.');
-    if (code === 'P2003') return new BadRequestException('Orçamento não encontrado.');
+    if (code === 'P2003') {
+      // meta.field_name identifica a constraint de FK violada (ex.: "Opportunity_ownerId_fkey (index)").
+      const field = String((e as { meta?: { field_name?: string } }).meta?.field_name ?? '').toLowerCase();
+      if (field.includes('client')) return new BadRequestException('Cliente não encontrado.');
+      if (field.includes('owner')) return new BadRequestException('Responsável não encontrado.');
+      if (field.includes('quote')) return new BadRequestException('Orçamento não encontrado.');
+      return new BadRequestException('Referência inválida.');
+    }
     return e;
   }
 

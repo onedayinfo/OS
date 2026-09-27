@@ -2,12 +2,18 @@ import { IsEmail, IsISO8601, IsNumber, IsOptional, IsString, ValidateIf } from '
 
 export class UpdateOpportunityDto {
   @IsOptional() @IsString() title?: string;
-  @IsOptional() @IsNumber() value?: number;
+  // null = limpar o valor estimado.
+  @IsOptional() @ValidateIf((o) => o.value !== null) @IsNumber()
+  value?: number | null;
   @IsOptional() @IsString() ownerId?: string;
   @IsOptional() @IsString() leadName?: string;
-  @IsOptional() @IsString() leadCompany?: string;
-  @IsOptional() @IsString() leadPhone?: string;
-  @IsOptional() @IsEmail() leadEmail?: string;
+  // null = limpar o campo.
+  @IsOptional() @ValidateIf((o) => o.leadCompany !== null) @IsString()
+  leadCompany?: string | null;
+  @IsOptional() @ValidateIf((o) => o.leadPhone !== null) @IsString()
+  leadPhone?: string | null;
+  @IsOptional() @ValidateIf((o) => o.leadEmail !== null) @IsEmail()
+  leadEmail?: string | null;
   // null = desvincular o orçamento.
   @IsOptional() @ValidateIf((o) => o.quoteId !== null) @IsString()
   quoteId?: string | null;

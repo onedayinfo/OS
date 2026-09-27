@@ -55,6 +55,59 @@ describe('OpportunitiesService.create', () => {
       service.create({ title: 'X', ownerId: 'u1', clientId: 'c1', quoteId: 'q1' }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('clientId inexistente (P2003 na FK de clientId) vira "Cliente não encontrado."', async () => {
+    const prisma = makePrisma({
+      opportunity: {
+        create: vi.fn().mockRejectedValue({ code: 'P2003', meta: { field_name: 'Opportunity_clientId_fkey (index)' } }),
+      },
+    });
+    const service = new OpportunitiesService(prisma as any);
+    await expect(
+      service.create({ title: 'X', ownerId: 'u1', clientId: 'inexistente' }),
+    ).rejects.toThrow('Cliente não encontrado.');
+  });
+
+  it('ownerId inexistente (P2003 na FK de ownerId) vira "Responsável não encontrado."', async () => {
+    const prisma = makePrisma({
+      opportunity: {
+        create: vi.fn().mockRejectedValue({ code: 'P2003', meta: { field_name: 'Opportunity_ownerId_fkey (index)' } }),
+      },
+    });
+    const service = new OpportunitiesService(prisma as any);
+    await expect(
+      service.create({ title: 'X', ownerId: 'inexistente', clientId: 'c1' }),
+    ).rejects.toThrow('Responsável não encontrado.');
+  });
+
+  it('quoteId inexistente (P2003 na FK de quoteId) vira "Orçamento não encontrado."', async () => {
+    const prisma = makePrisma({
+      opportunity: {
+        create: vi.fn().mockRejectedValue({ code: 'P2003', meta: { field_name: 'Opportunity_quoteId_fkey (index)' } }),
+      },
+    });
+    const service = new OpportunitiesService(prisma as any);
+    await expect(
+      service.create({ title: 'X', ownerId: 'u1', clientId: 'c1', quoteId: 'inexistente' }),
+    ).rejects.toThrow('Orçamento não encontrado.');
+  });
+});
+
+describe('OpportunitiesService.update', () => {
+  it('grava null explícito em value/leadCompany/leadPhone/leadEmail (limpa o campo)', async () => {
+    const prisma = makePrisma();
+    const service = new OpportunitiesService(prisma as any);
+    await service.update('o1', {
+      value: null,
+      leadCompany: null,
+      leadPhone: null,
+      leadEmail: null,
+    });
+    expect((prisma as any).opportunity.update).toHaveBeenCalledWith({
+      where: { id: 'o1' },
+      data: { value: null, leadCompany: null, leadPhone: null, leadEmail: null },
+    });
+  });
 });
 
 describe('OpportunitiesService.remove', () => {
