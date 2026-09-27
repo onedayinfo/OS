@@ -45,6 +45,16 @@ describe('OpportunitiesService.create', () => {
     });
     expect(created.leadName).toBeUndefined();
   });
+
+  it('quoteId já vinculado a outra oportunidade (P2002) vira BadRequestException', async () => {
+    const prisma = makePrisma({
+      opportunity: { create: vi.fn().mockRejectedValue({ code: 'P2002' }) },
+    });
+    const service = new OpportunitiesService(prisma as any);
+    await expect(
+      service.create({ title: 'X', ownerId: 'u1', clientId: 'c1', quoteId: 'q1' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
 });
 
 describe('OpportunitiesService.remove', () => {

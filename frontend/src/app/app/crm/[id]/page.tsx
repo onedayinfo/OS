@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ApiError } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import {
   STAGE_LABELS,
   useAddNote,
@@ -37,18 +38,66 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
   const [pendingStage, setPendingStage] = useState<OpportunityStage | ''>('');
   const [lostReason, setLostReason] = useState('');
 
+  const [title, setTitle] = useState('');
+  const [value, setValue] = useState('');
+  const [ownerId, setOwnerId] = useState('');
+  const [leadName, setLeadName] = useState('');
+  const [leadCompany, setLeadCompany] = useState('');
+  const [leadPhone, setLeadPhone] = useState('');
+  const [leadEmail, setLeadEmail] = useState('');
+  const [quoteId, setQuoteId] = useState('');
+
+  const { data: owners } = useQuery({
+    queryKey: ['users', 'internal'],
+    queryFn: () => api<{ id: string; name: string }[]>('/users?type=INTERNAL'),
+  });
+  const { data: quotes } = useQuery({
+    queryKey: ['quotes', opportunity?.clientId],
+    queryFn: () =>
+      api<{ id: string; number: number; client: { id: string; name: string } }[]>(
+        `/quotes?clientId=${opportunity!.clientId}`,
+      ),
+    enabled: !!opportunity?.clientId,
+  });
+
   useEffect(() => {
     if (!opportunity) return;
     setFollowUpAt(opportunity.nextFollowUpAt ? opportunity.nextFollowUpAt.slice(0, 10) : '');
     setFollowUpNote(opportunity.nextFollowUpNote ?? '');
-  }, [opportunity]);
+    setTitle(opportunity.title);
+    setValue(opportunity.value != null ? String(opportunity.value) : '');
+    setOwnerId(opportunity.ownerId);
+    setLeadName(opportunity.leadName ?? '');
+    setLeadCompany(opportunity.leadCompany ?? '');
+    setLeadPhone(opportunity.leadPhone ?? '');
+    setLeadEmail(opportunity.leadEmail ?? '');
+    setQuoteId(opportunity.quoteId ?? '');
+  }, [opportunity?.id]);
 
   if (isLoading || !opportunity) return <p className="text-sm text-muted-foreground">Carregando…</p>;
+
+  function saveDetails() {
+    update.mutate(
+      {
+        title: title.trim(),
+        value: value ? Number(value) : undefined,
+        ownerId,
+        quoteId: quoteId || null,
+        ...(!opportunity!.clientId && {
+          leadName: leadName.trim(),
+          leadCompany: leadCompany.trim() || undefined,
+          leadPhone: leadPhone.trim() || undefined,
+          leadEmail: leadEmail.trim() || undefined,
+        }),
+      },
+      { onSuccess: () => toast.success('Dados atualizados.'), onError: onErr },
+    );
+  }
 
   function saveFollowUp() {
     update.mutate(
       {
-        nextFollowUpAt: followUpAt ? new Date(followUpAt).toISOString() : null,
+        nextFollowUpAt: followUpAt ? new Date(`${followUpAt}T12:00:00`).toISOString() : null,
         nextFollowUpNote: followUpNote || null,
       },
       { onSuccess: () => toast.success('Follow-up atualizado.'), onError: onErr },
@@ -98,6 +147,76 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
           {STAGE_LABELS[opportunity.stage]}
         </Badge>
       </div>
+
+      <section className="flex max-w-xl flex-col gap-3 rounded-lg border border-border p-3 text-sm">
+        <h2 className="text-sm font-semibold">Dados da oportunidade</h2>
+        <div className="flex flex-col gap-1.5">
+          <Label>Título</Label>
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+        </div>
+        <div className="flex gap-3">
+          <div className="flex flex-1 flex-col gap-1.5">
+            <Label>Valor estimado (R$)</Label>
+            <Input type="number" min="0" step="0.01" value={value} onChange={(e) => setValue(e.target.value)} />
+          </div>
+          <div className="flex flex-1 flex-col gap-1.5">
+            <Label>Responsável</Label>
+            <Select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+              {owners?.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        {opportunity.clientId ? (
+          <div className="flex flex-col gap-1.5">
+            <Label>Cliente</Label>
+            <p className="text-sm">{opportunity.client?.name}</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <Label>Nome</Label>
+              <Input value={leadName} onChange={(e) => setLeadName(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Empresa</Label>
+              <Input value={leadCompany} onChange={(e) => setLeadCompany(e.target.value)} />
+            </div>
+            <div className="flex gap-3">
+              <div className="flex flex-1 flex-col gap-1.5">
+                <Label>Telefone</Label>
+                <Input value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} />
+              </div>
+              <div className="flex flex-1 flex-col gap-1.5">
+                <Label>E-mail</Label>
+                <Input type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} />
+              </div>
+            </div>
+          </>
+        )}
+
+        {opportunity.clientId && (
+          <div className="flex flex-col gap-1.5">
+            <Label>Orçamento vinculado</Label>
+            <Select value={quoteId} onChange={(e) => setQuoteId(e.target.value)}>
+              <option value="">Nenhum</option>
+              {quotes?.map((q) => (
+                <option key={q.id} value={q.id}>
+                  #{q.number}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+
+        <Button variant="outline" className="h-9 self-start" disabled={update.isPending} onClick={saveDetails}>
+          Salvar dados
+        </Button>
+      </section>
 
       <section className="flex max-w-xl flex-col gap-3 rounded-lg border border-border p-3 text-sm">
         <h2 className="text-sm font-semibold">Estágio</h2>

@@ -15,7 +15,7 @@ const QUOTE_INCLUDE = {
   items: { include: { catalogItem: { select: { id: true, name: true, unit: true } } } },
 } as const;
 
-function withTotal<T extends { items: { quantity: number; unitPrice: number }[] }>(quote: T) {
+export function withTotal<T extends { items: { quantity: number; unitPrice: number }[] }>(quote: T) {
   const total = quote.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
   return { ...quote, total };
 }

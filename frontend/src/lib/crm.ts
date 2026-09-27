@@ -120,8 +120,13 @@ export function useCreateOpportunity() {
 export function useUpdateOpportunity(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<OpportunityInput> & { nextFollowUpAt?: string | null; nextFollowUpNote?: string | null }) =>
-      api<Opportunity>(`/opportunities/${id}`, { method: 'PATCH', body }),
+    mutationFn: (
+      body: Partial<Omit<OpportunityInput, 'quoteId'>> & {
+        quoteId?: string | null;
+        nextFollowUpAt?: string | null;
+        nextFollowUpNote?: string | null;
+      },
+    ) => api<Opportunity>(`/opportunities/${id}`, { method: 'PATCH', body }),
     onSuccess: () => invalidateAll(qc, id),
   });
 }

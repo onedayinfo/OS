@@ -15,6 +15,10 @@ const id: Record<string, string> = {};
 async function cleanup(p: PrismaClient) {
   await p.opportunityNote.deleteMany({ where: { opportunity: { title: { startsWith: PFX } } } });
   await p.opportunity.deleteMany({ where: { title: { startsWith: PFX } } });
+  await p.quoteItem.deleteMany({ where: { quote: { client: { name: { startsWith: PFX } } } } });
+  await p.quote.deleteMany({ where: { client: { name: { startsWith: PFX } } } });
+  await p.catalogItem.deleteMany({ where: { name: { startsWith: PFX } } });
+  await p.category.deleteMany({ where: { name: { startsWith: PFX } } });
   await p.user.deleteMany({ where: { email: { endsWith: `@${EMAIL_DOMAIN}` } } });
   await p.client.deleteMany({ where: { name: { startsWith: PFX } } });
 }
@@ -73,5 +77,37 @@ describe('Opportunities — ciclo lead até ganho (Postgres real)', () => {
 
     const overdueAfterWin = await opportunities.followUps('overdue');
     expect(overdueAfterWin.map((o) => o.id)).not.toContain(opp.id);
+  });
+
+  it('oportunidade linkada a um Quote real traz o total calculado em findOne', async () => {
+    if (!available) return;
+
+    const client = await prisma!.client.create({ data: { name: `${PFX} Cliente Orçamento` } });
+    const category = await prisma!.category.create({ data: { name: `${PFX} Categoria` } });
+    const catalogItem = await prisma!.catalogItem.create({
+      data: { name: `${PFX} Serviço`, type: 'SERVICE', unit: 'un', price: 100 },
+    });
+    const quote = await prisma!.quote.create({
+      data: {
+        number: 1,
+        clientId: client.id,
+        categoryId: category.id,
+        title: `${PFX} Orçamento`,
+        status: 'DRAFT',
+        publicToken: `${PFX}-token`,
+        createdById: id.ownerId,
+        items: { create: [{ catalogItemId: catalogItem.id, quantity: 3, unitPrice: 100 }] },
+      },
+    });
+
+    const opp = await opportunities.create({
+      title: `${PFX} Oportunidade com orçamento`,
+      ownerId: id.ownerId,
+      clientId: client.id,
+      quoteId: quote.id,
+    });
+
+    const found = await opportunities.findOne(opp.id);
+    expect(found.quote?.total).toBe(3 * 100);
   });
 });

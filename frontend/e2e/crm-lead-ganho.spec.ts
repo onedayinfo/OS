@@ -39,7 +39,9 @@ test('lead vira oportunidade, recebe nota, e ao ganhar vira cliente', async ({ p
   await expect(page.getByText('Estágio atualizado.')).toBeVisible();
   await expect(page.getByText('Ganho', { exact: true })).toBeVisible();
 
-  // 4. Cliente novo aparece em /app/clientes
+  // 4. Cliente novo aparece em /app/clientes (busca pelo nome — evita depender
+  // da ordem alfabética da paginação quando há muitos clientes no banco)
   await page.goto('/app/clientes');
+  await page.getByPlaceholder('Buscar por nome').fill(empresa);
   await expect(page.getByText(empresa)).toBeVisible();
 });

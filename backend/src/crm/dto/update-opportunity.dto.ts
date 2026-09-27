@@ -8,7 +8,9 @@ export class UpdateOpportunityDto {
   @IsOptional() @IsString() leadCompany?: string;
   @IsOptional() @IsString() leadPhone?: string;
   @IsOptional() @IsEmail() leadEmail?: string;
-  @IsOptional() @IsString() quoteId?: string;
+  // null = desvincular o orçamento.
+  @IsOptional() @ValidateIf((o) => o.quoteId !== null) @IsString()
+  quoteId?: string | null;
   // null = limpar o follow-up agendado.
   @IsOptional() @ValidateIf((o) => o.nextFollowUpAt !== null) @IsISO8601()
   nextFollowUpAt?: string | null;

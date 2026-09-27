@@ -116,6 +116,14 @@ function OpportunityCard({ opportunity }: { opportunity: Opportunity }) {
   const overdue = opportunity.nextFollowUpAt && new Date(opportunity.nextFollowUpAt) < new Date();
   const value = opportunity.quote?.total ?? opportunity.value;
 
+  function moveToNext() {
+    if (!next) return;
+    if (next === 'WON' && !confirm('Marcar como Ganho? Isso cria um Cliente novo se ainda não houver um vinculado.')) {
+      return;
+    }
+    changeStage.mutate({ stage: next });
+  }
+
   return (
     <div className="flex flex-col gap-1 rounded-md border border-border bg-background p-2 text-sm">
       <Link href={`/app/crm/${opportunity.id}`} className="font-medium hover:underline">
@@ -133,7 +141,7 @@ function OpportunityCard({ opportunity }: { opportunity: Opportunity }) {
           variant="outline"
           className="h-7 self-start text-xs"
           disabled={changeStage.isPending}
-          onClick={() => changeStage.mutate({ stage: next })}
+          onClick={moveToNext}
         >
           Mover para {STAGE_LABELS[next]}
         </Button>

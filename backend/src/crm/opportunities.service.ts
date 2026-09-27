@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { withTotal } from '../quotes/quotes.service.js';
 import { CreateOpportunityDto } from './dto/create-opportunity.dto.js';
 import { UpdateOpportunityDto } from './dto/update-opportunity.dto.js';
 import { ListOpportunitiesDto } from './dto/list-opportunities.dto.js';
@@ -17,9 +18,8 @@ function withQuoteTotal<T extends { quote: { items: { quantity: number; unitPric
   opp: T,
 ) {
   if (!opp.quote) return { ...opp, quote: null };
-  const total = opp.quote.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
   const { items, ...quote } = opp.quote;
-  return { ...opp, quote: { ...quote, total } };
+  return { ...opp, quote: withTotal({ ...quote, items }) };
 }
 
 @Injectable()
@@ -65,37 +65,52 @@ export class OpportunitiesService {
           leadPhone: dto.leadPhone ?? null,
           leadEmail: dto.leadEmail ?? null,
         };
-    return this.prisma.opportunity.create({
-      data: {
-        title: dto.title,
-        value: dto.value ?? null,
-        ownerId: dto.ownerId,
-        clientId: dto.clientId ?? null,
-        quoteId: dto.quoteId ?? null,
-        ...leadFields,
-      },
-    });
+    try {
+      return await this.prisma.opportunity.create({
+        data: {
+          title: dto.title,
+          value: dto.value ?? null,
+          ownerId: dto.ownerId,
+          clientId: dto.clientId ?? null,
+          quoteId: dto.quoteId ?? null,
+          ...leadFields,
+        },
+      });
+    } catch (e) {
+      throw this.mapQuoteError(e);
+    }
   }
 
   async update(id: string, dto: UpdateOpportunityDto) {
     await this.mustFind(id);
-    return this.prisma.opportunity.update({
-      where: { id },
-      data: {
-        ...(dto.title !== undefined && { title: dto.title }),
-        ...(dto.value !== undefined && { value: dto.value }),
-        ...(dto.ownerId !== undefined && { ownerId: dto.ownerId }),
-        ...(dto.leadName !== undefined && { leadName: dto.leadName }),
-        ...(dto.leadCompany !== undefined && { leadCompany: dto.leadCompany }),
-        ...(dto.leadPhone !== undefined && { leadPhone: dto.leadPhone }),
-        ...(dto.leadEmail !== undefined && { leadEmail: dto.leadEmail }),
-        ...(dto.quoteId !== undefined && { quoteId: dto.quoteId }),
-        ...(dto.nextFollowUpAt !== undefined && {
-          nextFollowUpAt: dto.nextFollowUpAt ? new Date(dto.nextFollowUpAt) : null,
-        }),
-        ...(dto.nextFollowUpNote !== undefined && { nextFollowUpNote: dto.nextFollowUpNote }),
-      },
-    });
+    try {
+      return await this.prisma.opportunity.update({
+        where: { id },
+        data: {
+          ...(dto.title !== undefined && { title: dto.title }),
+          ...(dto.value !== undefined && { value: dto.value }),
+          ...(dto.ownerId !== undefined && { ownerId: dto.ownerId }),
+          ...(dto.leadName !== undefined && { leadName: dto.leadName }),
+          ...(dto.leadCompany !== undefined && { leadCompany: dto.leadCompany }),
+          ...(dto.leadPhone !== undefined && { leadPhone: dto.leadPhone }),
+          ...(dto.leadEmail !== undefined && { leadEmail: dto.leadEmail }),
+          ...(dto.quoteId !== undefined && { quoteId: dto.quoteId }),
+          ...(dto.nextFollowUpAt !== undefined && {
+            nextFollowUpAt: dto.nextFollowUpAt ? new Date(dto.nextFollowUpAt) : null,
+          }),
+          ...(dto.nextFollowUpNote !== undefined && { nextFollowUpNote: dto.nextFollowUpNote }),
+        },
+      });
+    } catch (e) {
+      throw this.mapQuoteError(e);
+    }
+  }
+
+  private mapQuoteError(e: unknown) {
+    const code = (e as { code?: string }).code;
+    if (code === 'P2002') return new BadRequestException('Este orçamento já está vinculado a outra oportunidade.');
+    if (code === 'P2003') return new BadRequestException('Orçamento não encontrado.');
+    return e;
   }
 
   async remove(id: string) {

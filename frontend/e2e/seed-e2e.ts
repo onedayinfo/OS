@@ -46,7 +46,7 @@ async function cleanup(prisma: InstanceType<typeof PrismaClient>): Promise<void>
   await prisma.attachment.deleteMany({ where: { uploadedById: { in: e2eUserIds } } });
   await prisma.knowledgeArticle.deleteMany({ where: { createdById: { in: e2eUserIds } } });
   // Smoke de CRM cria Opportunity + Client próprios (não o E2E_CLIENT_ID) —
-  // precisam sumir antes do deleteMany de User acima já ter rodado, senão o
+  // precisam sumir antes do deleteMany de User abaixo, senão o
   // FK de Opportunity.ownerId (admin) já foi removido.
   await prisma.opportunityNote.deleteMany({ where: { opportunity: { title: { startsWith: 'Lead E2E' } } } });
   await prisma.opportunity.deleteMany({ where: { title: { startsWith: 'Lead E2E' } } });

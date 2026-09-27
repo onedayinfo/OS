@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
 import { CurrentUser } from '../common/current-user.decorator.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
@@ -17,6 +17,9 @@ export class OpportunitiesController {
   // Precisa vir antes de `:id` — senão o Nest casa "follow-ups" com o param.
   @Get('follow-ups')
   followUps(@Query('scope') scope: 'today' | 'overdue' = 'overdue') {
+    if (scope !== 'today' && scope !== 'overdue') {
+      throw new BadRequestException('scope deve ser "today" ou "overdue".');
+    }
     return this.opportunities.followUps(scope);
   }
 
