@@ -109,6 +109,7 @@ function appGroups(role: string | undefined): NavGroup[] {
 
   const cadastros: NavLink[] = [
     { href: '/app/clientes', label: 'Clientes', icon: icon.users },
+    { href: '/app/crm', label: 'CRM', icon: icon.users },
     { href: '/app/contratos', label: 'Contratos', icon: icon.file },
     { href: '/app/catalogo', label: 'Catálogo', icon: icon.package },
     { href: '/app/estoque', label: 'Estoque', icon: icon.boxes },
