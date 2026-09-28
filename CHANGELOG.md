@@ -3,6 +3,15 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.10.1] - 2026-09-28
+
+### Corrigido
+- **CRM**: ficha da oportunidade não conseguia limpar `value`/empresa/
+  telefone/e-mail do lead já preenchidos (o campo esvaziado na UI não era
+  salvo). Mensagem de erro de vínculo inválido (cliente/responsável/
+  orçamento) agora identifica corretamente qual referência falhou, em vez
+  de sempre dizer "orçamento não encontrado".
+
 ## [0.10.0] - 2026-09-27
 
 ### Adicionado
