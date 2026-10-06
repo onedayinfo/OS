@@ -51,6 +51,20 @@ describe('TicketsService.findAll — escopo por papel', () => {
     expect(where.status.notIn).toEqual(['RESOLVED', 'CLOSED', 'CANCELLED', 'WAITING_CLIENT']);
   });
 
+  it('active=true → exclui só os terminais (mantém aguardando cliente)', async () => {
+    const { service, findMany } = makeService();
+    await service.findAll({ active: true } as any, { id: 'a', type: 'INTERNAL', role: 'AGENT', clientId: null });
+    expect(whereOf(findMany).status).toEqual({ notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'] });
+  });
+
+  it('active + ?status explícito → o status vence', async () => {
+    const { service, findMany } = makeService();
+    await service.findAll({ active: true, status: 'WAITING_CLIENT' } as any, {
+      id: 'a', type: 'INTERNAL', role: 'AGENT', clientId: null,
+    });
+    expect(whereOf(findMany).status).toBe('WAITING_CLIENT');
+  });
+
   it('MANAGER sem clientId → escopo vazio (não casa clientId=null de triagem)', async () => {
     const { service, findMany } = makeService();
     await service.findAll({} as any, { id: 'u-mgr', type: 'CLIENT', role: 'MANAGER', clientId: null });

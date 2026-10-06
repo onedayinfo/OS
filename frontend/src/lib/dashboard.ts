@@ -30,9 +30,10 @@ export interface DashboardOverview {
   };
 }
 
-export function useDashboardOverview() {
+export function useDashboardOverview(enabled = true) {
   return useQuery({
     queryKey: ['dashboard-overview'],
     queryFn: () => api<DashboardOverview>('/dashboard/overview'),
+    enabled,
   });
 }

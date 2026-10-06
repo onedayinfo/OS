@@ -164,9 +164,10 @@ export interface TicketFilters {
   clientId?: string;
   overdue?: boolean;
   needsTriage?: boolean;
+  active?: boolean;
 }
 
-function toQuery(f: TicketFilters): string {
+export function toQuery(f: TicketFilters): string {
   const p = new URLSearchParams();
   p.set('page', String(f.page ?? 1));
   p.set('pageSize', String(f.pageSize ?? 20));
@@ -178,6 +179,7 @@ function toQuery(f: TicketFilters): string {
   if (f.clientId) p.set('clientId', f.clientId);
   if (f.overdue) p.set('overdue', 'true');
   if (f.needsTriage) p.set('needsTriage', 'true');
+  if (f.active) p.set('active', 'true');
   return p.toString();
 }
 

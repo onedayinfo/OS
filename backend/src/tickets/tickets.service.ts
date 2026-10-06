@@ -344,6 +344,8 @@ export class TicketsService {
     const where: Prisma.TicketWhereInput = {};
 
     if (query.status) where.status = query.status;
+    // `active`: só chamados não terminais (ignorado se `status` vier explícito).
+    if (query.active && !query.status) where.status = { notIn: TERMINAL_STATUSES };
     if (query.priority) where.priority = query.priority;
     if (query.clientId) where.clientId = query.clientId;
     if (query.assigneeId) where.assigneeId = query.assigneeId;

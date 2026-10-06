@@ -35,6 +35,12 @@ export class ListTicketsDto extends PaginationDto {
   @IsBoolean()
   overdue?: boolean;
 
+  // Só chamados não terminais (aberto, em andamento, aguardando cliente).
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  active?: boolean;
+
   // Fila de triagem (chamados de e-mail sem cliente).
   @IsOptional()
   @Transform(({ value }) => value === true || value === 'true')

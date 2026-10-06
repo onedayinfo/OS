@@ -36,7 +36,7 @@ test('orçamento avulso aprovado pelo link público vira chamado', async ({ page
   await page.waitForURL(/\/app\/orcamentos\/.+/);
 
   await page.getByRole('button', { name: 'Enviar' }).click();
-  const publicLink = await page.getByRole('textbox').first().inputValue();
+  const publicLink = await page.locator('main').getByRole('textbox').first().inputValue();
   expect(publicLink).toContain('/orcamento/');
 
   const publicPage = await context.newPage();

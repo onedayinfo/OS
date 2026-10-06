@@ -66,5 +66,5 @@ test('cria artigo, aparece na busca e como sugestão num chamado da mesma catego
   await expect(suggestionLink).toBeVisible();
   await suggestionLink.click();
   await expect(page).toHaveURL(/\/app\/base-conhecimento\/[^/]+$/);
-  await expect(page.locator('input').first()).toHaveValue(titulo);
+  await expect(page.locator('main input').first()).toHaveValue(titulo);
 });
