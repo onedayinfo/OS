@@ -49,6 +49,6 @@ test('fechar chamado gera pesquisa; responder pelo link mostra a nota na ficha',
   await expect(page.getByText('Obrigado pela resposta!')).toBeVisible();
 
   await page.goto(`/app/chamados/${ticketId}`);
-  await expect(page.getByText('⭐ 5/5')).toBeVisible();
+  await expect(page.getByText('Nota 5/5')).toBeVisible();
   await expect(page.getByText('Muito bom atendimento')).toBeVisible();
 });

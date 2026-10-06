@@ -10,16 +10,17 @@ import {
   type TicketEvent,
 } from '@/lib/tickets';
 import { Badge } from '@/components/ui/badge';
+import { Icon } from '@/components/ui/icon';
 import { cn } from '@/lib/utils';
 
 function fmt(iso: string): string {
-  return new Date(iso).toLocaleString('pt-BR');
+  return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function AttachmentList({ items }: { items: Attachment[] }) {
   if (items.length === 0) return null;
   return (
-    <ul className="mt-1 flex flex-col gap-0.5">
+    <ul className="mt-2 flex flex-wrap gap-2">
       {items.map((a) => (
         <li key={a.id}>
           <button
@@ -27,15 +28,29 @@ function AttachmentList({ items }: { items: Attachment[] }) {
             onClick={() =>
               downloadAttachment(a.id, a.filename).catch(() => alert('Falha no download.'))
             }
-            className="text-sm text-primary hover:underline"
+            className="flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-[12px] text-primary hover:bg-accent"
           >
-            📎 {a.filename}
+            <Icon name="attach_file" className="text-[16px]" />
+            {a.filename}
           </button>
         </li>
       ))}
     </ul>
   );
 }
+
+const EVENT_TAGS: Partial<Record<TicketEvent['type'], string>> = {
+  CREATED: 'Criado',
+  STATUS_CHANGED: 'Status',
+  ASSIGNED: 'Responsável',
+  PRIORITY_CHANGED: 'Prioridade',
+  EMAIL_IN: 'E-mail',
+  EMAIL_OUT: 'E-mail',
+  VISIT_SCHEDULED: 'Visita',
+  VISIT_STARTED: 'Check-in',
+  VISIT_COMPLETED: 'Visita',
+  VISIT_CANCELLED: 'Visita',
+};
 
 function eventText(e: TicketEvent, nameFor: (id: string | null) => string): string {
   const d = e.data as Record<string, string | null>;
@@ -100,44 +115,46 @@ export function TicketTimeline({
   ].sort((a, b) => a.at.localeCompare(b.at));
 
   return (
-    <ol className="flex flex-col gap-3">
+    <ol className="relative ml-1.5 flex flex-col gap-4 border-l-2 border-border pl-5">
       {items.map((it) =>
         it.kind === 'event' ? (
-          <li key={`e-${it.data.id}`} className="flex gap-2 text-sm text-muted-foreground">
-            <span className="whitespace-nowrap">{fmt(it.at)}</span>
-            <span>·</span>
-            <span>
-              {eventText(it.data, nameFor)}
-              {it.data.actorId ? ` (${nameFor(it.data.actorId)})` : ''}
-            </span>
+          <li key={`e-${it.data.id}`} className="relative">
+            <span className="absolute -left-[27px] top-1 h-2.5 w-2.5 rounded-full bg-muted-foreground/40 ring-4 ring-card" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="blue">{EVENT_TAGS[it.data.type] ?? 'Evento'}</Badge>
+              <span className="text-[13px]">
+                {eventText(it.data, nameFor)}
+                {it.data.actorId ? ` (${nameFor(it.data.actorId)})` : ''}
+              </span>
+              <span className="ml-auto font-mono text-[11px] text-muted-foreground">{fmt(it.at)}</span>
+            </div>
           </li>
         ) : (
-          <li
-            key={`c-${it.data.id}`}
-            className={cn(
-              'rounded-lg border p-3',
-              allowInternal && it.data.visibility === 'INTERNAL'
-                ? 'border-warning bg-warning'
-                : 'border-border bg-background',
-            )}
-          >
-            <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{nameFor(it.data.authorId)}</span>
-              <span>·</span>
-              <span>{fmt(it.at)}</span>
+          <li key={`c-${it.data.id}`} className="relative">
+            <span className="absolute -left-[27px] top-1 h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-card" />
+            <div className="mb-1 flex flex-wrap items-center gap-2">
               {allowInternal && (
                 <Badge tone={it.data.visibility === 'INTERNAL' ? 'amber' : 'green'}>
-                  {it.data.visibility === 'INTERNAL' ? 'Interno' : 'Público'}
+                  {it.data.visibility === 'INTERNAL' ? 'Nota interna' : 'Público'}
                 </Badge>
               )}
+              <span className="text-[13px] font-semibold">{nameFor(it.data.authorId)}</span>
+              <span className="ml-auto font-mono text-[11px] text-muted-foreground">{fmt(it.at)}</span>
             </div>
-            <p className="whitespace-pre-wrap text-sm">{it.data.body}</p>
-            <AttachmentList items={it.data.attachments} />
+            <div
+              className={cn(
+                'rounded-lg p-3',
+                allowInternal && it.data.visibility === 'INTERNAL' ? 'bg-warning' : 'bg-muted',
+              )}
+            >
+              <p className="whitespace-pre-wrap text-[13px]">{it.data.body}</p>
+              <AttachmentList items={it.data.attachments} />
+            </div>
           </li>
         ),
       )}
       {items.length === 0 && (
-        <li className="text-sm text-muted-foreground">Sem movimentações ainda.</li>
+        <li className="text-[13px] text-muted-foreground">Sem movimentações ainda.</li>
       )}
     </ol>
   );

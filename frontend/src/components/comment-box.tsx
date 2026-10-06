@@ -52,7 +52,7 @@ export function CommentBox({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+    <div className="flex flex-col gap-2 rounded-xl bg-card p-5 shadow-sm">
       {allowInternal && (
         <div className="flex gap-1">
           {(['INTERNAL', 'PUBLIC'] as const).map((v) => (
@@ -61,7 +61,7 @@ export function CommentBox({
               type="button"
               onClick={() => setVisibility(v)}
               className={cn(
-                'rounded-md px-3 py-1 text-sm font-medium',
+                'label-mono rounded-full px-3 py-1.5 transition-colors',
                 visibility === v
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground',

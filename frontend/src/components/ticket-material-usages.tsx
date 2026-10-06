@@ -34,11 +34,11 @@ export function TicketMaterialUsages({ ticketId }: { ticketId: string }) {
   const [form, setForm] = useState({ catalogItemId: '', warehouseId: '', quantity: '' });
 
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold">Materiais usados</h3>
+    <div className="flex flex-col gap-3 rounded-xl bg-card p-5 shadow-sm">
+      <h3 className="text-[14px] font-semibold">Materiais usados</h3>
       <ul className="flex flex-col gap-1">
         {usages?.map((u) => (
-          <li key={u.id} className="flex justify-between rounded-md border border-border px-3 py-1.5 text-sm">
+          <li key={u.id} className="flex justify-between rounded-lg bg-muted px-3 py-2 text-[13px]">
             <span>{u.catalogItem.name} × {u.quantity} {u.catalogItem.unit} ({u.warehouse.name})</span>
             <span className="text-muted-foreground">R$ {(u.quantity * u.unitCost).toFixed(2)}</span>
           </li>

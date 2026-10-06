@@ -13,6 +13,7 @@ import {
   type TicketDetail,
 } from '@/lib/tickets';
 import { Button } from '@/components/ui/button';
+import { Panel } from '@/components/ui/panel';
 import { Select } from '@/components/ui/select';
 
 function fmt(iso: string | null): string {
@@ -22,8 +23,8 @@ function fmt(iso: string | null): string {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5 border-b border-border py-2 last:border-0">
-      <span className="text-xs uppercase text-muted-foreground">{label}</span>
-      <span className="text-sm">{children}</span>
+      <span className="label-mono text-muted-foreground">{label}</span>
+      <span className="text-[13px]">{children}</span>
     </div>
   );
 }
@@ -44,12 +45,12 @@ function TriageBlock({ ticket }: { ticket: TicketDetail }) {
   });
 
   return (
-    <div className="mt-3 rounded-md border border-warning bg-warning p-3">
-      <p className="text-sm font-medium text-warning-foreground">Chamado em triagem</p>
+    <div className="rounded-xl bg-warning p-4">
+      <p className="text-[13px] font-semibold text-warning-foreground">Chamado em triagem</p>
       <p className="mb-2 text-xs text-warning-foreground">Vincule a um cliente e solicitante.</p>
       <div className="flex flex-col gap-2">
         <Select
-          className="h-9 bg-background"
+          className="h-9 bg-card"
           value={clientId}
           onChange={(e) => {
             setClientId(e.target.value);
@@ -64,7 +65,7 @@ function TriageBlock({ ticket }: { ticket: TicketDetail }) {
           ))}
         </Select>
         <Select
-          className="h-9 bg-background"
+          className="h-9 bg-card"
           value={requesterId}
           onChange={(e) => setRequesterId(e.target.value)}
           disabled={!clientId}
@@ -101,15 +102,21 @@ function TriageBlock({ ticket }: { ticket: TicketDetail }) {
 
 export function TicketSidebar({ ticket }: { ticket: TicketDetail }) {
   return (
-    <aside className="w-72 shrink-0">
-      <div className="rounded-lg border border-border p-4">
+    <aside className="flex w-full shrink-0 flex-col gap-4 lg:w-80">
+      <Panel title="Cliente e contrato" icon="business">
         <Row label="Cliente">{ticket.client?.name ?? '—'}</Row>
         <Row label="Solicitante">
           {ticket.requester ? `${ticket.requester.name} (${ticket.requester.email})` : '—'}
         </Row>
-        <Row label="Categoria">{ticket.category?.name ?? '—'}</Row>
-        <Row label="Origem">{ORIGIN_LABELS[ticket.origin]}</Row>
-        <Row label="Prioridade">{PRIORITY_LABELS[ticket.priority]}</Row>
+        <Row label="Contrato">
+          {ticket.contract ? (
+            <a href={`/app/contratos/${ticket.contract.id}`} className="text-primary underline">
+              {ticket.contract.name}
+            </a>
+          ) : (
+            '—'
+          )}
+        </Row>
         <Row label="Local">{ticket.location?.name ?? '—'}</Row>
         <Row label="Ativos">
           {ticket.assets?.length
@@ -117,29 +124,27 @@ export function TicketSidebar({ ticket }: { ticket: TicketDetail }) {
                 <a
                   key={a.id}
                   href={`/app/ativos/${a.id}`}
-                  className="mr-2 underline"
+                  className="mr-2 text-primary underline"
                 >
                   {a.label}
                 </a>
               ))
             : '—'}
         </Row>
-        <Row label="Contrato">
-          {ticket.contract ? (
-            <a href={`/app/contratos/${ticket.contract.id}`} className="underline">
-              {ticket.contract.name}
-            </a>
-          ) : (
-            '—'
-          )}
-        </Row>
         {ticket.equipment ? (
           <Row label="Equipamento (legado)">{ticket.equipment}</Row>
         ) : null}
+      </Panel>
+
+      <Panel title="Detalhes" icon="info">
+        <Row label="Categoria">{ticket.category?.name ?? '—'}</Row>
+        <Row label="Origem">{ORIGIN_LABELS[ticket.origin]}</Row>
+        <Row label="Prioridade">{PRIORITY_LABELS[ticket.priority]}</Row>
         <Row label="Criado em">{fmt(ticket.createdAt)}</Row>
         <Row label="SLA">{fmt(ticket.slaDueAt)}</Row>
         <Row label="Resolvido em">{fmt(ticket.resolvedAt)}</Row>
-      </div>
+      </Panel>
+
       {ticket.needsTriage && <TriageBlock ticket={ticket} />}
     </aside>
   );

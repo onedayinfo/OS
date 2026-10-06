@@ -9,7 +9,6 @@ import { useDashboardOverview } from '@/lib/dashboard';
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
-  TERMINAL_STATUSES,
   isOverdue,
   toQuery,
   useTickets,
@@ -21,6 +20,7 @@ import {
 } from '@/lib/tickets';
 import type { PublicUser } from '@/lib/tickets';
 import { cn } from '@/lib/utils';
+import { SlaIndicator } from '@/components/sla-indicator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -62,43 +62,6 @@ function fmtDate(iso: string): string {
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
-}
-
-function fmtDuration(ms: number): string {
-  const abs = Math.abs(ms);
-  const h = Math.floor(abs / 3_600_000);
-  const m = Math.floor((abs % 3_600_000) / 60_000);
-  if (h >= 48) return `${Math.floor(h / 24)}d ${h % 24}h`;
-  return `${h}h ${String(m).padStart(2, '0')}m`;
-}
-
-function SlaCell({ t }: { t: TicketListItem }) {
-  if (!t.slaDueAt || TERMINAL_STATUSES.includes(t.status)) {
-    return <span className="text-muted-foreground">—</span>;
-  }
-  if (t.status === 'WAITING_CLIENT') {
-    return (
-      <span className="flex items-center gap-1 text-muted-foreground" title="SLA pausado">
-        <Icon name="pause_circle" className="text-[16px]" />
-        Pausado
-      </span>
-    );
-  }
-  const ms = new Date(t.slaDueAt).getTime() - Date.now();
-  const late = ms < 0;
-  const risk = !late && ms < 2 * 3_600_000;
-  return (
-    <span
-      className={cn(
-        'flex items-center gap-1 whitespace-nowrap font-medium',
-        late || risk ? 'text-destructive-foreground' : 'text-muted-foreground',
-      )}
-      title={fmtDate(t.slaDueAt)}
-    >
-      <Icon name={late ? 'alarm' : 'schedule'} className="text-[16px]" />
-      {late ? `vencido há ${fmtDuration(ms)}` : fmtDuration(ms)}
-    </span>
-  );
 }
 
 type View = 'all' | 'mine' | 'overdue' | 'waiting' | 'triage';
@@ -451,7 +414,7 @@ export function TicketTable({ clientId, summary = false }: { clientId?: string; 
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <SlaCell t={t} />
+                    <SlaIndicator slaDueAt={t.slaDueAt} status={t.status} />
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{fmtDate(t.createdAt)}</td>
                 </tr>
