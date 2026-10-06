@@ -50,7 +50,7 @@ export function Dialog({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl bg-card shadow-2xl',
+          'flex max-h-[90vh] w-full max-w-lg flex-col rounded-xl bg-card shadow-2xl',
           className,
         )}
       >

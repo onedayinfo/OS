@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import {
@@ -46,7 +46,17 @@ function fmtDate(iso: string): string {
  */
 export function TicketTable({ clientId }: { clientId?: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlQ = clientId ? null : searchParams.get('q');
   const [filters, setFilters] = useState<TicketFilters>({ page: 1, pageSize: 20 });
+  const [qText, setQText] = useState('');
+
+  // Busca do topo (/app?q=...) filtra a fila.
+  useEffect(() => {
+    if (urlQ === null) return;
+    setQText(urlQ);
+    setFilters((f) => ({ ...f, q: urlQ.trim() || undefined, page: 1 }));
+  }, [urlQ]);
 
   const query: TicketFilters = { ...filters, clientId: clientId ?? filters.clientId };
   const { data, isLoading, isError } = useTickets(query);
@@ -90,9 +100,10 @@ export function TicketTable({ clientId }: { clientId?: string }) {
         <Input
           placeholder="Buscar por número ou título"
           className="h-9 w-64"
-          defaultValue={filters.q ?? ''}
+          value={qText}
+          onChange={(e) => setQText(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') patch({ q: (e.target as HTMLInputElement).value.trim() });
+            if (e.key === 'Enter') patch({ q: qText.trim() || undefined });
           }}
         />
         <Select

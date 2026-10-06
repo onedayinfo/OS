@@ -2,34 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Paleta sage quente + neutros creme. Tokens já prontos para modo escuro
-   (ainda não ativado por padrão — ver --font-heading e data-theme). */
+/* Paleta azul (Stitch "OneDay OS") + neutros azulados. Claro por padrão;
+   escuro via data-theme="dark" ou prefers-color-scheme. */
 :root {
-  --background: #f6f5f0;
-  --foreground: #232920;
+  --background: #f8f9ff;
+  --foreground: #0b1c30;
   --card: #ffffff;
-  --muted: #edebe2;
-  --muted-foreground: #6c7268;
-  --border: #e2dfd3;
-  --input: #e2dfd3;
-  --accent: #edebe2;
-  --accent-foreground: #232920;
-  --primary: #4f6b49;
-  --primary-foreground: #fafaf3;
-  --ring: #4f6b49;
+  --muted: #eff4ff;
+  --muted-foreground: #565e74;
+  --border: #dce5f6;
+  --input: #c4cde3;
+  --accent: #e5eeff;
+  --accent-foreground: #0b1c30;
+  --primary: #1d4ed8;
+  --primary-foreground: #ffffff;
+  --ring: #1d4ed8;
 
-  --success: #e3ebde;
-  --success-foreground: #3e5639;
-  --warning: #f3e9d4;
-  --warning-foreground: #b7791f;
-  --destructive: #f5dfda;
-  --destructive-foreground: #b23b30;
-  --info: #dee9f0;
-  --info-foreground: #3e6b8c;
+  --success: #dcf4e5;
+  --success-foreground: #14633a;
+  --warning: #fdf0d0;
+  --warning-foreground: #8a5a00;
+  --destructive: #ffdad6;
+  --destructive-foreground: #ba1a1a;
+  --info: #dce1ff;
+  --info-foreground: #0039b5;
 
-  --nav: #211f1a;
-  --nav-foreground: #f4f2e9;
-  --nav-muted: #8c897e;
+  --nav: #ffffff;
+  --nav-foreground: #0b1c30;
+  --nav-muted: #434655;
+  --nav-label: #565e74;
+  --nav-hover: #e5eeff;
   --nav-active: var(--primary);
   --nav-active-foreground: var(--primary-foreground);
   color-scheme: light;
@@ -37,61 +39,65 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: #171a15;
-    --foreground: #edebe1;
-    --card: #1e2219;
-    --muted: #262b20;
-    --muted-foreground: #9b988c;
-    --border: #31352a;
-    --input: #31352a;
-    --accent: #262b20;
-    --accent-foreground: #edebe1;
-    --primary: #8fb588;
-    --primary-foreground: #12160f;
-    --ring: #8fb588;
+    --background: #0b1220;
+    --foreground: #e6edfb;
+    --card: #121b2e;
+    --muted: #18233b;
+    --muted-foreground: #9aa8c7;
+    --border: #243252;
+    --input: #2c3b5e;
+    --accent: #1b2842;
+    --accent-foreground: #e6edfb;
+    --primary: #7da2ff;
+    --primary-foreground: #00164a;
+    --ring: #7da2ff;
 
-    --success: #28331f;
-    --success-foreground: #a6c89f;
-    --warning: #3a3120;
-    --warning-foreground: #d9a94a;
-    --destructive: #3a2320;
-    --destructive-foreground: #e08277;
-    --info: #1e2c33;
-    --info-foreground: #7fadcc;
+    --success: #12301f;
+    --success-foreground: #8be0ac;
+    --warning: #3a2d0a;
+    --warning-foreground: #f0c35c;
+    --destructive: #3d1512;
+    --destructive-foreground: #ff8f84;
+    --info: #172a57;
+    --info-foreground: #a9bfff;
 
-    --nav: #12140f;
-    --nav-foreground: #edebe1;
-    --nav-muted: #7a776c;
+    --nav: #0e1627;
+    --nav-foreground: #e6edfb;
+    --nav-muted: #a3b0cc;
+    --nav-label: #8190b3;
+    --nav-hover: #1b2842;
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --background: #171a15;
-  --foreground: #edebe1;
-  --card: #1e2219;
-  --muted: #262b20;
-  --muted-foreground: #9b988c;
-  --border: #31352a;
-  --input: #31352a;
-  --accent: #262b20;
-  --accent-foreground: #edebe1;
-  --primary: #8fb588;
-  --primary-foreground: #12160f;
-  --ring: #8fb588;
+  --background: #0b1220;
+  --foreground: #e6edfb;
+  --card: #121b2e;
+  --muted: #18233b;
+  --muted-foreground: #9aa8c7;
+  --border: #243252;
+  --input: #2c3b5e;
+  --accent: #1b2842;
+  --accent-foreground: #e6edfb;
+  --primary: #7da2ff;
+  --primary-foreground: #00164a;
+  --ring: #7da2ff;
 
-  --success: #28331f;
-  --success-foreground: #a6c89f;
-  --warning: #3a3120;
-  --warning-foreground: #d9a94a;
-  --destructive: #3a2320;
-  --destructive-foreground: #e08277;
-  --info: #1e2c33;
-  --info-foreground: #7fadcc;
+  --success: #12301f;
+  --success-foreground: #8be0ac;
+  --warning: #3a2d0a;
+  --warning-foreground: #f0c35c;
+  --destructive: #3d1512;
+  --destructive-foreground: #ff8f84;
+  --info: #172a57;
+  --info-foreground: #a9bfff;
 
-  --nav: #12140f;
-  --nav-foreground: #edebe1;
-  --nav-muted: #7a776c;
+  --nav: #0e1627;
+  --nav-foreground: #e6edfb;
+  --nav-muted: #a3b0cc;
+  --nav-label: #8190b3;
+  --nav-hover: #1b2842;
   color-scheme: dark;
 }
 
@@ -101,7 +107,14 @@ body {
   background: var(--background);
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  line-height: 18px;
   font-variant-numeric: tabular-nums;
+}
+
+h1, h2, h3, h4 {
+  letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 
 /* ponytail: fundo liso por padrão; --page-bg-image fica pronto pra quando
@@ -117,13 +130,34 @@ body::before {
   filter: blur(40px);
 }
 
-h1, h2, h3, h4 {
-  font-family: var(--font-heading), var(--font-sans), sans-serif;
-  text-wrap: balance;
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  user-select: none;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  /* rótulo técnico (mono, caixa alta) usado em KPIs, cabeçalhos e chips */
+  .label-mono {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 10px;
+    line-height: 12px;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    text-transform: uppercase;
   }
 }

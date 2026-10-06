@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth';
-import { AppNav } from '@/components/nav';
+import { AppShell } from '@/components/app-shell';
 
 // Telas de acesso ficam sob /app mas não passam pela guarda de sessão.
 const PUBLIC_PATHS = ['/app/login', '/app/definir-senha'];
@@ -33,9 +33,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen">
-      <AppNav />
-      <main className="min-w-0 flex-1 p-8">{children}</main>
-    </div>
+    <AppShell>{children}</AppShell>
   );
 }
