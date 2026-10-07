@@ -34,7 +34,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       <PortalNav />
-      <main className="mx-auto max-w-3xl p-6">{children}</main>
+      <main className="mx-auto max-w-6xl p-4 md:p-6">{children}</main>
     </div>
   );
 }

@@ -67,9 +67,15 @@ export default function PortalNewTicketPage() {
   }
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="mb-4 text-lg font-semibold">Abrir chamado</h1>
-      <form onSubmit={submit} className="flex flex-col gap-4">
+    <div className="mx-auto flex max-w-2xl flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <span className="label-mono text-primary">Nova solicitação</span>
+        <h1 className="text-[24px] font-semibold leading-8">Abrir chamado</h1>
+        <p className="text-[13px] text-muted-foreground">
+          Descreva o que está acontecendo. Nossa equipe recebe na hora e você acompanha o andamento por aqui.
+        </p>
+      </div>
+      <form onSubmit={submit} className="flex flex-col gap-4 rounded-xl bg-card p-6 shadow-sm">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="title">Título</Label>
           <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -115,7 +121,7 @@ export default function PortalNewTicketPage() {
             ref={fileInput}
             type="file"
             multiple
-            className="text-sm"
+            className="text-[13px]"
             onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
           />
         </div>

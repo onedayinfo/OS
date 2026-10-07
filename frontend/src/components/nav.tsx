@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useSession } from '@/lib/auth';
 import { BrandMark } from '@/components/brand-mark';
-import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { ThemeToggle } from '@/components/theme-toggle';
 
@@ -120,27 +119,70 @@ export function AppNav({ open, onClose }: { open: boolean; onClose: () => void }
   );
 }
 
+const PORTAL_LINKS = [
+  { href: '/portal', label: 'Meus chamados' },
+  { href: '/portal/chamados/novo', label: 'Abrir chamado' },
+];
+
 export function PortalNav() {
   const router = useRouter();
-  const { logout } = useSession();
+  const pathname = usePathname();
+  const { logout, user } = useSession();
 
   return (
-    <header className="flex items-center justify-between bg-nav px-6 py-4 shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
-      <Link href="/portal">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 bg-nav px-4 shadow-[0_1px_8px_rgba(0,0,0,0.06)] md:px-6">
+      <Link href="/portal" className="shrink-0">
         <BrandMark className="h-8 w-auto text-nav-foreground" />
       </Link>
-      <div className="flex items-center gap-2">
+
+      <nav className="flex items-center gap-1 md:ml-4">
+        {PORTAL_LINKS.map((l) => {
+          const active = pathname === l.href || (l.href === '/portal' && pathname.startsWith('/portal/chamados/') && pathname !== '/portal/chamados/novo');
+          return (
+            <Link
+              key={l.href}
+              href={l.href}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-[13px] transition-colors',
+                active
+                  ? 'bg-nav-active font-semibold text-nav-active-foreground'
+                  : 'text-nav-muted hover:bg-nav-hover hover:text-nav-foreground',
+              )}
+            >
+              {l.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="ml-auto flex items-center gap-2">
         <ThemeToggle className="flex h-8 w-8 items-center justify-center rounded-lg text-nav-muted transition-colors hover:bg-nav-hover hover:text-nav-foreground" />
-        <Button
-          variant="ghost"
-          className="text-nav-muted hover:bg-nav-hover hover:text-nav-foreground"
+        {user && (
+          <span className="hidden items-center gap-2 pl-1 md:flex">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-info text-[12px] font-bold text-info-foreground">
+              {user.name
+                .trim()
+                .split(/\s+/)
+                .map((p, i, a) => (i === 0 || i === a.length - 1 ? p[0] : ''))
+                .join('')
+                .toUpperCase()}
+            </span>
+            <span className="text-[12px] font-semibold">{user.name}</span>
+          </span>
+        )}
+        <button
+          type="button"
+          title="Sair"
+          aria-label="Sair"
           onClick={async () => {
             await logout();
             router.replace('/portal/login');
           }}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-nav-muted transition-colors hover:bg-nav-hover hover:text-nav-foreground"
         >
-          Sair
-        </Button>
+          <Icon name="logout" className="text-[18px]" />
+        </button>
       </div>
     </header>
   );
