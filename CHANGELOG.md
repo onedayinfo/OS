@@ -3,6 +3,27 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.11.0] - 2026-10-06
+
+### Alterado
+- **Novo visual (sugestão do Stitch "OneDay OS")**: paleta azul com tema
+  claro e escuro, Geist + JetBrains Mono e ícones Material Symbols. Menu
+  lateral claro em quatro grupos, topbar com busca de chamados (Ctrl K) e
+  "Nova OS".
+- **Fila de chamados**: indicadores no topo (fila aberta, atribuídas a mim,
+  SLA vencido, aguardando cliente, triagem), pílulas de visão com contador e
+  tabela com responsável, chips de prioridade/status e SLA restante.
+- **Ficha do chamado**: cabeçalho com chips e ações rápidas (iniciar,
+  aguardar cliente, retomar, finalizar), seções em cartões e linha do tempo.
+- **Dashboard**: tabela de chamados com SLA crítico, origem dos chamados,
+  produtividade por técnico em barras.
+- **Portal do cliente**: navegação superior, indicadores, cartões "Em
+  andamento" com linha de progresso do chamado e ficha redesenhada.
+
+### Adicionado
+- `GET /tickets?active=true`: lista só chamados não terminais (usado nos
+  contadores da fila e do portal).
+
 ## [0.10.1] - 2026-09-28
 
 ### Corrigido
