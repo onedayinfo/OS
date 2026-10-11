@@ -14,6 +14,7 @@ import { Tabs } from '@/components/ui/tabs';
 import { useSession } from '@/lib/auth';
 import type { AssetType } from '@/lib/assets';
 import EmailTab from './tabs/email-tab';
+import WhatsappTab from './tabs/whatsapp-tab';
 import StorageTab from './tabs/storage-tab';
 import AppearanceTab from './tabs/appearance-tab';
 import BackupTab from './tabs/backup-tab';
@@ -554,6 +555,7 @@ export default function ConfigPage() {
           { value: 'tipos-ativo', label: 'Tipos de ativo' },
           { value: 'checklists', label: 'Checklists' },
           { value: 'email', label: 'E-mail' },
+          { value: 'whatsapp', label: 'WhatsApp' },
           { value: 'armazenamento', label: 'Armazenamento' },
           { value: 'aparencia', label: 'Aparência' },
           { value: 'backup', label: 'Backup' },
@@ -571,6 +573,7 @@ export default function ConfigPage() {
       {tab === 'tipos-ativo' && isAdmin && <AssetTypesTab />}
       {tab === 'checklists' && isAdmin && <ChecklistTemplatesTab />}
       {tab === 'email' && isAdmin && <EmailTab />}
+      {tab === 'whatsapp' && isAdmin && <WhatsappTab />}
       {tab === 'armazenamento' && isAdmin && <StorageTab />}
       {tab === 'aparencia' && isAdmin && <AppearanceTab />}
       {tab === 'backup' && isAdmin && <BackupTab />}
