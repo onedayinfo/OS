@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Tabs } from '@/components/ui/tabs';
+import { WhatsappClientTab } from '@/components/whatsapp-client-tab';
 
 interface Client {
   id: string;
@@ -482,6 +483,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
           { value: 'ativos', label: 'Ativos' },
           { value: 'contratos', label: 'Contratos' },
           { value: 'oportunidades', label: 'Oportunidades' },
+          { value: 'whatsapp', label: 'WhatsApp' },
           { value: 'chamados', label: 'Chamados' },
         ]}
       />
@@ -518,6 +520,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       {tab === 'contratos' && <ContractsTab clientId={id} />}
 
       {tab === 'oportunidades' && <OpportunitiesTab clientId={id} />}
+      {tab === 'whatsapp' && <WhatsappClientTab clientId={id} />}
 
       {tab === 'chamados' && (
         <div className="pt-4">
