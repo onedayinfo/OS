@@ -35,7 +35,7 @@ export interface Suggestion {
 
 export interface WhatsappStatus {
   connection: { configured: boolean; state: string; disconnectedSince: string | null };
-  ai: { usedToday: number; limit: number; paused: boolean };
+  ai: { usedToday: number; limit: number; paused: boolean; lastError: { message: string; at: string } | null };
 }
 
 export interface TicketWhatsappMessage {

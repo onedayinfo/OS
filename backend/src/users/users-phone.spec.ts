@@ -31,4 +31,15 @@ describe('telefone do contato', () => {
     await service.update('u1', { name: 'B' } as any);
     expect(prisma.user.update.mock.calls[1][0].data).toEqual({ name: 'B' });
   });
+
+  it('telefone curto demais é erro (não apaga em silêncio); em branco ainda limpa', async () => {
+    const { service, prisma } = makeService();
+    await expect(service.update('u1', { phone: '123' } as any)).rejects.toThrow('Telefone inválido.');
+    await expect(
+      service.createContact('c1', { name: 'N', email: 'n@x.com', role: 'CONTACT', phone: '12-34' } as any),
+    ).rejects.toThrow('Telefone inválido.');
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    await service.update('u1', { phone: '   ' } as any);
+    expect(prisma.user.update.mock.calls[0][0].data).toEqual({ phone: null });
+  });
 });

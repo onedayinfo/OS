@@ -104,6 +104,14 @@ export default function WhatsappTab() {
           <p className="text-sm text-muted-foreground">
             IA hoje: {ai.usedToday.toLocaleString('pt-BR')} / {ai.limit.toLocaleString('pt-BR')} tokens
             {ai.paused && <b className="text-destructive"> — pausada até amanhã</b>}
+            {ai.lastError && (
+              <b className="text-destructive">
+                {' '}
+                — A IA está com problema: {ai.lastError.message} (desde{' '}
+                {new Date(ai.lastError.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}). As
+                mensagens continuam na fila.
+              </b>
+            )}
           </p>
         )}
       </section>

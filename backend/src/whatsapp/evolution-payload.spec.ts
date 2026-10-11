@@ -67,4 +67,27 @@ describe('parseEvolutionMessage', () => {
     expect(parseEvolutionMessage(base({ messageTimestamp: { low: 1760000001, high: 0 } }))!.sentAt.getTime()).toBe(1760000001 * 1000);
     expect(parseEvolutionMessage(base({ messageTimestamp: undefined }))!.sentAt).toBeInstanceOf(Date);
   });
+
+  it('desembrulha ephemeralMessage e viewOnceMessageV2', () => {
+    const e = parseEvolutionMessage(base({ message: { ephemeralMessage: { message: { extendedTextMessage: { text: 'Sistema caiu' } } } } }))!;
+    expect(e.body).toBe('Sistema caiu');
+    expect(e.type).toBe('TEXT');
+    const v = parseEvolutionMessage(base({ message: { viewOnceMessageV2: { message: { imageMessage: { caption: 'foto' } } } } }))!;
+    expect(v.body).toBe('foto');
+    expect(v.type).toBe('IMAGE');
+  });
+
+  it('remetente: participantPn vazio ou LID não esconde participant válido', () => {
+    expect(parseEvolutionMessage(base({}, { participantPn: '' }))!.senderPhone).toBe('5519999991234');
+    expect(parseEvolutionMessage(base({}, { participantPn: '99887766554433@lid' }))!.senderPhone).toBe('5519999991234');
+  });
+
+  it('payload malformado devolve null sem lançar', () => {
+    for (const p of [{ event: 'messages.upsert', data: [] }, base({}, {}) && { event: 'messages.upsert', data: { key: null } }, base({ message: 'x' })]) {
+      expect(() => parseEvolutionMessage(p)).not.toThrow();
+    }
+    expect(parseEvolutionMessage({ event: 'messages.upsert', data: [] })).toBeNull();
+    expect(parseEvolutionMessage({ event: 'messages.upsert', data: { key: null } })).toBeNull();
+    expect(parseEvolutionMessage(base({ message: 'x' }))!.type).toBe('OTHER');
+  });
 });

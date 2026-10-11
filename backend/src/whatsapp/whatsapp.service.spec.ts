@@ -8,7 +8,7 @@ const msg = (over: Partial<ParsedWhatsappMessage> = {}): ParsedWhatsappMessage =
   senderName: 'Fulano',
   type: 'TEXT',
   body: 'Sem conexão - escritório',
-  sentAt: new Date('2026-10-11T12:00:00Z'),
+  sentAt: new Date(),
   ...over,
 });
 
@@ -36,6 +36,33 @@ function make(over: { group?: any; phrases?: any[]; contacts?: any[]; open?: any
   const events = { record: vi.fn().mockResolvedValue({}) };
   return { service: new WhatsappService(prisma as any, tickets as any, events as any), prisma, tickets, events };
 }
+
+describe('WhatsappService.ingest - guarda de idade', () => {
+  const ago = (h: number) => new Date(Date.now() - h * 3600_000);
+
+  it('25h atrás com frase de gatilho → grava SKIPPED, sem chamado', async () => {
+    const { service, prisma, tickets } = make();
+    expect(await service.ingest(msg({ sentAt: ago(25) }))).toEqual({ stored: true, ticketId: null });
+    const data = prisma.whatsappMessage.create.mock.calls[0][0].data;
+    expect(data.aiStatus).toBe('SKIPPED');
+    expect(data.triggerPhraseId).toBeNull();
+    expect(tickets.create).not.toHaveBeenCalled();
+  });
+
+  it('25h atrás sem gatilho também é SKIPPED (não vai para a IA)', async () => {
+    const { service, prisma } = make();
+    await service.ingest(msg({ sentAt: ago(25), body: 'a rede caiu' }));
+    expect(prisma.whatsappMessage.create.mock.calls[0][0].data.aiStatus).toBe('SKIPPED');
+  });
+
+  it('23h atrás e data futura ainda disparam', async () => {
+    for (const sentAt of [ago(23), new Date(Date.now() + 3600_000)]) {
+      const { service, tickets } = make();
+      expect((await service.ingest(msg({ sentAt }))).ticketId).toBe('t1');
+      expect(tickets.create).toHaveBeenCalledTimes(1);
+    }
+  });
+});
 
 describe('WhatsappService.ingest', () => {
   it('grupo desconhecido ou inativo → descarta sem gravar', async () => {

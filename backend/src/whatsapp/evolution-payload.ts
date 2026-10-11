@@ -35,20 +35,33 @@ export function parseEvolutionMessage(payload: unknown): ParsedWhatsappMessage |
   if (!groupJid.endsWith('@g.us') || key.fromMe === true) return null;
   if (typeof key.id !== 'string' || !key.id) return null;
 
-  const m: Obj = isObj(d.message) ? d.message : {};
+  let m: Obj = isObj(d.message) ? d.message : {};
+  for (let i = 0; i < 3; i++) {
+    const inner =
+      m.ephemeralMessage?.message ??
+      m.viewOnceMessage?.message ??
+      m.viewOnceMessageV2?.message ??
+      m.viewOnceMessageV2Extension?.message ??
+      m.documentWithCaptionMessage?.message;
+    if (!isObj(inner)) break;
+    m = inner;
+  }
   const text: unknown =
     m.conversation ?? m.extendedTextMessage?.text ?? m.imageMessage?.caption ?? m.videoMessage?.caption ?? null;
   const body = typeof text === 'string' && text.trim() ? text : null;
   const type: WhatsappMessageKind = m.audioMessage ? 'AUDIO' : m.imageMessage ? 'IMAGE' : body ? 'TEXT' : 'OTHER';
 
   // Contas com LID: o telefone real, quando existe, vem em participantPn/senderPn.
-  const senderJid = key.participantPn ?? key.senderPn ?? key.participant ?? d.participant;
+  const senderPhone =
+    [key.participantPn, key.senderPn, key.participant, d.participant]
+      .map((j) => phoneFromJid(typeof j === 'string' ? j : null))
+      .find((p) => p) ?? '';
   const ts = Number(isObj(d.messageTimestamp) ? d.messageTimestamp.low : d.messageTimestamp);
 
   return {
     externalId: `${groupJid}:${key.id}`,
     groupJid,
-    senderPhone: phoneFromJid(typeof senderJid === 'string' ? senderJid : null) ?? '',
+    senderPhone: senderPhone,
     senderName: typeof d.pushName === 'string' && d.pushName ? d.pushName : null,
     type,
     body,

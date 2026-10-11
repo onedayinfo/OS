@@ -31,6 +31,13 @@ export default function TriagemPage() {
           deste período podem não ter chegado. Reconecte em Configurações &gt; WhatsApp.
         </p>
       )}
+      {status?.ai.lastError && (
+        <p className="rounded-md border border-warning bg-warning px-3 py-2 text-sm text-warning-foreground">
+          A IA está com problema: {status.ai.lastError.message} (desde{' '}
+          {new Date(status.ai.lastError.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}). As
+          mensagens continuam na fila e serão analisadas quando voltar.
+        </p>
+      )}
       {status?.ai.paused && (
         <p className="rounded-md border border-warning bg-warning px-3 py-2 text-sm text-warning-foreground">
           Teto diário de tokens da IA atingido — novas sugestões voltam amanhã (as frases de gatilho continuam).

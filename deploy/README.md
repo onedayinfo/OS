@@ -126,16 +126,17 @@ do histórico).
 1. Variáveis novas no stack: `EVOLUTION_API_KEY` (`openssl rand -hex 32`) e
    `EVOLUTION_DB_PASSWORD` (só letras/números, pois entra numa URL).
 2. Criar a instância (rode de dentro da rede, p.ex. no terminal do Portainer no
-   container do backend; `$EVOLUTION_API_KEY` = a chave acima):
+   container do backend, que é Node/alpine e **não tem `curl`** — por isso usamos o
+   `fetch` do Node; **cole a chave acima no lugar de `COLE_A_CHAVE`**, pois o
+   backend não recebe `EVOLUTION_API_KEY` no ambiente):
    ```bash
-   curl -X POST http://evolution-api:8080/instance/create -H "apikey: $EVOLUTION_API_KEY" -H "Content-Type: application/json" \
-     -d '{"instanceName":"os","qrcode":true,"integration":"WHATSAPP-BAILEYS"}'
+   node -e 'fetch("http://evolution-api:8080/instance/create",{method:"POST",headers:{apikey:"COLE_A_CHAVE","Content-Type":"application/json"},body:JSON.stringify({instanceName:"os",qrcode:true,integration:"WHATSAPP-BAILEYS"})}).then(async r=>console.log(r.status,await r.text()))'
    ```
 3. Webhook da instância (rota `POST /webhook/set/{instância}`; corpo conferido no
    código da Evolution v2 — `byEvents`/`base64`, não `webhookByEvents`):
+   Mesmo terminal; troque `COLE_A_CHAVE` e `COLE_O_SEGREDO` (o mesmo de Config > WhatsApp):
    ```bash
-   curl -X POST http://evolution-api:8080/webhook/set/os -H "apikey: $EVOLUTION_API_KEY" -H "Content-Type: application/json" \
-     -d '{"webhook":{"enabled":true,"url":"http://backend:3001/api/whatsapp/webhook","byEvents":false,"base64":false,"headers":{"x-webhook-secret":"<MESMO SEGREDO de Config > WhatsApp>"},"events":["MESSAGES_UPSERT"]}}'
+   node -e 'fetch("http://evolution-api:8080/webhook/set/os",{method:"POST",headers:{apikey:"COLE_A_CHAVE","Content-Type":"application/json"},body:JSON.stringify({webhook:{enabled:true,url:"http://backend:3001/api/whatsapp/webhook",byEvents:false,base64:false,headers:{"x-webhook-secret":"COLE_O_SEGREDO"},events:["MESSAGES_UPSERT"]}})}).then(async r=>console.log(r.status,await r.text()))'
    ```
 4. Em `/app/config` > WhatsApp: URL `http://evolution-api:8080`, instância `os`,
    chave da Evolution, segredo do webhook e chave da Anthropic; clique em

@@ -2,12 +2,14 @@ import { Controller, Get } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
 import { EvolutionStatusService } from './evolution-status.service.js';
 import { AiUsageService } from './ai-usage.service.js';
+import { TriageService } from './triage.service.js';
 
 @Controller('whatsapp')
 export class WhatsappStatusController {
   constructor(
     private readonly status: EvolutionStatusService,
     private readonly usage: AiUsageService,
+    private readonly triage: TriageService,
   ) {}
 
   @Get('status')
@@ -18,7 +20,7 @@ export class WhatsappStatusController {
       this.usage.usedToday(),
       this.usage.limit(),
     ]);
-    return { connection, ai: { usedToday, limit, paused: usedToday >= limit } };
+    return { connection, ai: { usedToday, limit, paused: usedToday >= limit, lastError: this.triage.getLastError() } };
   }
 
   @Get('qr')

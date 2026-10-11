@@ -14,6 +14,14 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class UsersService {
+  /** Vazio limpa (null); preenchido mas curto demais é erro, não apagamento silencioso. */
+  private phoneOrThrow(raw: string | null | undefined): string | null {
+    const p = normalizePhone(raw);
+    if (!p && raw && raw.trim()) throw new BadRequestException('Telefone inválido.');
+    return p;
+  }
+
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject('MailSender') private readonly mail: MailSender,
@@ -65,7 +73,7 @@ export class UsersService {
         role: dto.role,
         type: 'CLIENT',
         clientId,
-        phone: normalizePhone(dto.phone),
+        phone: this.phoneOrThrow(dto.phone),
         passwordHash: null,
         inviteToken,
         inviteSentAt: new Date(),
@@ -134,7 +142,7 @@ export class UsersService {
     const data: { name?: string; active?: boolean; phone?: string | null } = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.active !== undefined) data.active = dto.active;
-    if (dto.phone !== undefined) data.phone = normalizePhone(dto.phone);
+    if (dto.phone !== undefined) data.phone = this.phoneOrThrow(dto.phone);
     const updated = await this.prisma.user.update({ where: { id }, data });
     return publicUser(updated);
   }

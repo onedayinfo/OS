@@ -37,6 +37,30 @@ export class AiNotConfiguredError extends Error {
   }
 }
 
+/** IA indisponível/sem crédito/chave recusada: tentar de novo depois, sem gastar tentativas. */
+export class AiTransientError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AiTransientError';
+  }
+}
+
+// ponytail: duck-typing (os testes mockam o SDK; instanceof APIError não é confiável).
+function toTransient(err: unknown): AiTransientError | null {
+  if (typeof err !== 'object' || err === null) return null;
+  const e = err as { status?: unknown; name?: unknown; code?: unknown };
+  const status = typeof e.status === 'number' ? e.status : undefined;
+  if (status !== undefined) {
+    if (status === 401 || status === 403) return new AiTransientError(`Chave da API da Anthropic recusada (HTTP ${status})`);
+    if ([408, 409, 429].includes(status) || status >= 500) return new AiTransientError(`IA indisponível (HTTP ${status})`);
+    return null;
+  }
+  const conn =
+    /Connection|Timeout/i.test(String(e.name ?? '')) ||
+    /^(ECONNRESET|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|UND_ERR_.*)$/.test(String(e.code ?? ''));
+  return conn ? new AiTransientError('IA indisponível (sem conexão)') : null;
+}
+
 // Faixas (1-5, -1..1) não vão no schema: restrições numéricas variam no suporte a saída
 // estruturada. `sanitizeItems` aplica os limites depois.
 const Schema = z.object({
@@ -107,13 +131,18 @@ export class AiClassifierService {
     if (!apiKey) throw new AiNotConfiguredError();
 
     const client = new Anthropic({ apiKey });
-    const response = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 8000,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: buildUserPrompt(input) }],
-      output_config: { effort: 'low', format: zodOutputFormat(Schema) },
-    });
+    let response;
+    try {
+      response = await client.messages.parse({
+        model: MODEL,
+        max_tokens: 8000,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: buildUserPrompt(input) }],
+        output_config: { effort: 'low', format: zodOutputFormat(Schema) },
+      });
+    } catch (err) {
+      throw toTransient(err) ?? err;
+    }
     if (response.stop_reason === 'max_tokens') throw new Error('Resposta da IA truncada (max_tokens).');
     if (response.stop_reason === 'refusal' || !response.parsed_output) {
       throw new Error('Resposta da IA recusada ou fora do formato.');

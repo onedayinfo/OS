@@ -5,7 +5,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
   },
 }));
 
-import { AiClassifierService, AiNotConfiguredError, buildUserPrompt, sanitizeItems } from './ai-classifier.service.js';
+import { AiClassifierService, AiNotConfiguredError, AiTransientError, buildUserPrompt, sanitizeItems } from './ai-classifier.service.js';
 
 describe('buildUserPrompt', () => {
   it('numera só as mensagens novas e separa o contexto', () => {
@@ -61,7 +61,43 @@ describe('AiClassifierService', () => {
   describe('com API mockada', () => {
     const input = { clientName: 'A', context: [], pending: [{ sender: 'x', text: 'y' }, { sender: 'z', text: 'w' }] };
     const make = () => new AiClassifierService({ get: vi.fn().mockResolvedValue('k') } as any);
-    beforeEach(() => parse.mockReset());
+    beforeEach(() => {
+      parse.mockReset();
+    });
+
+    it.each([429, 401, 503])('HTTP %i → AiTransientError', async (status) => {
+      parse.mockImplementation(() => {
+        throw Object.assign(new Error('x'), { status });
+      });
+      await expect(make().classify(input)).rejects.toBeInstanceOf(AiTransientError);
+    });
+
+    it('401 → mensagem de chave recusada', async () => {
+      parse.mockImplementation(() => {
+        throw Object.assign(new Error('x'), { status: 401 });
+      });
+      await expect(make().classify(input)).rejects.toThrow('Chave da API da Anthropic recusada (HTTP 401)');
+    });
+
+    it('erro de conexão (sem status) → AiTransientError', async () => {
+      parse.mockImplementation(() => {
+        throw Object.assign(new Error('x'), { name: 'APIConnectionError' });
+      });
+      await expect(make().classify(input)).rejects.toBeInstanceOf(AiTransientError);
+      parse.mockImplementation(() => {
+        throw Object.assign(new Error('x'), { code: 'ECONNRESET' });
+      });
+      await expect(make().classify(input)).rejects.toBeInstanceOf(AiTransientError);
+    });
+
+    it('HTTP 400 → erro comum (não transitório)', async () => {
+      parse.mockImplementation(() => {
+        throw Object.assign(new Error('bad'), { status: 400 });
+      });
+      const e = await make().classify(input).catch((x) => x);
+      expect(e).toBeInstanceOf(Error);
+      expect(e).not.toBeInstanceOf(AiTransientError);
+    });
 
     it('recusa → rejeita', async () => {
       parse.mockResolvedValue({ stop_reason: 'refusal', parsed_output: null, usage: {} });

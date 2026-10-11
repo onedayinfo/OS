@@ -29,6 +29,16 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   `EVOLUTION_DB_PASSWORD` (a stack em produção precisa delas antes do
   redeploy). Dependências novas no backend: `@anthropic-ai/sdk` e `zod`.
 
+### Limitações conhecidas
+- O backup lógico (`/app/config` > Backup) não inclui as tabelas novas do
+  WhatsApp (nem Contratos/Locais/Ativos/Orçamentos, como já ocorria): use o
+  backup do Postgres.
+- Mensagens com mais de 24 h são gravadas, mas não geram chamado nem vão para a
+  IA.
+- A Evolution usa API não oficial do WhatsApp.
+- O cache de prompt da IA não foi implementado (o prompt de sistema é menor que
+  o mínimo cacheável).
+
 ## [0.11.0] - 2026-10-06
 
 ### Alterado

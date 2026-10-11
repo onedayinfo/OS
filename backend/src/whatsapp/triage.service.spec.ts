@@ -1,4 +1,4 @@
-import { AiNotConfiguredError } from './ai-classifier.service.js';
+import { AiNotConfiguredError, AiTransientError } from './ai-classifier.service.js';
 import { TriageService } from './triage.service.js';
 
 const group = { id: 'g1', clientId: 'c1', client: { name: 'Acme' } };
@@ -95,6 +95,31 @@ describe('TriageService.run', () => {
     expect(prisma.whatsappMessage.updateMany).not.toHaveBeenCalledWith(
       expect.objectContaining({ data: { aiAttempts: { increment: 1 } } }),
     );
+  });
+
+  it('IA fora do ar → fica PENDING, sem tentativa nem FAILED, guarda lastError; sucesso depois limpa', async () => {
+    const classify = vi
+      .fn()
+      .mockRejectedValueOnce(new AiTransientError('IA indisponível (HTTP 429)'))
+      .mockResolvedValue({ items: [], inputTokens: 1, outputTokens: 1 });
+    const { service, prisma } = make({ classify, pending: [m('m1', 'a rede caiu')] });
+    await service.run();
+    expect(prisma.whatsappMessage.updateMany).not.toHaveBeenCalled();
+    expect(prisma.whatsappMessage.update).not.toHaveBeenCalled();
+    expect(service.getLastError()).toEqual({ message: 'IA indisponível (HTTP 429)', at: expect.any(String) });
+    await service.run();
+    expect(service.getLastError()).toBeNull();
+  });
+
+  it('sugestão: remetente sem nome nem telefone vira "alguém"', async () => {
+    const classify = vi.fn().mockResolvedValue({
+      items: [{ messageIndexes: [0], isRequest: true, urgency: 3, sentiment: 0, summary: 'Rede' }],
+      inputTokens: 1,
+      outputTokens: 1,
+    });
+    const { service, prisma } = make({ classify, pending: [m('m1', 'a rede caiu', { senderName: null, senderPhone: '' })] });
+    await service.run();
+    expect(prisma.ticketSuggestion.create.mock.calls[0][0].data.excerpt).toBe('alguém: a rede caiu');
   });
 
   it('erro da IA → conta tentativa e marca FAILED quem chegou a 3', async () => {

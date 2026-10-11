@@ -8,6 +8,8 @@ import { isUniqueViolation } from './db-errors.js';
 import { matchStart } from './text.util.js';
 import type { ParsedWhatsappMessage } from './evolution-payload.js';
 
+// ponytail: janela fixa de 24h; mensagens mais velhas (reentrega offline) só são gravadas.
+const MAX_TRIGGER_AGE_MS = 24 * 3600_000;
 const TERMINAL = ['RESOLVED', 'CLOSED', 'CANCELLED'] as const;
 
 @Injectable()
@@ -30,7 +32,8 @@ export class WhatsappService {
 
     const senderUserId = await this.findSender(group.clientId, m.senderPhone);
     const body = m.type === 'TEXT' ? m.body : null;
-    const hit = body ? await this.matchTrigger(group.clientId, body) : null;
+    const tooOld = Date.now() - m.sentAt.getTime() > MAX_TRIGGER_AGE_MS;
+    const hit = body && !tooOld ? await this.matchTrigger(group.clientId, body) : null;
 
     let rowId: string;
     try {
@@ -46,7 +49,7 @@ export class WhatsappService {
           sentAt: m.sentAt,
           // Gatilho já nasce SKIPPED com a frase: se o processo cair antes do chamado, a IA não pega a mensagem
           // e a reentrega retoma (abaixo).
-          aiStatus: body && !hit ? 'PENDING' : 'SKIPPED',
+          aiStatus: body && !hit && !tooOld ? 'PENDING' : 'SKIPPED',
           triggerPhraseId: hit?.phrase.id ?? null,
         },
       });

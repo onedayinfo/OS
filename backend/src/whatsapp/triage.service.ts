@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { AiClassifierService, AiNotConfiguredError } from './ai-classifier.service.js';
+import { AiClassifierService, AiNotConfiguredError, AiTransientError } from './ai-classifier.service.js';
 import { AiUsageService } from './ai-usage.service.js';
 import { isTrivial } from './text.util.js';
 
@@ -13,12 +13,18 @@ const MAX_ATTEMPTS = 3;
 export class TriageService {
   private readonly logger = new Logger(TriageService.name);
   private running = false;
+  private lastError: { message: string; at: string } | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly classifier: AiClassifierService,
     private readonly usage: AiUsageService,
   ) {}
+
+  /** Último problema da IA que deixou mensagens na fila (null quando a última chamada deu certo). */
+  getLastError() {
+    return this.lastError;
+  }
 
   /** Uma rodada: processa os grupos com mensagens PENDING, respeitando o teto diário. */
   async run(): Promise<void> {
@@ -75,8 +81,9 @@ export class TriageService {
         pending: useful.map(line),
       });
     } catch (err) {
-      if (err instanceof AiNotConfiguredError) {
+      if (err instanceof AiNotConfiguredError || err instanceof AiTransientError) {
         this.logger.warn(err.message);
+        this.lastError = { message: err.message, at: new Date().toISOString() };
         return; // segue PENDING, sem gastar tentativas
       }
       this.logger.error(`IA falhou no grupo ${g.id}: ${(err as Error).message}`);
@@ -84,6 +91,7 @@ export class TriageService {
       return;
     }
 
+    this.lastError = null;
     await this.usage.add(out.inputTokens, out.outputTokens);
     try {
       await this.prisma.$transaction(
@@ -101,7 +109,7 @@ export class TriageService {
                   groupId: g.id,
                   clientId: g.clientId,
                   messageIds: msgs.map((x) => x.id),
-                  excerpt: msgs.map((x) => `${x.senderName ?? x.senderPhone}: ${x.body}`).join('\n').slice(0, 1000),
+                  excerpt: msgs.map((x) => `${x.senderName || x.senderPhone || 'alguém'}: ${x.body}`).join('\n').slice(0, 1000),
                   urgency: item.urgency,
                   sentiment: item.sentiment,
                   summary: item.summary,
