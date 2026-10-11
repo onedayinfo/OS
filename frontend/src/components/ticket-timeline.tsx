@@ -46,6 +46,7 @@ const EVENT_TAGS: Partial<Record<TicketEvent['type'], string>> = {
   PRIORITY_CHANGED: 'Prioridade',
   EMAIL_IN: 'E-mail',
   EMAIL_OUT: 'E-mail',
+  WHATSAPP_IN: 'WhatsApp',
   VISIT_SCHEDULED: 'Visita',
   VISIT_STARTED: 'Check-in',
   VISIT_COMPLETED: 'Visita',
@@ -73,6 +74,8 @@ function eventText(e: TicketEvent, nameFor: (id: string | null) => string): stri
       return 'E-mail recebido';
     case 'EMAIL_OUT':
       return 'E-mail enviado';
+    case 'WHATSAPP_IN':
+      return `WhatsApp — ${d.sender ?? 'alguém'}: ${d.text ?? ''}`;
     case 'VISIT_SCHEDULED':
       return 'Visita agendada';
     case 'VISIT_STARTED':

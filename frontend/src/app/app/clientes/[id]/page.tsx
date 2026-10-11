@@ -21,6 +21,7 @@ import { TicketTable } from '@/components/ticket-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Tabs } from '@/components/ui/tabs';
 
 interface Client {
@@ -54,6 +55,8 @@ function errToast(e: unknown) {
 function ContactsTab({ clientId }: { clientId: string }) {
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
+  const [editingPhone, setEditingPhone] = useState<PublicUser | null>(null);
+  const [phoneValue, setPhoneValue] = useState('');
 
   const { data: contacts } = useQuery({
     queryKey: ['contacts', clientId],
@@ -83,6 +86,17 @@ function ContactsTab({ clientId }: { clientId: string }) {
     onError: errToast,
   });
 
+  const savePhone = useMutation({
+    mutationFn: (v: { id: string; phone: string }) =>
+      api(`/users/${v.id}`, { method: 'PATCH', body: { phone: v.phone } }),
+    onSuccess: () => {
+      invalidate();
+      setEditingPhone(null);
+      toast.success('Telefone atualizado.');
+    },
+    onError: errToast,
+  });
+
   const resend = useMutation({
     mutationFn: (email: string) =>
       api('/auth/forgot-password', { method: 'POST', body: { email } }),
@@ -102,12 +116,37 @@ function ContactsTab({ clientId }: { clientId: string }) {
           onCancel={() => setAdding(false)}
         />
       </Dialog>
+      <Dialog open={!!editingPhone} onClose={() => setEditingPhone(null)} title="Telefone do contato">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Usado para reconhecer quem escreve nos grupos de WhatsApp. {editingPhone?.name}
+          </p>
+          <Input
+            aria-label="Telefone"
+            placeholder="(19) 99999-1234"
+            value={phoneValue}
+            onChange={(e) => setPhoneValue(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button
+              disabled={savePhone.isPending}
+              onClick={() => editingPhone && savePhone.mutate({ id: editingPhone.id, phone: phoneValue })}
+            >
+              Salvar
+            </Button>
+            <Button variant="outline" onClick={() => setEditingPhone(null)}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      </Dialog>
       <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-medium">Nome</th>
               <th className="px-3 py-2 font-medium">E-mail</th>
+              <th className="px-3 py-2 font-medium">Telefone</th>
               <th className="px-3 py-2 font-medium">Papel</th>
               <th className="px-3 py-2 font-medium">Situação</th>
               <th className="px-3 py-2 font-medium">Ações</th>
@@ -118,6 +157,7 @@ function ContactsTab({ clientId }: { clientId: string }) {
               <tr key={c.id} className="border-t border-border">
                 <td className="px-3 py-2">{c.name}</td>
                 <td className="px-3 py-2 text-muted-foreground">{c.email}</td>
+                <td className="px-3 py-2 text-muted-foreground">{c.phone ?? '—'}</td>
                 <td className="px-3 py-2">{ROLE_LABELS[c.role] ?? c.role}</td>
                 <td className="px-3 py-2">
                   <Badge tone={c.active ? 'green' : 'neutral'}>
@@ -126,6 +166,16 @@ function ContactsTab({ clientId }: { clientId: string }) {
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="text-primary hover:underline"
+                      onClick={() => {
+                        setEditingPhone(c);
+                        setPhoneValue(c.phone ?? '');
+                      }}
+                    >
+                      Telefone
+                    </button>
                     <button
                       type="button"
                       className="text-primary hover:underline"
@@ -146,7 +196,7 @@ function ContactsTab({ clientId }: { clientId: string }) {
             ))}
             {contacts && contacts.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
                   Nenhum contato.
                 </td>
               </tr>

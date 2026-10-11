@@ -10,6 +10,7 @@ export interface ContactValues {
   name: string;
   email: string;
   role: 'MANAGER' | 'CONTACT';
+  phone: string;
 }
 
 export function ContactForm({
@@ -23,6 +24,7 @@ export function ContactForm({
 }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [role, setRole] = useState<'MANAGER' | 'CONTACT'>('CONTACT');
 
   return (
@@ -31,7 +33,7 @@ export function ContactForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!name.trim() || !email.trim()) return;
-        onSubmit({ name: name.trim(), email: email.trim(), role });
+        onSubmit({ name: name.trim(), email: email.trim(), role, phone: phone.trim() });
       }}
     >
       <div className="flex flex-col gap-1.5">
@@ -45,6 +47,15 @@ export function ContactForm({
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="ct-phone">Telefone / WhatsApp</Label>
+        <Input
+          id="ct-phone"
+          placeholder="(19) 99999-1234"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
         />
       </div>
       <div className="flex flex-col gap-1.5">
