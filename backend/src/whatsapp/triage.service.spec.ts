@@ -64,6 +64,8 @@ describe('TriageService.run', () => {
 
     const s = prisma.ticketSuggestion.create.mock.calls[0][0].data;
     expect(s).toMatchObject({ groupId: 'g1', clientId: 'c1', messageIds: ['m1', 'm2'], urgency: 4, summary: 'Internet caiu no escritório' });
+    expect(prisma.ticketSuggestion.create).toHaveBeenCalledTimes(1);
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { timeout: 20000 });
     expect(s.excerpt).toContain('a internet caiu');
     expect(prisma.whatsappMessage.updateMany).toHaveBeenCalledWith({
       where: { id: { in: ['m1', 'm2'] } },
@@ -79,8 +81,8 @@ describe('TriageService.run', () => {
     const { service, prisma } = make({ classify, pending: [m('m1', 'muito obrigado pelo atendimento')] });
     await service.run();
     expect(prisma.ticketSuggestion.create).not.toHaveBeenCalled();
-    expect(prisma.whatsappMessage.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'm1' }, data: expect.objectContaining({ sentiment: 0.8 }) }),
+    expect(prisma.whatsappMessage.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: { in: ['m1'] } }, data: expect.objectContaining({ sentiment: 0.8 }) }),
     );
   });
 
@@ -108,6 +110,49 @@ describe('TriageService.run', () => {
     expect(prisma.whatsappMessage.updateMany).toHaveBeenCalledWith({
       where: { groupId: 'g1', aiStatus: 'PENDING', aiAttempts: { gte: 3 } },
       data: { aiStatus: 'FAILED' },
+    });
+  });
+
+  it('falha ao gravar após a IA → não propaga, conta tentativa, tokens contabilizados', async () => {
+    const classify = vi.fn().mockResolvedValue({
+      items: [{ messageIndexes: [0], isRequest: true, urgency: 3, sentiment: 0, summary: 'x' }],
+      inputTokens: 10, outputTokens: 2,
+    });
+    const { service, prisma, usage } = make({ classify, pending: [m('m1', 'a rede caiu')] });
+    prisma.$transaction.mockRejectedValue(new Error('timeout'));
+    await expect(service.run()).resolves.toBeUndefined();
+    expect(usage.add).toHaveBeenCalledWith(10, 2);
+    expect(prisma.whatsappMessage.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['m1'] } },
+      data: { aiAttempts: { increment: 1 } },
+    });
+    expect(prisma.whatsappMessage.updateMany).toHaveBeenCalledWith({
+      where: { groupId: 'g1', aiStatus: 'PENDING', aiAttempts: { gte: 3 } },
+      data: { aiStatus: 'FAILED' },
+    });
+  });
+
+  it('índice fora do intervalo é ignorado; índices mistos mantêm só os válidos', async () => {
+    const classify = vi.fn().mockResolvedValue({
+      items: [
+        { messageIndexes: [5], isRequest: true, urgency: 3, sentiment: 0, summary: 'a' },
+        { messageIndexes: [0, 9], isRequest: true, urgency: 3, sentiment: 0, summary: 'b' },
+      ],
+      inputTokens: 1, outputTokens: 1,
+    });
+    const { service, prisma } = make({ classify, pending: [m('m1', 'a rede caiu')] });
+    await service.run();
+    expect(prisma.ticketSuggestion.create).toHaveBeenCalledTimes(1);
+    expect(prisma.ticketSuggestion.create.mock.calls[0][0].data.messageIds).toEqual(['m1']);
+  });
+
+  it('mensagem com body nulo vira SKIPPED e não vai para a IA', async () => {
+    const { service, prisma, classifier } = make({ pending: [m('m1', null as any)] });
+    await service.run();
+    expect(classifier.classify).not.toHaveBeenCalled();
+    expect(prisma.whatsappMessage.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['m1'] } },
+      data: { aiStatus: 'SKIPPED' },
     });
   });
 });

@@ -80,44 +80,54 @@ export class TriageService {
         return; // segue PENDING, sem gastar tentativas
       }
       this.logger.error(`IA falhou no grupo ${g.id}: ${(err as Error).message}`);
-      const ids = useful.map((m) => m.id);
-      await this.prisma.whatsappMessage.updateMany({ where: { id: { in: ids } }, data: { aiAttempts: { increment: 1 } } });
-      await this.prisma.whatsappMessage.updateMany({
-        where: { groupId: g.id, aiStatus: 'PENDING', aiAttempts: { gte: MAX_ATTEMPTS } },
-        data: { aiStatus: 'FAILED' },
-      });
+      await this.registerFailure(g.id, useful.map((m) => m.id));
       return;
     }
 
     await this.usage.add(out.inputTokens, out.outputTokens);
-    await this.prisma.$transaction(async (tx) => {
-      for (const item of out.items) {
-        const msgs = item.messageIndexes.map((i) => useful[i]);
-        for (const msg of msgs) {
-          await tx.whatsappMessage.update({
-            where: { id: msg.id },
-            data: { sentiment: item.sentiment, aiResult: item as unknown as Prisma.InputJsonValue },
+    try {
+      await this.prisma.$transaction(
+        async (tx) => {
+          for (const item of out.items) {
+            const msgs = item.messageIndexes.map((i) => useful[i]).filter(Boolean);
+            if (!msgs.length) continue;
+            await tx.whatsappMessage.updateMany({
+              where: { id: { in: msgs.map((x) => x.id) } },
+              data: { sentiment: item.sentiment, aiResult: item as unknown as Prisma.InputJsonValue },
+            });
+            if (item.isRequest) {
+              await tx.ticketSuggestion.create({
+                data: {
+                  groupId: g.id,
+                  clientId: g.clientId,
+                  messageIds: msgs.map((x) => x.id),
+                  excerpt: msgs.map((x) => `${x.senderName ?? x.senderPhone}: ${x.body}`).join('\n').slice(0, 1000),
+                  urgency: item.urgency,
+                  sentiment: item.sentiment,
+                  summary: item.summary,
+                },
+              });
+            }
+          }
+          // ponytail: toda mensagem útil enviada vira ANALYZED (a IA viu, com ou sem assunto).
+          await tx.whatsappMessage.updateMany({
+            where: { id: { in: useful.map((m) => m.id) } },
+            data: { aiStatus: 'ANALYZED' },
           });
-        }
-        if (item.isRequest) {
-          await tx.ticketSuggestion.create({
-            data: {
-              groupId: g.id,
-              clientId: g.clientId,
-              messageIds: msgs.map((x) => x.id),
-              excerpt: msgs.map((x) => `${x.senderName ?? x.senderPhone}: ${x.body}`).join('\n').slice(0, 1000),
-              urgency: item.urgency,
-              sentiment: item.sentiment,
-              summary: item.summary,
-            },
-          });
-        }
-      }
-      // ponytail: toda mensagem útil enviada vira ANALYZED (a IA viu, com ou sem assunto).
-      await tx.whatsappMessage.updateMany({
-        where: { id: { in: useful.map((m) => m.id) } },
-        data: { aiStatus: 'ANALYZED' },
-      });
+        },
+        { timeout: 20000 },
+      );
+    } catch (err) {
+      this.logger.error(`Falha ao gravar resultado da IA no grupo ${g.id}: ${(err as Error).message}`);
+      await this.registerFailure(g.id, useful.map((m) => m.id));
+    }
+  }
+
+  private async registerFailure(groupId: string, ids: string[]) {
+    await this.prisma.whatsappMessage.updateMany({ where: { id: { in: ids } }, data: { aiAttempts: { increment: 1 } } });
+    await this.prisma.whatsappMessage.updateMany({
+      where: { groupId, aiStatus: 'PENDING', aiAttempts: { gte: MAX_ATTEMPTS } },
+      data: { aiStatus: 'FAILED' },
     });
   }
 }
