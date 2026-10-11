@@ -123,26 +123,25 @@ O stack inclui `evolution-api`, `evolution-db` (Postgres próprio) e
 alcança, em `http://evolution-api:8080`. Ela não guarda mensagens (o OS é o dono
 do histórico).
 
-1. Variáveis novas no stack: `EVOLUTION_API_KEY` (`openssl rand -hex 32`) e
-   `EVOLUTION_DB_PASSWORD` (só letras/números, pois entra numa URL).
-2. Criar a instância (rode de dentro da rede, p.ex. no terminal do Portainer no
-   container do backend, que é Node/alpine e **não tem `curl`** — por isso usamos o
-   `fetch` do Node; **cole a chave acima no lugar de `COLE_A_CHAVE`**, pois o
-   backend não recebe `EVOLUTION_API_KEY` no ambiente):
-   ```bash
-   node -e 'fetch("http://evolution-api:8080/instance/create",{method:"POST",headers:{apikey:"COLE_A_CHAVE","Content-Type":"application/json"},body:JSON.stringify({instanceName:"os",qrcode:true,integration:"WHATSAPP-BAILEYS"})}).then(async r=>console.log(r.status,await r.text()))'
-   ```
-3. Webhook da instância (rota `POST /webhook/set/{instância}`; corpo conferido no
-   código da Evolution v2 — `byEvents`/`base64`, não `webhookByEvents`):
-   Mesmo terminal; troque `COLE_A_CHAVE` e `COLE_O_SEGREDO` (o mesmo de Config > WhatsApp):
-   ```bash
-   node -e 'fetch("http://evolution-api:8080/webhook/set/os",{method:"POST",headers:{apikey:"COLE_A_CHAVE","Content-Type":"application/json"},body:JSON.stringify({webhook:{enabled:true,url:"http://backend:3001/api/whatsapp/webhook",byEvents:false,base64:false,headers:{"x-webhook-secret":"COLE_O_SEGREDO"},events:["MESSAGES_UPSERT"]}})}).then(async r=>console.log(r.status,await r.text()))'
-   ```
-4. Em `/app/config` > WhatsApp: URL `http://evolution-api:8080`, instância `os`,
-   chave da Evolution, segredo do webhook e chave da Anthropic; clique em
-   "Gerar QR code" e pareie o celular **dedicado**.
-5. ID de um grupo: `GET http://evolution-api:8080/group/fetchAllGroups/os?getParticipants=false`
-   com o header `apikey`; cole na aba WhatsApp do cliente.
-6. Avisos: API não oficial (risco de banimento do número que escuta — use chip
+1. Variáveis da stack: `EVOLUTION_API_KEY` (obrigatória; `openssl rand -hex 32`) e
+   `EVOLUTION_DB_PASSWORD` (obrigatória; só letras/números, pois entra numa URL).
+   Opcionais: `EVOLUTION_API_URL` (padrão `http://evolution-api:8080`) e
+   `WEBHOOK_BASE_URL` (padrão `http://backend:3001`); os padrões servem à stack
+   padrão. O ambiente prevalece sobre o que estiver salvo na tela.
+2. Depois do redeploy: **Configurações > WhatsApp > Conectar / Reparar**. O OS cria a
+   instância e o webhook (com segredo gerado) sozinho e mostra um checklist
+   (Evolution alcançável, Instância criada, Webhook configurado, WhatsApp pareado).
+   Escaneie o QR no celular **dedicado**; o estado atualiza sozinho.
+3. Em Configurações > WhatsApp, informe a chave da API da Anthropic e salve.
+4. Em cada cliente, aba WhatsApp: **Escolher da Evolution** para vincular o grupo
+   (lista com busca) e **Aplicar frases padrão**.
+5. As frases de gatilho padrão (10) já vêm cadastradas, uma única vez
+   (Configurações > WhatsApp > Frases de gatilho padrão).
+6. Se algo falhar, o checklist mostra a etapa e o motivo; clique em **Conectar /
+   Reparar** de novo. Se nenhuma mensagem chegar, confira a etapa "Webhook
+   configurado" e procure respostas 401 em `docker logs` do backend (segredo do
+   webhook divergente: clique em Conectar / Reparar). Os antigos comandos `node -e`
+   não são mais necessários.
+7. Avisos: API não oficial (risco de banimento do número que escuta — use chip
    separado, somente leitura); LGPD (avise os participantes; o texto vai para a
    API da Anthropic).

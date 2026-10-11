@@ -3,6 +3,27 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.12.1] - 2026-10-11
+
+### Adicionado
+- **Assistente "Conectar WhatsApp"** (Configurações > WhatsApp): cria a instância e o
+  webhook da Evolution, gera o segredo do webhook e mostra um checklist com o QR code;
+  botão "Conectar / Reparar" repetível.
+- URL e chave da Evolution vêm do ambiente da stack (`EVOLUTION_API_URL`,
+  `EVOLUTION_API_KEY`; opcional `WEBHOOK_BASE_URL`). O ambiente prevalece sobre a tela.
+- **Escolher grupo da Evolution** na aba WhatsApp do cliente (lista com busca; marca os
+  grupos já vinculados).
+- **Frases de gatilho padrão** (10) semeadas uma única vez.
+
+### Corrigido
+- Erros reais de conexão/timeout do SDK da Anthropic agora são tratados como
+  indisponibilidade transitória (as mensagens ficam na fila em vez de virar FAILED).
+- A tela não envia mais URL vazia ao salvar e aguarda o setup antes de exibir o estado.
+
+### Alterado
+- Saem da tela o nome da instância (fixo `os`) e o segredo do webhook (gerado).
+- Os antigos comandos `node -e` do README de deploy deixam de ser necessários.
+
 ## [0.12.0] - 2026-10-11
 
 ### Adicionado
