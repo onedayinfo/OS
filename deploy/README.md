@@ -115,3 +115,33 @@ docker build --build-arg NEXT_PUBLIC_API_URL=https://api-os.SEU_DOMINIO.com.br/a
 
 e no stack: `COOKIE_SAMESITE=none`, `COOKIE_SECURE=true`, `APP_URL`/`PORTAL_URL`
 com o domínio do front.
+
+## WhatsApp (Evolution API)
+
+O stack inclui `evolution-api`, `evolution-db` (Postgres próprio) e
+`evolution-redis`. A Evolution **não expõe porta no host**: só o backend a
+alcança, em `http://evolution-api:8080`. Ela não guarda mensagens (o OS é o dono
+do histórico).
+
+1. Variáveis novas no stack: `EVOLUTION_API_KEY` (`openssl rand -hex 32`) e
+   `EVOLUTION_DB_PASSWORD` (só letras/números, pois entra numa URL).
+2. Criar a instância (rode de dentro da rede, p.ex. no terminal do Portainer no
+   container do backend; `$EVOLUTION_API_KEY` = a chave acima):
+   ```bash
+   curl -X POST http://evolution-api:8080/instance/create -H "apikey: $EVOLUTION_API_KEY" -H "Content-Type: application/json" \
+     -d '{"instanceName":"os","qrcode":true,"integration":"WHATSAPP-BAILEYS"}'
+   ```
+3. Webhook da instância (rota `POST /webhook/set/{instância}`; corpo conferido no
+   código da Evolution v2 — `byEvents`/`base64`, não `webhookByEvents`):
+   ```bash
+   curl -X POST http://evolution-api:8080/webhook/set/os -H "apikey: $EVOLUTION_API_KEY" -H "Content-Type: application/json" \
+     -d '{"webhook":{"enabled":true,"url":"http://backend:3001/api/whatsapp/webhook","byEvents":false,"base64":false,"headers":{"x-webhook-secret":"<MESMO SEGREDO de Config > WhatsApp>"},"events":["MESSAGES_UPSERT"]}}'
+   ```
+4. Em `/app/config` > WhatsApp: URL `http://evolution-api:8080`, instância `os`,
+   chave da Evolution, segredo do webhook e chave da Anthropic; clique em
+   "Gerar QR code" e pareie o celular **dedicado**.
+5. ID de um grupo: `GET http://evolution-api:8080/group/fetchAllGroups/os?getParticipants=false`
+   com o header `apikey`; cole na aba WhatsApp do cliente.
+6. Avisos: API não oficial (risco de banimento do número que escuta — use chip
+   separado, somente leitura); LGPD (avise os participantes; o texto vai para a
+   API da Anthropic).
