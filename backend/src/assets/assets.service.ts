@@ -25,6 +25,7 @@ export class AssetsService {
     if (dto.serialNumber !== undefined) data.serialNumber = dto.serialNumber?.trim() || null;
     if (dto.ip !== undefined) data.ip = dto.ip || null;
     if (dto.mac !== undefined) data.mac = dto.mac || null;
+    if (dto.remoteId !== undefined) data.remoteId = dto.remoteId.replace(/\s+/g, '') || null;
     if (dto.notes !== undefined) data.notes = dto.notes || null;
     if (dto.status !== undefined) data.status = dto.status;
     if (dto.installedAt !== undefined) data.installedAt = dto.installedAt ? new Date(dto.installedAt) : null;

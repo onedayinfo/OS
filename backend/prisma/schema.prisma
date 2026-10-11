@@ -586,6 +586,7 @@ model Asset {
   serialNumber   String?
   ip             String?
   mac            String?
+  remoteId       String?
   credentialsEnc String?
   installedAt    DateTime?
   warrantyEndsAt DateTime?

@@ -21,6 +21,7 @@ export interface Asset {
   model: string | null;
   ip: string | null;
   mac: string | null;
+  remoteId: string | null;
   installedAt: string | null;
   warrantyEndsAt: string | null;
   notes: string | null;

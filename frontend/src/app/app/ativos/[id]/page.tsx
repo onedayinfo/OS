@@ -172,6 +172,7 @@ export default function AssetDetailPage({ params }: { params: { id: string } }) 
                 serialNumber: asset.serialNumber,
                 ip: asset.ip,
                 mac: asset.mac,
+                remoteId: asset.remoteId,
                 status: asset.status,
                 notes: asset.notes,
                 installedAt: asset.installedAt,
@@ -194,6 +195,16 @@ export default function AssetDetailPage({ params }: { params: { id: string } }) 
               <Field label="Nº de série" value={asset.serialNumber} />
               <Field label="IP" value={asset.ip} />
               <Field label="MAC" value={asset.mac} />
+              <Field
+                label="Acesso remoto"
+                value={
+                  asset.remoteId && (
+                    <a className="text-primary underline" href={`rustdesk://${asset.remoteId}`}>
+                      Conectar ({asset.remoteId})
+                    </a>
+                  )
+                }
+              />
               <Field label="Instalado em" value={fmtDate(asset.installedAt)} />
               <Field label="Garantia até" value={fmtDate(asset.warrantyEndsAt)} />
               <Field

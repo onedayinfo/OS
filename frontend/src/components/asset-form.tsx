@@ -25,6 +25,7 @@ export interface AssetFormPayload {
   serialNumber: string;
   ip: string;
   mac: string;
+  remoteId: string;
   status: AssetStatus;
   notes: string;
   installedAt?: string;
@@ -42,6 +43,7 @@ export interface AssetInitial {
   serialNumber?: string | null;
   ip?: string | null;
   mac?: string | null;
+  remoteId?: string | null;
   status?: AssetStatus;
   notes?: string | null;
   installedAt?: string | null;
@@ -89,6 +91,7 @@ export function AssetForm({
   const [serialNumber, setSerialNumber] = useState(initial?.serialNumber ?? '');
   const [ip, setIp] = useState(initial?.ip ?? '');
   const [mac, setMac] = useState(initial?.mac ?? '');
+  const [remoteId, setRemoteId] = useState(initial?.remoteId ?? '');
   const [installedAt, setInstalledAt] = useState(toDateInput(initial?.installedAt));
   const [warrantyEndsAt, setWarrantyEndsAt] = useState(
     toDateInput(initial?.warrantyEndsAt),
@@ -142,6 +145,7 @@ export function AssetForm({
           serialNumber: serialNumber.trim(),
           ip: ip.trim(),
           mac: mac.trim(),
+          remoteId: remoteId.trim(),
           status,
           notes: notes.trim(),
         };
@@ -228,6 +232,10 @@ export function AssetForm({
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="a-mac">MAC</Label>
           <Input id="a-mac" value={mac} onChange={(e) => setMac(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="a-remote">ID RustDesk</Label>
+          <Input id="a-remote" value={remoteId} onChange={(e) => setRemoteId(e.target.value)} />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="a-status">Status</Label>

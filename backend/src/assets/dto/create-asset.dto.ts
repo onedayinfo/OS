@@ -19,6 +19,7 @@ export class CreateAssetDto {
   @IsOptional() @IsString() serialNumber?: string;
   @IsOptional() @IsString() ip?: string;
   @IsOptional() @IsString() mac?: string;
+  @IsOptional() @IsString() remoteId?: string;
 
   // `null` limpa; objeto grava; ausência mantém (no update).
   @IsOptional() @ValidateNested() @Type(() => CredentialsDto)

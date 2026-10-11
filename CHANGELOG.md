@@ -3,6 +3,12 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.12.5] - 2026-10-11
+
+### Adicionado
+- Ativos: campo "ID RustDesk" e link "Conectar" na tela do ativo (abre o RustDesk do técnico já
+  conectando na máquina do cliente via `rustdesk://`).
+
 ## [0.12.4] - 2026-10-11
 
 ### Corrigido
