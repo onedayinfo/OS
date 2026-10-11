@@ -30,7 +30,7 @@ describe('matchStart', () => {
 });
 
 describe('isTrivial', () => {
-  it.each(['ok', 'Ok!!', '👍', 'bom dia', 'Obrigado', 'kkkk', '  '])('"%s" é trivial', (t) => {
+  it.each(['ok', 'Ok!!', '👍', 'bom dia', 'Obrigado', 'kkkk', '  ', 'kkkkk', 'kkkkkk', 'hahaha', 'rsrs', 'ta bom', 'tudo bem', 'muito obrigado'])('"%s" é trivial', (t) => {
     expect(isTrivial(t)).toBe(true);
   });
   it.each(['caiu', 'sistema caiu', 'a internet está lenta'])('"%s" não é trivial', (t) => {

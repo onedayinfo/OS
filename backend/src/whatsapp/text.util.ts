@@ -30,6 +30,7 @@ export function matchStart(body: string, phraseNorm: string): { rest: string } |
 const TRIVIAL = new Set([
   'ok', 'okay', 'blz', 'beleza', 'certo', 'combinado', 'valeu', 'vlw', 'obrigado', 'obrigada',
   'obg', 'bom dia', 'boa tarde', 'boa noite', 'sim', 'nao', 'kkk', 'kkkk', 'tmj', 'show', 'top',
+  'ta bom', 'tudo bem', 'muito obrigado', 'muito obrigada', 'obrigadao',
 ]);
 
 /** Mensagens que não valem uma chamada de IA: emoji/pontuação, agradecimento, saudação, menos de 4 letras. */
@@ -38,5 +39,5 @@ export function isTrivial(body: string): boolean {
     .replace(/[^\p{L}\p{N} ]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
-  return n.length < 4 || TRIVIAL.has(n);
+  return n.length < 4 || TRIVIAL.has(n) || /^(k{3,}|(ha|he|rs){2,})$/.test(n);
 }
