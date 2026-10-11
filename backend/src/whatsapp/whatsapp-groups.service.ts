@@ -37,7 +37,13 @@ export class WhatsappGroupsService {
     }
   }
 
-  update(id: string, dto: UpdateGroupDto) {
+  private async ensureExists(id: string) {
+    const group = await this.prisma.whatsappGroup.findUnique({ where: { id } });
+    if (!group) throw new NotFoundException('Grupo não encontrado.');
+  }
+
+  async update(id: string, dto: UpdateGroupDto) {
+    await this.ensureExists(id);
     const data: { name?: string | null; active?: boolean } = {};
     if (dto.name !== undefined) data.name = dto.name.trim() || null;
     if (dto.active !== undefined) data.active = dto.active;
@@ -45,7 +51,8 @@ export class WhatsappGroupsService {
   }
 
   /** Apaga o grupo e, em cascata, as mensagens gravadas dele (a UI avisa). */
-  remove(id: string) {
+  async remove(id: string) {
+    await this.ensureExists(id);
     return this.prisma.whatsappGroup.delete({ where: { id } });
   }
 }

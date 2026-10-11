@@ -54,10 +54,18 @@ describe('WhatsappGroupsService', () => {
   });
 
   it('update atualiza só os campos enviados; remove apaga', async () => {
-    const { service, prisma } = make();
+    const { service, prisma } = make({ findUnique: vi.fn().mockResolvedValue({ id: 'g1' }) });
     await service.update('g1', { active: false });
     expect(prisma.whatsappGroup.update).toHaveBeenCalledWith({ where: { id: 'g1' }, data: { active: false } });
     await service.remove('g1');
     expect(prisma.whatsappGroup.delete).toHaveBeenCalledWith({ where: { id: 'g1' } });
+  });
+
+  it('update e remove de id inexistente → 404 sem tocar no banco', async () => {
+    const { service, prisma } = make({ findUnique: vi.fn().mockResolvedValue(null) });
+    await expect(service.update('x', { active: false })).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.remove('x')).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.whatsappGroup.update).not.toHaveBeenCalled();
+    expect(prisma.whatsappGroup.delete).not.toHaveBeenCalled();
   });
 });
