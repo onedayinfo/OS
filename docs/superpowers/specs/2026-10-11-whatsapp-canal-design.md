@@ -16,7 +16,9 @@ Entregas:
 
 1. Conector WhatsApp (Evolution API) na stack, com um celular da empresa pareado
    por QR code, **somente leitura** (nada é enviado).
-2. Grupos vinculados a clientes; mensagens gravadas por 90 dias (configurável).
+2. Cada cliente cadastra o **ID do grupo** (JID, copiado da Evolution); o grupo
+   identifica o cliente, independente de quem escreve. Mensagens gravadas por 90
+   dias (configurável).
 3. **Frases de gatilho** por cliente ("Sistema caiu", "Sem conexão"…) que criam
    chamado direto, sem IA.
 4. **Triagem por IA** (Claude Haiku 5.5): mensagens que não casam com gatilho
@@ -40,8 +42,10 @@ Uso interno, single-tenant. Venda futura = uma stack por cliente (sem multi-tena
 
 ## 3. Modelo de dados (Prisma)
 
-- `WhatsappGroup`: `id`, `externalId` (JID, `@unique`), `name`, `clientId?` (nulo =
-  não vinculado), `active`, timestamps. Cliente 1:N grupos.
+- `WhatsappGroup`: `id`, `externalId` (JID, `@unique`, formato `...@g.us`, validado),
+  `name?` (apelido do usuário; preenchido com o nome da Evolution se vazio),
+  `clientId` (obrigatório), `active`, timestamps. Cliente 1:N grupos; um JID
+  pertence a um único cliente.
 - `WhatsappMessage`: `id`, `externalId` (`@unique`, idempotência), `groupId`,
   `senderPhone`, `senderName?`, `senderUserId?` (contato do cliente, se casou),
   `type` (`TEXT|AUDIO|IMAGE|OTHER`), `body?`, `sentAt`, `aiStatus`
@@ -68,11 +72,14 @@ Uso interno, single-tenant. Venda futura = uma stack por cliente (sem multi-tena
 1. Evolution → `POST /api/whatsapp/webhook`, protegido por segredo
    (`@Public` + verificação de header; mesmo cuidado do webhook de e-mail).
    Segredo errado → 401, nada gravado.
-2. Grupo desconhecido é criado como "não vinculado" (aparece na aba Config para
-   vincular). Mensagem de grupo **sem cliente** é descartada (não gravada).
-3. Mensagem de grupo vinculado é gravada (idempotente por `externalId`).
-   Remetente casado por `User.phone` dentro do cliente; senão
-   `senderUserId = null` e o chamado sai com "remetente não identificado".
+2. O cliente é definido pelo **JID do grupo cadastrado** na ficha do cliente, nunca
+   pelo número de quem escreve. Mensagem de grupo cujo JID não está cadastrado (ou
+   está inativo) é descartada sem gravar nada; mensagem que não é de grupo também.
+3. Mensagem de grupo cadastrado é gravada (idempotente por `externalId`). O
+   telefone do remetente só serve para identificar o **contato** (`User.phone`
+   dentro do cliente); qualquer pessoa do grupo, conhecida ou não, gera mensagem e
+   gatilho. Sem casamento: `senderUserId = null` e o chamado sai com "remetente
+   não identificado".
 4. **Gatilho**: se `body` normalizado *começa com* `phraseNorm` de uma frase ativa
    do cliente (a mais longa vence), cria chamado direto. O restante do texto vira
    a descrição; título = `title` da frase ou a própria frase; categoria e
@@ -105,11 +112,13 @@ Uso interno, single-tenant. Venda futura = uma stack por cliente (sem multi-tena
 
 ## 6. Telas
 
-- **Ficha do cliente → aba "WhatsApp"**: (a) Grupos do cliente (vincular/
-  desvincular grupos descobertos); (b) Frases de gatilho (frase, categoria,
+- **Ficha do cliente → aba "WhatsApp"**: (a) Grupos do cliente: campo para
+  colar o **ID do grupo** copiado da Evolution (valida `@g.us` e unicidade; erro
+  claro se o ID já pertence a outro cliente), apelido opcional, ativar/desativar,
+  remover; (b) Frases de gatilho (frase, categoria,
   prioridade, título opcional, ativa) + botão **Aplicar frases padrão** (copia o
   conjunto global; mudar o padrão depois não altera clientes existentes).
-- **Config → WhatsApp**: status da conexão e QR code, grupos não vinculados,
+- **Config → WhatsApp**: status da conexão e QR code,
   frases padrão globais, retenção, chave/limite de IA.
 - **/app/triagem**: fila de sugestões.
 - Ficha do chamado: link para as mensagens de origem; cadastro de usuário do
