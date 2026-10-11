@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
@@ -30,9 +30,11 @@ export default function WhatsappTab() {
     url: '', instance: '', evoKey: '', webhookSecret: '', aiKey: '', aiLimit: '', retention: '',
   });
 
+  const seeded = useRef(false);
   useEffect(() => {
-    if (data)
-      setForm((f) => ({
+    if (!data || seeded.current) return;
+    seeded.current = true;
+    setForm((f) => ({
         ...f,
         url: (data['whatsapp.evolution.url'] as string) ?? '',
         instance: (data['whatsapp.evolution.instance'] as string) ?? '',
@@ -58,6 +60,7 @@ export default function WhatsappTab() {
         },
       }),
     onSuccess: () => {
+      seeded.current = false;
       qc.invalidateQueries({ queryKey: ['settings'] });
       qc.invalidateQueries({ queryKey: ['wa-status'] });
       setForm((f) => ({ ...f, evoKey: '', webhookSecret: '', aiKey: '' }));
