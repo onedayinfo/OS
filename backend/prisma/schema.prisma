@@ -42,6 +42,7 @@ enum TicketOrigin {
   MANUAL
   CONTRACT
   QUOTE
+  WHATSAPP
 }
 
 enum AssetStatus {
@@ -108,6 +109,7 @@ enum TicketEventType {
   VISIT_STARTED
   VISIT_COMPLETED
   VISIT_CANCELLED
+  WHATSAPP_IN
 }
 
 model User {
@@ -118,6 +120,7 @@ model User {
   type         UserType
   role         UserRole
   clientId     String?
+  phone        String?
   active       Boolean   @default(true)
   inviteToken  String?   @unique
   inviteSentAt DateTime?
@@ -136,6 +139,7 @@ model User {
   knowledgeArticles    KnowledgeArticle[]
   opportunitiesOwned   Opportunity[]
   opportunityNotes     OpportunityNote[]
+  whatsappMessages     WhatsappMessage[]
 
   @@map("users")
 }
@@ -157,6 +161,9 @@ model Client {
   contracts       Contract[]
   quotes          Quote[]
   opportunities   Opportunity[]
+  whatsappGroups  WhatsappGroup[]
+  triggerPhrases  TriggerPhrase[]
+  ticketSuggestions TicketSuggestion[]
 
   @@map("clients")
 }
@@ -174,6 +181,7 @@ model Category {
   quotes Quote[]
   slaOverrides CategorySlaPolicy[]
   knowledgeArticles KnowledgeArticle[]
+  triggerPhrases TriggerPhrase[]
 
   @@map("categories")
 }
@@ -651,6 +659,8 @@ model Ticket {
   visits        Visit[]
   materialUsages TicketMaterialUsage[]
   satisfactionSurvey TicketSatisfactionSurvey?
+  whatsappMessages WhatsappMessage[]
+  whatsappSuggestions TicketSuggestion[]
 
   @@index([clientId])
   @@index([assigneeId])
@@ -780,4 +790,122 @@ model Setting {
   updatedAt DateTime @updatedAt
 
   @@map("settings")
+}
+
+enum WhatsappMessageType {
+  TEXT
+  AUDIO
+  IMAGE
+  OTHER
+}
+
+enum WhatsappAiStatus {
+  PENDING
+  ANALYZED
+  SKIPPED
+  FAILED
+}
+
+enum SuggestionStatus {
+  OPEN
+  ACCEPTED
+  DISCARDED
+}
+
+model WhatsappGroup {
+  id         String   @id @default(cuid())
+  externalId String   @unique
+  name       String?
+  clientId   String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  client      Client             @relation(fields: [clientId], references: [id])
+  messages    WhatsappMessage[]
+  suggestions TicketSuggestion[]
+
+  @@index([clientId])
+  @@map("whatsapp_groups")
+}
+
+model WhatsappMessage {
+  id              String              @id @default(cuid())
+  externalId      String              @unique
+  groupId         String
+  senderPhone     String              @default("")
+  senderName      String?
+  senderUserId    String?
+  type            WhatsappMessageType
+  body            String?
+  sentAt          DateTime
+  aiStatus        WhatsappAiStatus    @default(PENDING)
+  aiAttempts      Int                 @default(0)
+  aiResult        Json?
+  sentiment       Float?
+  ticketId        String?
+  triggerPhraseId String?
+  createdAt       DateTime            @default(now())
+
+  group      WhatsappGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  senderUser User?         @relation(fields: [senderUserId], references: [id], onDelete: SetNull)
+  ticket     Ticket?       @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  @@index([groupId, sentAt])
+  @@index([aiStatus])
+  @@index([ticketId])
+  @@map("whatsapp_messages")
+}
+
+model TriggerPhrase {
+  id         String         @id @default(cuid())
+  clientId   String?
+  phrase     String
+  phraseNorm String
+  categoryId String?
+  priority   TicketPriority @default(MEDIUM)
+  title      String?
+  active     Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  client   Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // ponytail: NULL não conflita em índice único no Postgres, então a unicidade das
+  // frases GLOBAIS (clientId nulo) é checada no TriggerPhrasesService.
+  @@unique([clientId, phraseNorm])
+  @@map("trigger_phrases")
+}
+
+model TicketSuggestion {
+  id          String           @id @default(cuid())
+  groupId     String
+  clientId    String
+  messageIds  String[]
+  excerpt     String
+  urgency     Int
+  sentiment   Float?
+  summary     String
+  status      SuggestionStatus @default(OPEN)
+  ticketId    String?
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime         @default(now())
+
+  group  WhatsappGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  client Client        @relation(fields: [clientId], references: [id])
+  ticket Ticket?       @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@map("ticket_suggestions")
+}
+
+model AiUsage {
+  day          String @id // YYYY-MM-DD no fuso America/Sao_Paulo
+  inputTokens  Int    @default(0)
+  outputTokens Int    @default(0)
+  calls        Int    @default(0)
+
+  @@map("ai_usage")
 }

@@ -68,6 +68,7 @@ Uso interno, single-tenant. Venda futura = uma stack por cliente (sem multi-tena
 - Configurações (`Setting`): `whatsapp.retentionDays` (90),
   `ai.anthropicApiKey` (cifrada, mesmo padrão do Resend), `ai.dailyTokenLimit`,
   `whatsapp.evolution.*` (URL interna e chave da instância).
+- `WhatsappMessage` ganha `aiAttempts Int` (tentativas da IA; vira `FAILED` após 3) e `triggerPhraseId?` (para a deduplicação); `AiUsage(day, inputTokens, outputTokens, calls)` guarda o consumo diário para o teto de gasto.
 
 ## 4. Fluxo de uma mensagem
 

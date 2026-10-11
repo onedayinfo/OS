@@ -18,6 +18,13 @@ export const SETTING_KEYS = [
   'branding.primaryColor',
   'branding.logoData',
   'branding.logoMime',
+  'whatsapp.webhookSecret',
+  'whatsapp.evolution.url',
+  'whatsapp.evolution.apiKey',
+  'whatsapp.evolution.instance',
+  'whatsapp.retentionDays',
+  'ai.anthropicApiKey',
+  'ai.dailyTokenLimit',
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
@@ -28,6 +35,9 @@ export const SECRET_KEYS: ReadonlySet<string> = new Set([
   'resend.inboundSecret',
   'storage.s3.accessKeyId',
   'storage.s3.secretAccessKey',
+  'whatsapp.webhookSecret',
+  'whatsapp.evolution.apiKey',
+  'ai.anthropicApiKey',
 ]);
 
 /** Chave de config -> variável de ambiente legada (fallback durante a transição). */
