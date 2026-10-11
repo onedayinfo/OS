@@ -9,10 +9,13 @@ import { TriggerPhrasesController } from './trigger-phrases.controller.js';
 import { WhatsappStatusController } from './whatsapp-status.controller.js';
 import { EvolutionStatusService } from './evolution-status.service.js';
 import { AiUsageService } from './ai-usage.service.js';
+import { AiClassifierService } from './ai-classifier.service.js';
+import { TriageService } from './triage.service.js';
+import { WhatsappCron } from './whatsapp.cron.js';
 
 @Module({
   imports: [TicketsModule],
   controllers: [WhatsappWebhookController, WhatsappGroupsController, TriggerPhrasesController, WhatsappStatusController],
-  providers: [WhatsappService, WhatsappGroupsService, TriggerPhrasesService, EvolutionStatusService, AiUsageService],
+  providers: [WhatsappService, WhatsappGroupsService, TriggerPhrasesService, EvolutionStatusService, AiUsageService, AiClassifierService, TriageService, WhatsappCron],
 })
 export class WhatsappModule {}
