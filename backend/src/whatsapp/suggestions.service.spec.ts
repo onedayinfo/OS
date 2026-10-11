@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { SuggestionsService, priorityFromUrgency } from './suggestions.service.js';
 
 const suggestion = {
@@ -6,8 +6,10 @@ const suggestion = {
   excerpt: 'Beto: a internet caiu', urgency: 4, summary: 'Internet caiu', status: 'OPEN',
 };
 
-function make(over: { found?: any; claimed?: number; createError?: Error } = {}) {
+function make(over: { found?: any; claimed?: number; createError?: Error; txError?: Error; category?: any } = {}) {
   const prisma = {
+    $transaction: over.txError ? vi.fn().mockRejectedValue(over.txError) : vi.fn().mockResolvedValue([]),
+    category: { findUnique: vi.fn().mockResolvedValue('category' in over ? over.category : { id: 'cat1' }) },
     ticketSuggestion: {
       findMany: vi.fn().mockResolvedValue([]),
       findUnique: vi.fn().mockResolvedValue('found' in over ? over.found : suggestion),
@@ -51,6 +53,9 @@ describe('SuggestionsService', () => {
     expect(prisma.ticketSuggestion.updateMany.mock.calls[0][0]).toMatchObject({
       where: { id: 's1', status: 'OPEN' }, data: { status: 'ACCEPTED', decidedById: 'admin1' },
     });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.$transaction.mock.calls[0][0]).toHaveLength(2);
+    expect(prisma.ticketSuggestion.update).toHaveBeenCalledWith({ where: { id: 's1' }, data: { ticketId: 't1' } });
     expect(prisma.whatsappMessage.updateMany).toHaveBeenCalledWith({ where: { id: { in: ['m1', 'm2'] } }, data: { ticketId: 't1' } });
   });
 
@@ -90,5 +95,34 @@ describe('SuggestionsService', () => {
     const { service, prisma } = make({ found: null });
     await expect(service.discard('x', 'u')).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.ticketSuggestion.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('status inválido → 400; ausente → OPEN', async () => {
+    const { service, prisma } = make();
+    expect(() => service.list('foo')).toThrow(BadRequestException);
+    expect(prisma.ticketSuggestion.findMany).not.toHaveBeenCalled();
+    await service.list('DISCARDED');
+    expect(prisma.ticketSuggestion.findMany.mock.calls[0][0].where).toEqual({ status: 'DISCARDED' });
+  });
+
+  it('categoria inexistente → 400 antes da barreira; nada criado', async () => {
+    const { service, prisma, tickets } = make({ category: null });
+    await expect(service.accept('s1', 'u', { categoryId: 'nope' })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.ticketSuggestion.updateMany).not.toHaveBeenCalled();
+    expect(tickets.create).not.toHaveBeenCalled();
+  });
+
+  it('falha ao vincular após criar: devolve o chamado, sem reverter nem lançar', async () => {
+    const { service, prisma } = make({ txError: new Error('db down') });
+    const t = await service.accept('s1', 'u', {});
+    expect(t.id).toBe('t1');
+    expect(prisma.ticketSuggestion.updateMany).toHaveBeenCalledTimes(1); // só o claim
+  });
+
+  it('sem mensagens: requesterId null e chamado criado', async () => {
+    const { service, prisma, tickets } = make({ found: { ...suggestion, messageIds: [] } });
+    prisma.whatsappMessage.findFirst.mockResolvedValue(null);
+    await service.accept('s1', 'u', {});
+    expect(tickets.create.mock.calls[0][0].requesterId).toBeNull();
   });
 });

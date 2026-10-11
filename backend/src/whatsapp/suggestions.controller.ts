@@ -1,5 +1,4 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import type { SuggestionStatus } from '@prisma/client';
 import { Roles } from '../common/roles.decorator.js';
 import { CurrentUser } from '../common/current-user.decorator.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
@@ -12,7 +11,7 @@ export class SuggestionsController {
   constructor(private readonly suggestions: SuggestionsService) {}
 
   @Get()
-  list(@Query('status') status?: SuggestionStatus) {
+  list(@Query('status') status?: string) {
     return this.suggestions.list(status);
   }
 
