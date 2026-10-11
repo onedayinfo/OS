@@ -3,6 +3,15 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.12.2] - 2026-10-11
+
+### Corrigido
+- A lista de grupos da Evolution (que leva cerca de 40 s na Evolution real e causava
+  "HTTP 502" no seletor) agora carrega em segundo plano e fica em cache de 10 min:
+  o seletor abre na hora, mostra "Carregando grupos do WhatsApp…" e atualiza sozinho.
+- Botão **Atualizar lista** no seletor e indicação de "Atualizada às HH:MM".
+- Pré-carga da lista ao parear/conferir a conexão, para o seletor já abrir pronto.
+
 ## [0.12.1] - 2026-10-11
 
 ### Adicionado

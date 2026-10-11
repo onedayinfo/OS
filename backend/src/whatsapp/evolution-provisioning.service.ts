@@ -4,6 +4,7 @@ import { SettingsService } from '../settings/settings.service.js';
 import { DEFAULT_INSTANCE, EvolutionClient } from './evolution-client.js';
 import type { EvolutionResponse } from './evolution-client.js';
 import { EvolutionStatusService } from './evolution-status.service.js';
+import { EvolutionGroupsService } from './evolution-groups.service.js';
 
 export type StepId = 'reachable' | 'instance' | 'webhook' | 'connection';
 
@@ -57,6 +58,7 @@ export class EvolutionProvisioningService {
     private readonly evo: EvolutionClient,
     private readonly settings: SettingsService,
     private readonly status: EvolutionStatusService,
+    private readonly groups: EvolutionGroupsService,
   ) {}
 
   /** Executa as etapas gravando o que faltar. Idempotente e serializado. */
@@ -176,6 +178,7 @@ export class EvolutionProvisioningService {
     const conn = await this.status.check();
     if (conn.state === 'open') {
       mark('connection', 'ok');
+      this.groups.warmUp();
       return report('open');
     }
     mark('connection', 'pending', conn.state === 'unreachable' ? 'A Evolution não respondeu' : 'Escaneie o QR code com o celular dedicado');

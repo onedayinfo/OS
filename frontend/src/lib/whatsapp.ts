@@ -224,12 +224,29 @@ export interface EvolutionGroup {
   linkedClientName: string | null;
 }
 
+export interface EvolutionGroupsResponse {
+  groups: EvolutionGroup[];
+  loading: boolean;
+  refreshing: boolean;
+  updatedAt: string | null;
+  error: string | null;
+}
+
 export function useEvolutionGroups(enabled: boolean) {
   return useQuery({
     queryKey: ['wa-evo-groups'],
-    queryFn: () => api<EvolutionGroup[]>('/whatsapp/evolution/groups'),
+    queryFn: () => api<EvolutionGroupsResponse>('/whatsapp/evolution/groups'),
     enabled,
     retry: false,
     staleTime: 0,
+    refetchInterval: (q) => (q.state.data?.loading || q.state.data?.refreshing ? 3000 : false),
+  });
+}
+
+export function useRefreshEvolutionGroups() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<EvolutionGroupsResponse>('/whatsapp/evolution/groups/refresh', { method: 'POST' }),
+    onSuccess: (resp) => qc.setQueryData(['wa-evo-groups'], resp),
   });
 }

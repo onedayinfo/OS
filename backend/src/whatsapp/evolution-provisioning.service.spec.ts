@@ -32,8 +32,9 @@ function make(o: {
     check: vi.fn().mockResolvedValue({ configured: true, state: o.state ?? 'open', disconnectedSince: null }),
     qr: vi.fn().mockResolvedValue({ base64: 'data:image/png;base64,AAA', pairingCode: null }),
   };
-  const svc = new EvolutionProvisioningService(evo as any, settings as any, status as any);
-  return { svc, calls, store, settings, status, responses, evo };
+  const groups = { warmUp: vi.fn() };
+  const svc = new EvolutionProvisioningService(evo as any, settings as any, status as any, groups as any);
+  return { groups, svc, calls, store, settings, status, responses, evo };
 }
 
 const stepStatus = (r: any) => Object.fromEntries(r.steps.map((s: any) => [s.id, s.status]));
@@ -264,5 +265,22 @@ describe('setup() (somente leitura)', () => {
     vi.stubEnv('EVOLUTION_API_KEY', 'KEY123');
     const { svc } = make({ responses: { 'GET /instance/fetchInstances': OK([{ name: 'os' }]) } });
     expect((await svc.setup()).config).toEqual({ urlFromEnv: true, apiKeyFromEnv: true, instance: 'os' });
+  });
+});
+
+describe('pré-carga da lista de grupos', () => {
+  const base = { responses: { 'GET /instance/fetchInstances': OK([{ name: 'os' }]), 'POST /webhook/set/os': OK({}) } };
+  it('chama warmUp uma vez quando o WhatsApp está pareado (connect e setup)', async () => {
+    const a = make({ ...base, state: 'open' });
+    await a.svc.connect();
+    expect(a.groups.warmUp).toHaveBeenCalledTimes(1);
+    const b = make({ ...base, state: 'open' });
+    await b.svc.setup();
+    expect(b.groups.warmUp).toHaveBeenCalledTimes(1);
+  });
+  it('não chama warmUp quando não está pareado', async () => {
+    const { svc, groups } = make({ ...base, state: 'close' });
+    await svc.connect();
+    expect(groups.warmUp).not.toHaveBeenCalled();
   });
 });

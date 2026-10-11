@@ -29,7 +29,16 @@ test('assistente de conexão e seletor de grupos da Evolution (com a API da Evol
   await page.route('**/api/whatsapp/connect', (route) =>
     route.fulfill({ json: { steps: steps('ok', 'pending'), state: 'close', qr: { base64: PNG, pairingCode: null }, config: { urlFromEnv: true, apiKeyFromEnv: true, instance: 'os' } } }),
   );
-  await page.route('**/api/whatsapp/evolution/groups', (route) => route.fulfill({ json: [grupoLivre, grupoUsado] }));
+  let chamadasGrupos = 0;
+  await page.route('**/api/whatsapp/evolution/groups', (route) => {
+    chamadasGrupos += 1;
+    return route.fulfill({
+      json:
+        chamadasGrupos === 1
+          ? { groups: [], loading: true, refreshing: true, updatedAt: null, error: null }
+          : { groups: [grupoLivre, grupoUsado], loading: false, refreshing: false, updatedAt: new Date().toISOString(), error: null },
+    });
+  });
 
   await loginAsAdmin(page);
 
@@ -47,7 +56,8 @@ test('assistente de conexão e seletor de grupos da Evolution (com a API da Evol
   await page.getByRole('button', { name: 'WhatsApp' }).click();
   await page.getByRole('button', { name: 'Escolher da Evolution' }).click();
   const dialog = page.getByRole('dialog', { name: 'Escolher grupo da Evolution' });
-  await expect(dialog.getByText(grupoLivre.name)).toBeVisible();
+  await expect(dialog.getByText('Carregando grupos do WhatsApp')).toBeVisible();
+  await expect(dialog.getByText(grupoLivre.name)).toBeVisible({ timeout: 15_000 });
   await expect(dialog.getByRole('button', { name: new RegExp(grupoUsado.name) })).toBeDisabled();
   await dialog.getByRole('button', { name: new RegExp(grupoLivre.name) }).click();
   await expect(page.locator('#wg-id')).toHaveValue(grupoLivre.id);

@@ -27,4 +27,10 @@ export class WhatsappSetupController {
   groups() {
     return this.evoGroups.list();
   }
+
+  @Post('evolution/groups/refresh')
+  @Roles('ADMIN', 'AGENT')
+  refreshGroups() {
+    return this.evoGroups.forceRefresh();
+  }
 }

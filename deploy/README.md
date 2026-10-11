@@ -134,7 +134,8 @@ do histórico).
    Escaneie o QR no celular **dedicado**; o estado atualiza sozinho.
 3. Em Configurações > WhatsApp, informe a chave da API da Anthropic e salve.
 4. Em cada cliente, aba WhatsApp: **Escolher da Evolution** para vincular o grupo
-   (lista com busca) e **Aplicar frases padrão**.
+   (lista com busca) e **Aplicar frases padrão**. A primeira vez que a lista abre pode
+   levar cerca de 1 minuto (a Evolution demora para listar os grupos); depois fica em cache.
 5. As frases de gatilho padrão (10) já vêm cadastradas, uma única vez
    (Configurações > WhatsApp > Frases de gatilho padrão).
 6. Se algo falhar, o checklist mostra a etapa e o motivo; clique em **Conectar /
