@@ -178,3 +178,58 @@ export function useTicketMessages(ticketId: string, enabled: boolean) {
     enabled,
   });
 }
+
+// --- assistente de conexão ---
+export interface SetupStep {
+  id: 'reachable' | 'instance' | 'webhook' | 'connection';
+  label: string;
+  status: 'ok' | 'error' | 'pending';
+  detail?: string;
+}
+
+export interface SetupReport {
+  steps: SetupStep[];
+  state: string;
+  qr: { base64: string | null; pairingCode: string | null } | null;
+  config: { urlFromEnv: boolean; apiKeyFromEnv: boolean; instance: string };
+}
+
+export function useSetup() {
+  return useQuery({
+    queryKey: ['wa-setup'],
+    queryFn: () => api<SetupReport>('/whatsapp/setup'),
+    // enquanto não estiver pareado, acompanha o pareamento
+    refetchInterval: (q) => (q.state.data?.state === 'open' ? false : 5000),
+  });
+}
+
+export function useConnect() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<SetupReport>('/whatsapp/connect', { method: 'POST' }),
+    onSuccess: (report) => {
+      qc.setQueryData(['wa-setup'], report);
+      qc.invalidateQueries({ queryKey: ['wa-status'] });
+      qc.invalidateQueries({ queryKey: ['settings'] });
+    },
+  });
+}
+
+// --- grupos da Evolution ---
+export interface EvolutionGroup {
+  id: string;
+  name: string;
+  size: number | null;
+  linkedClientId: string | null;
+  linkedClientName: string | null;
+}
+
+export function useEvolutionGroups(enabled: boolean) {
+  return useQuery({
+    queryKey: ['wa-evo-groups'],
+    queryFn: () => api<EvolutionGroup[]>('/whatsapp/evolution/groups'),
+    enabled,
+    retry: false,
+    staleTime: 0,
+  });
+}
