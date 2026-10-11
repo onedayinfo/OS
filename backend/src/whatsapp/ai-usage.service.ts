@@ -3,13 +3,13 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { SettingsService } from '../settings/settings.service.js';
 
 export const DEFAULT_DAILY_TOKEN_LIMIT = 500_000;
-export const DEFAULT_DAILY_COST_LIMIT_USD = 2;
-export const DEFAULT_MONTHLY_COST_LIMIT_USD = 20;
+export const DEFAULT_DAILY_COST_LIMIT_USD = 0.5;
+export const DEFAULT_MONTHLY_COST_LIMIT_USD = 5;
 /** Aviso na tela ao chegar em 80% de qualquer teto. */
 export const WARN_RATIO = 0.8;
-// ponytail: preço fixo (US$ por milhão de tokens, Haiku); se a Anthropic mudar a tabela, ajustar aqui.
-const PRICE_IN_PER_MTOK = 1;
-const PRICE_OUT_PER_MTOK = 5;
+// ponytail: preço fixo Haiku 5.5, prompts até 100k (US$ por milhão de tokens); se a Anthropic mudar a tabela, ajustar aqui.
+const PRICE_IN_PER_MTOK = 0.1;
+const PRICE_OUT_PER_MTOK = 0.5;
 
 export type PauseReason = 'DAILY_TOKENS' | 'DAILY_COST' | 'MONTHLY_COST';
 

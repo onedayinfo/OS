@@ -40,27 +40,27 @@ describe('AiUsageService', () => {
     expect(arg.where.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it('custo em dólar: US$1/M entrada + US$5/M saída', () => {
-    expect(costUsd(1_000_000, 1_000_000)).toBe(6);
+  it('custo em dólar: US$0,10/M entrada + US$0,50/M saída', () => {
+    expect(costUsd(1_000_000, 1_000_000)).toBeCloseTo(0.6);
   });
 
   it('pausa pelo teto diário em dólar', async () => {
-    const snap = await make({ inputTokens: 0, outputTokens: 500_000 }, 10_000_000, { 'ai.dailyCostLimitUsd': 2 }).service.snapshot();
-    expect(snap.day.costUsd).toBe(2.5);
+    const snap = await make({ inputTokens: 0, outputTokens: 5_000_000 }, 100_000_000, { 'ai.dailyCostLimitUsd': 2 }).service.snapshot();
+    expect(snap.day.costUsd).toBeCloseTo(2.5);
     expect(snap).toMatchObject({ paused: true, reason: 'DAILY_COST' });
   });
 
   it('pausa pelo teto mensal somando outros dias do mês', async () => {
-    const prev = { day: `${TODAY.slice(0, 7)}-00`, inputTokens: 0, outputTokens: 3_900_000 };
-    const snap = await make({ inputTokens: 0, outputTokens: 200_000 }, 10_000_000, { 'ai.dailyCostLimitUsd': 5, 'ai.monthlyCostLimitUsd': 20 }, [prev]).service.snapshot();
+    const prev = { day: `${TODAY.slice(0, 7)}-00`, inputTokens: 0, outputTokens: 39_000_000 };
+    const snap = await make({ inputTokens: 0, outputTokens: 2_000_000 }, 100_000_000, { 'ai.dailyCostLimitUsd': 5, 'ai.monthlyCostLimitUsd': 20 }, [prev]).service.snapshot();
     expect(snap.month.costUsd).toBeCloseTo(20.5);
     expect(snap).toMatchObject({ paused: true, reason: 'MONTHLY_COST' });
   });
 
   it('avisa em 80% sem pausar; abaixo disso não avisa', async () => {
-    const warn = await make({ inputTokens: 0, outputTokens: 330_000 }, 10_000_000, { 'ai.dailyCostLimitUsd': 2 }).service.snapshot();
+    const warn = await make({ inputTokens: 0, outputTokens: 3_300_000 }, 100_000_000, { 'ai.dailyCostLimitUsd': 2 }).service.snapshot();
     expect(warn).toMatchObject({ paused: false, warn: true });
-    const ok = await make({ inputTokens: 0, outputTokens: 10_000 }, 10_000_000).service.snapshot();
+    const ok = await make({ inputTokens: 0, outputTokens: 10_000 }, 100_000_000).service.snapshot();
     expect(ok).toMatchObject({ paused: false, warn: false, reason: null });
   });
 });

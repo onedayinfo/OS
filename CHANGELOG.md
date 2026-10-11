@@ -6,11 +6,11 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 ## [0.12.3] - 2026-10-11
 
 ### Adicionado
-- Controle de gasto da IA em dólar: teto diário (padrão US$ 2) e mensal (padrão US$ 20), além do
+- Controle de gasto da IA em dólar: teto diário (padrão US$ 0,50) e mensal (padrão US$ 5), além do
   teto diário de tokens que já existia. Atingiu qualquer um, a triagem pausa (gatilhos por frase continuam).
 - Painel de consumo em Configurações > WhatsApp: tokens e custo estimado do dia e do mês.
 - Aviso na Triagem e em Configurações ao passar de 80% de qualquer teto.
-- Custo estimado com o preço fixo do Haiku (US$ 1/M entrada, US$ 5/M saída).
+- Custo estimado com o preço fixo do Haiku (US$ 0,10/M entrada, US$ 0,50/M saída).
 
 ## [0.12.2] - 2026-10-11
 

@@ -138,14 +138,14 @@ export default function WhatsappTab() {
         </div>
         <div className="flex flex-col gap-1">
           <Label>Teto diário em dólar (US$)</Label>
-          <Input placeholder="2" value={form.aiDaily} onChange={set('aiDaily')} />
+          <Input placeholder="0,5" value={form.aiDaily} onChange={set('aiDaily')} />
         </div>
         <div className="flex flex-col gap-1">
           <Label>Teto mensal em dólar (US$)</Label>
-          <Input placeholder="20" value={form.aiMonthly} onChange={set('aiMonthly')} />
+          <Input placeholder="5" value={form.aiMonthly} onChange={set('aiMonthly')} />
         </div>
         <p className="text-xs text-muted-foreground">
-          Custo estimado pelo preço do Haiku (US$ 1/M tokens de entrada, US$ 5/M de saída). Ao atingir qualquer teto a
+          Custo estimado pelo preço do Haiku (US$ 0,10/M tokens de entrada, US$ 0,50/M de saída). Ao atingir qualquer teto a
           triagem pausa; os gatilhos por frase continuam.
         </p>
         <div className="flex flex-col gap-1">
