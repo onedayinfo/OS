@@ -51,7 +51,7 @@ describe('WhatsappService.ingest', () => {
     const { service, prisma, tickets } = make();
     const r = await service.ingest(msg({ body: 'a internet está lenta hoje' }));
     expect(r).toEqual({ stored: true, ticketId: null });
-    expect(prisma.whatsappMessage.create.mock.calls[0][0].data).toMatchObject({ groupId: 'g1', aiStatus: 'PENDING' });
+    expect(prisma.whatsappMessage.create.mock.calls[0][0].data).toMatchObject({ groupId: 'g1', aiStatus: 'PENDING', triggerPhraseId: null });
     expect(tickets.create).not.toHaveBeenCalled();
   });
 
@@ -67,10 +67,8 @@ describe('WhatsappService.ingest', () => {
     expect(input.description).toContain('escritório');
     expect(input.description).toContain('Suporte Acme');
     expect(input.description).toContain('remetente não identificado');
-    expect(prisma.whatsappMessage.update).toHaveBeenCalledWith({
-      where: { id: 'm1' },
-      data: { ticketId: 't1', triggerPhraseId: 'p1', aiStatus: 'SKIPPED' },
-    });
+    expect(prisma.whatsappMessage.create.mock.calls[0][0].data).toMatchObject({ aiStatus: 'SKIPPED', triggerPhraseId: 'p1' });
+    expect(prisma.whatsappMessage.update).toHaveBeenCalledWith({ where: { id: 'm1' }, data: { ticketId: 't1' } });
   });
 
   it('a frase mais longa vence', async () => {
@@ -102,7 +100,7 @@ describe('WhatsappService.ingest', () => {
       expect.anything(), 't5', 'WHATSAPP_IN',
       expect.objectContaining({ text: 'Sem conexão - escritório', sender: 'Fulano' }),
     );
-    expect(prisma.whatsappMessage.update.mock.calls[0][0].data).toMatchObject({ ticketId: 't5', triggerPhraseId: 'p1' });
+    expect(prisma.whatsappMessage.update.mock.calls[0][0].data).toEqual({ ticketId: 't5' });
     // a busca de "aberto" exclui chamados encerrados
     expect(prisma.whatsappMessage.findFirst.mock.calls[0][0].where.ticket).toEqual({
       status: { notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'] },
@@ -113,6 +111,42 @@ describe('WhatsappService.ingest', () => {
     const { service, tickets } = make({ createError: { code: 'P2002' } });
     expect(await service.ingest(msg())).toEqual({ stored: false, ticketId: 't9' });
     expect(tickets.create).not.toHaveBeenCalled();
+  });
+
+  it('tickets.create falha → propaga, e a linha já estava SKIPPED', async () => {
+    const { service, prisma, tickets } = make();
+    tickets.create.mockRejectedValue(new Error('boom'));
+    await expect(service.ingest(msg())).rejects.toThrow('boom');
+    expect(prisma.whatsappMessage.create.mock.calls[0][0].data.aiStatus).toBe('SKIPPED');
+  });
+
+  it('reentrega com gatilho inacabado → retoma e abre o chamado', async () => {
+    const { service, prisma, tickets } = make({ createError: { code: 'P2002' } });
+    prisma.whatsappMessage.findUnique.mockResolvedValue({ id: 'm0', ticketId: null, triggerPhraseId: 'p1' });
+    expect(await service.ingest(msg())).toEqual({ stored: true, ticketId: 't1' });
+    expect(tickets.create).toHaveBeenCalledTimes(1);
+    expect(prisma.whatsappMessage.update).toHaveBeenCalledWith({ where: { id: 'm0' }, data: { ticketId: 't1' } });
+  });
+
+  it('reentrega de linha já com chamado → não recria', async () => {
+    const { service, prisma, tickets } = make({ createError: { code: 'P2002' } });
+    prisma.whatsappMessage.findUnique.mockResolvedValue({ id: 'm0', ticketId: 't3', triggerPhraseId: 'p1' });
+    expect(await service.ingest(msg())).toEqual({ stored: false, ticketId: 't3' });
+    expect(tickets.create).not.toHaveBeenCalled();
+  });
+
+  it('concorrência: duas mensagens do mesmo gatilho geram um só chamado', async () => {
+    const { service, prisma, tickets, events } = make();
+    let linked: string | null = null;
+    prisma.whatsappMessage.findFirst.mockImplementation(() => Promise.resolve(linked ? { ticketId: linked } : null));
+    prisma.whatsappMessage.update.mockImplementation(({ data }: any) => {
+      linked = data.ticketId;
+      return Promise.resolve({});
+    });
+    tickets.create.mockImplementation(() => new Promise((r) => setTimeout(() => r({ id: 't1', number: 'N' }), 10)));
+    await Promise.all([service.ingest(msg({ externalId: 'a' })), service.ingest(msg({ externalId: 'b' }))]);
+    expect(tickets.create).toHaveBeenCalledTimes(1);
+    expect(events.record).toHaveBeenCalledTimes(1);
   });
 
   it('áudio/imagem são gravados como SKIPPED e não disparam gatilho', async () => {

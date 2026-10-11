@@ -29,11 +29,12 @@ export class WhatsappService {
     if (!group || !group.active) return { stored: false, ticketId: null };
 
     const senderUserId = await this.findSender(group.clientId, m.senderPhone);
-    const textual = m.type === 'TEXT' && !!m.body;
+    const body = m.type === 'TEXT' ? m.body : null;
+    const hit = body ? await this.matchTrigger(group.clientId, body) : null;
 
-    let row;
+    let rowId: string;
     try {
-      row = await this.prisma.whatsappMessage.create({
+      const row = await this.prisma.whatsappMessage.create({
         data: {
           externalId: m.externalId,
           groupId: group.id,
@@ -43,30 +44,45 @@ export class WhatsappService {
           type: m.type,
           body: m.body,
           sentAt: m.sentAt,
-          aiStatus: textual ? 'PENDING' : 'SKIPPED',
+          // Gatilho já nasce SKIPPED com a frase: se o processo cair antes do chamado, a IA não pega a mensagem
+          // e a reentrega retoma (abaixo).
+          aiStatus: body && !hit ? 'PENDING' : 'SKIPPED',
+          triggerPhraseId: hit?.phrase.id ?? null,
         },
       });
+      rowId = row.id;
     } catch (e) {
-      if (isUniqueViolation(e)) {
-        const seen = await this.prisma.whatsappMessage.findUnique({
-          where: { externalId: m.externalId },
-          select: { ticketId: true },
-        });
+      if (!isUniqueViolation(e)) throw e;
+      const seen = await this.prisma.whatsappMessage.findUnique({
+        where: { externalId: m.externalId },
+        select: { id: true, ticketId: true, triggerPhraseId: true },
+      });
+      if (!(hit && seen && seen.triggerPhraseId && !seen.ticketId)) {
         return { stored: false, ticketId: seen?.ticketId ?? null };
       }
-      throw e;
+      rowId = seen.id; // retomada de gatilho inacabado
     }
-    if (!textual) return { stored: true, ticketId: null };
-
-    const hit = await this.matchTrigger(group.clientId, m.body!);
     if (!hit) return { stored: true, ticketId: null };
 
-    const ticketId = await this.openOrAttach(group, hit.phrase, hit.rest, m, senderUserId);
-    await this.prisma.whatsappMessage.update({
-      where: { id: row.id },
-      data: { ticketId, triggerPhraseId: hit.phrase.id, aiStatus: 'SKIPPED' },
+    // ponytail: lock em memória por instância (single-tenant, 1 backend); trocar por pg_advisory_xact_lock se escalar para várias instâncias
+    const ticketId = await this.withLock(`${group.id}:${hit.phrase.id}`, async () => {
+      const id = await this.openOrAttach(group, hit.phrase, hit.rest, m, senderUserId);
+      await this.prisma.whatsappMessage.update({ where: { id: rowId }, data: { ticketId: id } });
+      return id;
     });
     return { stored: true, ticketId };
+  }
+
+  private readonly locks = new Map<string, Promise<unknown>>();
+
+  private withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    const run = (this.locks.get(key) ?? Promise.resolve()).catch(() => undefined).then(fn);
+    this.locks.set(key, run);
+    const clean = () => {
+      if (this.locks.get(key) === run) this.locks.delete(key);
+    };
+    run.then(clean, clean);
+    return run;
   }
 
   /** Contato do cliente cujo telefone casa (pelos 8 últimos dígitos) com o do remetente. */
