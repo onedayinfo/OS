@@ -15,10 +15,15 @@ export const E2E_ADMIN_PASSWORD = 'e2e12345';
 export const E2E_AGENT_EMAIL = 'agente@e2e.test';
 export const E2E_AGENT_PASSWORD = 'e2e12345';
 export const E2E_ASSET_TYPE = 'Câmera E2E';
-const E2E_CLIENT_ID = 'e2e-client';
+export const E2E_CLIENT_ID = 'e2e-client';
 const E2E_DOMAIN = 'e2e.test';
 
 async function cleanup(prisma: InstanceType<typeof PrismaClient>): Promise<void> {
+  // WhatsApp: grupos/frases/sugestões do cliente E2E (FK para Client).
+  await prisma.whatsappMessage.deleteMany({ where: { group: { clientId: E2E_CLIENT_ID } } });
+  await prisma.ticketSuggestion.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
+  await prisma.whatsappGroup.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
+  await prisma.triggerPhrase.deleteMany({ where: { OR: [{ clientId: E2E_CLIENT_ID }, { phrase: { startsWith: 'E2E ' } }] } });
   // TicketSatisfactionSurvey não tem onDelete: Cascade na FK pro ticket —
   // precisa sumir antes, senão trava o deleteMany de Ticket abaixo.
   await prisma.ticketSatisfactionSurvey.deleteMany({
