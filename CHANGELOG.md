@@ -3,6 +3,32 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.12.0] - 2026-10-11
+
+### Adicionado
+- **WhatsApp como canal (fase 1, somente leitura)**: o OS escuta os grupos de
+  WhatsApp dos clientes pela Evolution API (na stack) e não envia nada de volta.
+  Cada cliente cadastra o **ID do grupo**; qualquer pessoa do grupo conta, e o
+  telefone do contato (`User.phone`) só identifica quem escreveu.
+- **Frases de gatilho** por cliente ("Sistema caiu", "Sem conexão"...) com
+  categoria, prioridade e título: a mensagem que *começa* com a frase abre o
+  chamado na hora (origem `WHATSAPP`), sem IA; a mesma frase no mesmo grupo com
+  chamado aberto vira andamento do chamado. Conjunto padrão global em
+  Configurações, copiado para o cliente.
+- **Triagem por IA** (Claude Haiku 5.5): mensagens sem gatilho são analisadas em
+  lote (~5 min) e viram sugestões em `/app/triagem` (criar chamado ou
+  descartar). A IA só sugere: um técnico sempre confirma antes de qualquer
+  chamado ser criado. Teto diário de tokens, retenção das mensagens (90 dias) e
+  aviso de WhatsApp desconectado.
+- Aba **WhatsApp** na ficha do cliente e em Configurações; telefone no cadastro
+  de contatos; mensagens de origem na ficha do chamado.
+
+### Infra
+- Stack ganha `evolution-api` (imagem `evoapicloud/evolution-api:v2.3.7`),
+  `evolution-redis` e `evolution-db`; novas envs `EVOLUTION_API_KEY` e
+  `EVOLUTION_DB_PASSWORD` (a stack em produção precisa delas antes do
+  redeploy). Dependências novas no backend: `@anthropic-ai/sdk` e `zod`.
+
 ## [0.11.0] - 2026-10-06
 
 ### Alterado
