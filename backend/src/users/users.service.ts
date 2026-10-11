@@ -8,6 +8,7 @@ import { CreateInternalDto } from './dto/create-internal.dto.js';
 import { CreateContactDto } from './dto/create-contact.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { publicUser, publicUsers } from './user-view.js';
+import { normalizePhone } from '../common/phone.util.js';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -64,6 +65,7 @@ export class UsersService {
         role: dto.role,
         type: 'CLIENT',
         clientId,
+        phone: normalizePhone(dto.phone),
         passwordHash: null,
         inviteToken,
         inviteSentAt: new Date(),
@@ -129,9 +131,10 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto) {
     const found = await this.prisma.user.findUnique({ where: { id } });
     if (!found) throw new NotFoundException('Usuário não encontrado.');
-    const data: { name?: string; active?: boolean } = {};
+    const data: { name?: string; active?: boolean; phone?: string | null } = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.active !== undefined) data.active = dto.active;
+    if (dto.phone !== undefined) data.phone = normalizePhone(dto.phone);
     const updated = await this.prisma.user.update({ where: { id }, data });
     return publicUser(updated);
   }

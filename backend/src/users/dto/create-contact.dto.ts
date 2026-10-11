@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateContactDto {
   @IsString()
@@ -10,4 +10,8 @@ export class CreateContactDto {
 
   @IsIn(['MANAGER', 'CONTACT'])
   role!: 'MANAGER' | 'CONTACT';
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
 }
