@@ -29,6 +29,7 @@ import { TicketTimeline } from '@/components/ticket-timeline';
 import { TicketMaterialUsages } from '@/components/ticket-material-usages';
 import { TicketQuotes } from '@/components/ticket-quotes';
 import { TicketSatisfaction } from '@/components/ticket-satisfaction';
+import { TicketWhatsappMessages } from '@/components/ticket-whatsapp-messages';
 import { KnowledgeSuggestions } from '@/components/knowledge-suggestions';
 import { SlaIndicator } from '@/components/sla-indicator';
 import { Badge } from '@/components/ui/badge';
@@ -402,6 +403,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
 
           <TicketSatisfaction ticket={ticket} />
 
+          <TicketWhatsappMessages ticketId={id} origin={ticket.origin} />
           <KnowledgeSuggestions ticketId={id} />
 
           <Panel title="Linha do tempo e apontamentos" icon="history">

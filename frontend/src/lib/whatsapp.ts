@@ -156,7 +156,10 @@ export function useAcceptSuggestion() {
       const { id, ...body } = v;
       return api<{ id: string; number: string }>(`/whatsapp/suggestions/${id}/accept`, { method: 'POST', body });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['wa-suggestions'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['wa-suggestions'] });
+      qc.invalidateQueries({ queryKey: ['tickets'] });
+    },
   });
 }
 

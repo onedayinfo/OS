@@ -25,6 +25,7 @@ function appGroups(role: string | undefined): NavGroup[] {
   if (privileged) atendimento.push({ href: '/app/dashboard', label: 'Painel', icon: 'dashboard' });
   atendimento.push({ href: '/app', label: 'Chamados / OS', icon: 'confirmation_number' });
   atendimento.push({ href: '/app/agenda', label: 'Agenda técnica', icon: 'calendar_month' });
+  if (privileged) atendimento.push({ href: '/app/triagem', label: 'Triagem WhatsApp', icon: 'forum' });
   if (role === 'AGENT') atendimento.push({ href: '/app/campo', label: 'Técnico de campo', icon: 'engineering' });
 
   const cadastros: NavLink[] = [
