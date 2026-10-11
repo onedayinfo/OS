@@ -1,5 +1,6 @@
 import { PrismaClient, TicketPriority, UserRole, UserType } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { seedDefaultPhrases } from './seed-phrases.js';
 
 const prisma = new PrismaClient();
 
@@ -28,6 +29,9 @@ async function main() {
       create: { name, active: true },
     });
   }
+
+  const phrases = await seedDefaultPhrases(prisma);
+  console.log(phrases.skipped ? 'Frases padrão do WhatsApp: já semeadas.' : `Frases padrão do WhatsApp: ${phrases.created} criadas.`);
 
   const email = process.env.SEED_ADMIN_EMAIL;
   const password = process.env.SEED_ADMIN_PASSWORD;
