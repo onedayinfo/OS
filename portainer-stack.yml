@@ -79,7 +79,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: evolution
-      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD}
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD:?defina EVOLUTION_DB_PASSWORD}
       POSTGRES_DB: evolution
     volumes:
       - evolution_db:/var/lib/postgresql/data
@@ -111,9 +111,9 @@ services:
         condition: service_started
     environment:
       SERVER_URL: http://evolution-api:8080
-      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?defina EVOLUTION_API_KEY}
       DATABASE_PROVIDER: postgresql
-      DATABASE_CONNECTION_URI: "postgresql://evolution:${EVOLUTION_DB_PASSWORD}@evolution-db:5432/evolution?schema=evolution_api"
+      DATABASE_CONNECTION_URI: "postgresql://evolution:${EVOLUTION_DB_PASSWORD:?defina EVOLUTION_DB_PASSWORD}@evolution-db:5432/evolution?schema=evolution_api"
       DATABASE_CONNECTION_CLIENT_NAME: os
       DATABASE_SAVE_DATA_INSTANCE: "true"
       # Nao guardamos mensagens na Evolution: o OS e o dono do historico.
