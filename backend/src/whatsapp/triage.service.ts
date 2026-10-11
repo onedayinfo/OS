@@ -32,7 +32,7 @@ export class TriageService {
     this.running = true;
     try {
       if (await this.usage.isPaused()) {
-        this.logger.warn('Teto diário de tokens da IA atingido — triagem pausada até amanhã.');
+        this.logger.warn('Teto de gasto da IA atingido — triagem pausada.');
         return;
       }
       const groups = await this.prisma.whatsappGroup.findMany({

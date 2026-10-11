@@ -15,12 +15,8 @@ export class WhatsappStatusController {
   @Get('status')
   @Roles('ADMIN', 'AGENT')
   async get() {
-    const [connection, usedToday, limit] = await Promise.all([
-      this.status.check(),
-      this.usage.usedToday(),
-      this.usage.limit(),
-    ]);
-    return { connection, ai: { usedToday, limit, paused: usedToday >= limit, lastError: this.triage.getLastError() } };
+    const [connection, usage] = await Promise.all([this.status.check(), this.usage.snapshot()]);
+    return { connection, ai: { ...usage, lastError: this.triage.getLastError() } };
   }
 
   @Get('qr')

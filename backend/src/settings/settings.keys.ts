@@ -25,6 +25,8 @@ export const SETTING_KEYS = [
   'whatsapp.retentionDays',
   'ai.anthropicApiKey',
   'ai.dailyTokenLimit',
+  'ai.dailyCostLimitUsd',
+  'ai.monthlyCostLimitUsd',
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];

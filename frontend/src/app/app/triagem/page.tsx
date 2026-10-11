@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ApiError } from '@/lib/api';
-import { useAcceptSuggestion, useDiscardSuggestion, useSuggestions, useWhatsappStatus } from '@/lib/whatsapp';
+import { pauseText, useAcceptSuggestion, useDiscardSuggestion, useSuggestions, useWhatsappStatus } from '@/lib/whatsapp';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -40,7 +40,13 @@ export default function TriagemPage() {
       )}
       {status?.ai.paused && (
         <p className="rounded-md border border-warning bg-warning px-3 py-2 text-sm text-warning-foreground">
-          Teto diário de tokens da IA atingido — novas sugestões voltam amanhã (as frases de gatilho continuam).
+          Teto de gasto da IA atingido — novas sugestões voltam {pauseText(status.ai.reason)} (as frases de gatilho
+          continuam).
+        </p>
+      )}
+      {status?.ai.warn && (
+        <p className="rounded-md border border-warning bg-warning px-3 py-2 text-sm text-warning-foreground">
+          O gasto da IA passou de 80% de um dos tetos. Ajuste em Configurações &gt; WhatsApp se precisar.
         </p>
       )}
 

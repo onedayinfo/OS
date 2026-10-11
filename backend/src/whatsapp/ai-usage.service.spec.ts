@@ -1,10 +1,16 @@
-import { AiUsageService, DEFAULT_DAILY_TOKEN_LIMIT } from './ai-usage.service.js';
+import { AiUsageService, DEFAULT_DAILY_TOKEN_LIMIT, costUsd } from './ai-usage.service.js';
 
-function make(row: any, limit?: number) {
+const TODAY = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+
+function make(row: any, limit?: number, extra: Record<string, number> = {}, monthRows: any[] = []) {
   const prisma = {
-    aiUsage: { findUnique: vi.fn().mockResolvedValue(row), upsert: vi.fn().mockResolvedValue({}) },
+    aiUsage: {
+      findUnique: vi.fn().mockResolvedValue(row),
+      findMany: vi.fn().mockResolvedValue(row ? [{ day: TODAY, ...row }, ...monthRows] : monthRows),
+      upsert: vi.fn().mockResolvedValue({}),
+    },
   };
-  const settings = { getNumber: vi.fn().mockResolvedValue(limit) };
+  const settings = { getNumber: vi.fn(async (k: string) => (k === 'ai.dailyTokenLimit' ? limit : extra[k])) };
   return { service: new AiUsageService(prisma as any, settings as any), prisma };
 }
 
@@ -32,5 +38,29 @@ describe('AiUsageService', () => {
     expect(arg.create).toMatchObject({ inputTokens: 50, outputTokens: 5, calls: 1 });
     expect(arg.update).toEqual({ inputTokens: { increment: 50 }, outputTokens: { increment: 5 }, calls: { increment: 1 } });
     expect(arg.where.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('custo em dólar: US$1/M entrada + US$5/M saída', () => {
+    expect(costUsd(1_000_000, 1_000_000)).toBe(6);
+  });
+
+  it('pausa pelo teto diário em dólar', async () => {
+    const snap = await make({ inputTokens: 0, outputTokens: 500_000 }, 10_000_000, { 'ai.dailyCostLimitUsd': 2 }).service.snapshot();
+    expect(snap.day.costUsd).toBe(2.5);
+    expect(snap).toMatchObject({ paused: true, reason: 'DAILY_COST' });
+  });
+
+  it('pausa pelo teto mensal somando outros dias do mês', async () => {
+    const prev = { day: `${TODAY.slice(0, 7)}-00`, inputTokens: 0, outputTokens: 3_900_000 };
+    const snap = await make({ inputTokens: 0, outputTokens: 200_000 }, 10_000_000, { 'ai.dailyCostLimitUsd': 5, 'ai.monthlyCostLimitUsd': 20 }, [prev]).service.snapshot();
+    expect(snap.month.costUsd).toBeCloseTo(20.5);
+    expect(snap).toMatchObject({ paused: true, reason: 'MONTHLY_COST' });
+  });
+
+  it('avisa em 80% sem pausar; abaixo disso não avisa', async () => {
+    const warn = await make({ inputTokens: 0, outputTokens: 330_000 }, 10_000_000, { 'ai.dailyCostLimitUsd': 2 }).service.snapshot();
+    expect(warn).toMatchObject({ paused: false, warn: true });
+    const ok = await make({ inputTokens: 0, outputTokens: 10_000 }, 10_000_000).service.snapshot();
+    expect(ok).toMatchObject({ paused: false, warn: false, reason: null });
   });
 });

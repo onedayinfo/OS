@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
-import { useSetup, useWhatsappStatus } from '@/lib/whatsapp';
+import { pauseText, usd, useSetup, useWhatsappStatus } from '@/lib/whatsapp';
 import { WhatsappConnectionCard } from '@/components/whatsapp-connection-card';
 import { TriggerPhrasesPanel } from '@/components/trigger-phrases-panel';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ export default function WhatsappTab() {
   const showUrl = !setup?.config.urlFromEnv;
   const showKey = !setup?.config.apiKeyFromEnv;
   const [form, setForm] = useState({
-    url: '', evoKey: '', aiKey: '', aiLimit: '', retention: '',
+    url: '', evoKey: '', aiKey: '', aiLimit: '', aiDaily: '', aiMonthly: '', retention: '',
   });
 
   const seeded = useRef(false);
@@ -32,6 +32,8 @@ export default function WhatsappTab() {
         ...f,
         url: (data['whatsapp.evolution.url'] as string) ?? '',
         aiLimit: (data['ai.dailyTokenLimit'] as string) ?? '',
+        aiDaily: (data['ai.dailyCostLimitUsd'] as string) ?? '',
+        aiMonthly: (data['ai.monthlyCostLimitUsd'] as string) ?? '',
         retention: (data['whatsapp.retentionDays'] as string) ?? '',
       }));
   }, [data]);
@@ -43,6 +45,8 @@ export default function WhatsappTab() {
         body: {
           values: {
             'ai.dailyTokenLimit': form.aiLimit,
+            'ai.dailyCostLimitUsd': form.aiDaily,
+            'ai.monthlyCostLimitUsd': form.aiMonthly,
             'whatsapp.retentionDays': form.retention,
             ...(showUrl && form.url.trim() !== '' ? { 'whatsapp.evolution.url': form.url } : {}),
             ...(showKey && form.evoKey ? { 'whatsapp.evolution.apiKey': form.evoKey } : {}),
@@ -69,9 +73,16 @@ export default function WhatsappTab() {
       <section className="flex max-w-lg flex-col gap-3">
         <WhatsappConnectionCard />
         {ai && (
-          <p className="text-sm text-muted-foreground">
-            IA hoje: {ai.usedToday.toLocaleString('pt-BR')} / {ai.limit.toLocaleString('pt-BR')} tokens
-            {ai.paused && <b className="text-destructive"> — pausada até amanhã</b>}
+          <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+            <p>
+              IA hoje: {ai.day.tokens.toLocaleString('pt-BR')} / {ai.limits.dailyTokens.toLocaleString('pt-BR')} tokens ·{' '}
+              {usd(ai.day.costUsd)} / {usd(ai.limits.dailyCostUsd)}
+            </p>
+            <p>
+              IA no mês: {usd(ai.month.costUsd)} / {usd(ai.limits.monthlyCostUsd)}
+            </p>
+            {ai.warn && <b className="text-warning-foreground">Atenção: gasto acima de 80% de um dos tetos.</b>}
+            {ai.paused && <b className="text-destructive">IA pausada {pauseText(ai.reason)} (teto atingido).</b>}
             {ai.lastError && (
               <b className="text-destructive">
                 {' '}
@@ -80,7 +91,7 @@ export default function WhatsappTab() {
                 mensagens continuam na fila.
               </b>
             )}
-          </p>
+          </div>
         )}
       </section>
 
@@ -125,6 +136,18 @@ export default function WhatsappTab() {
           <Label>Teto diário de tokens</Label>
           <Input placeholder="500000" value={form.aiLimit} onChange={set('aiLimit')} />
         </div>
+        <div className="flex flex-col gap-1">
+          <Label>Teto diário em dólar (US$)</Label>
+          <Input placeholder="2" value={form.aiDaily} onChange={set('aiDaily')} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label>Teto mensal em dólar (US$)</Label>
+          <Input placeholder="20" value={form.aiMonthly} onChange={set('aiMonthly')} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Custo estimado pelo preço do Haiku (US$ 1/M tokens de entrada, US$ 5/M de saída). Ao atingir qualquer teto a
+          triagem pausa; os gatilhos por frase continuam.
+        </p>
         <div className="flex flex-col gap-1">
           <Label>Guardar mensagens por (dias)</Label>
           <Input placeholder="90" value={form.retention} onChange={set('retention')} />

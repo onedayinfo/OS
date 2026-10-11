@@ -10,6 +10,8 @@ describe('chaves do WhatsApp/IA', () => {
       'whatsapp.retentionDays',
       'ai.anthropicApiKey',
       'ai.dailyTokenLimit',
+      'ai.dailyCostLimitUsd',
+      'ai.monthlyCostLimitUsd',
     ]) {
       expect(SETTING_KEYS).toContain(k);
     }

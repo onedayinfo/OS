@@ -35,7 +35,15 @@ export interface Suggestion {
 
 export interface WhatsappStatus {
   connection: { configured: boolean; state: string; disconnectedSince: string | null };
-  ai: { usedToday: number; limit: number; paused: boolean; lastError: { message: string; at: string } | null };
+  ai: {
+    day: { tokens: number; costUsd: number };
+    month: { tokens: number; costUsd: number };
+    limits: { dailyTokens: number; dailyCostUsd: number; monthlyCostUsd: number };
+    paused: boolean;
+    reason: 'DAILY_TOKENS' | 'DAILY_COST' | 'MONTHLY_COST' | null;
+    warn: boolean;
+    lastError: { message: string; at: string } | null;
+  };
 }
 
 export interface TicketWhatsappMessage {
@@ -250,3 +258,7 @@ export function useRefreshEvolutionGroups() {
     onSuccess: (resp) => qc.setQueryData(['wa-evo-groups'], resp),
   });
 }
+
+export const usd = (n: number) => `US$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const pauseText = (reason: WhatsappStatus['ai']['reason']) =>
+  reason === 'MONTHLY_COST' ? 'até o mês que vem' : 'até amanhã';
