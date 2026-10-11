@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { ApiError } from '@/lib/api';
 import { useCreateGroup, useGroups, useRemoveGroup, useUpdateGroup } from '@/lib/whatsapp';
+import { EvolutionGroupPicker } from '@/components/evolution-group-picker';
 import { TriggerPhrasesPanel } from '@/components/trigger-phrases-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ export function WhatsappClientTab({ clientId }: { clientId: string }) {
   const remove = useRemoveGroup(clientId);
   const [externalId, setExternalId] = useState('');
   const [name, setName] = useState('');
+  const [picking, setPicking] = useState(false);
 
   return (
     <div className="flex flex-col gap-8 pt-4">
@@ -54,6 +56,9 @@ export function WhatsappClientTab({ clientId }: { clientId: string }) {
             <Label htmlFor="wg-name">Apelido (opcional)</Label>
             <Input id="wg-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
+          <Button type="button" variant="outline" onClick={() => setPicking(true)}>
+            Escolher da Evolution
+          </Button>
           <Button type="submit" disabled={create.isPending}>
             Adicionar grupo
           </Button>
@@ -110,6 +115,14 @@ export function WhatsappClientTab({ clientId }: { clientId: string }) {
             </tbody>
           </table>
         </div>
+        <EvolutionGroupPicker
+          open={picking}
+          onClose={() => setPicking(false)}
+          onPick={(g) => {
+            setExternalId(g.id);
+            setName(g.name);
+          }}
+        />
       </section>
 
       <section className="flex flex-col gap-3">
