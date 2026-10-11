@@ -43,7 +43,9 @@ export function WhatsappConnectionCard() {
             onSuccess: (r) => {
               const falhou = r.steps.find((s) => s.status === 'error');
               if (falhou) toast.error(falhou.detail ?? 'Falha ao conectar.');
-              else toast.success(r.state === 'open' ? 'WhatsApp conectado.' : 'Configuração concluída. Escaneie o QR code.');
+              else if (r.state === 'open') toast.success('WhatsApp conectado.');
+              else if (r.qr?.base64 || r.qr?.pairingCode) toast.success('Configuração concluída. Escaneie o QR code.');
+              else toast('Configuração concluída, mas o WhatsApp ainda não está pareado.');
             },
             onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Falha ao conectar.'),
           })

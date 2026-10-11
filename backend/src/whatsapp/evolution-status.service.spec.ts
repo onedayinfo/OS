@@ -11,7 +11,16 @@ const settings = (over: Record<string, string | undefined> = {}) => ({
 });
 const reply = (body: unknown, ok = true) => vi.fn().mockResolvedValue({ ok, json: () => Promise.resolve(body) });
 
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => {
+  vi.stubEnv('EVOLUTION_API_URL', '');
+  vi.stubEnv('EVOLUTION_API_KEY', '');
+  vi.stubEnv('WEBHOOK_BASE_URL', '');
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
 
 describe('EvolutionStatusService', () => {
   it('sem configuração → configured=false', async () => {

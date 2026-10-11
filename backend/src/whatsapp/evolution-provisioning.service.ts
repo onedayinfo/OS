@@ -112,12 +112,21 @@ export class EvolutionProvisioningService {
       mark('instance', 'pending', 'Ainda não criada — clique em Conectar');
       return report('unknown');
     } else {
-      const created = await this.evo.request('POST', '/instance/create', {
-        instanceName: c.instance,
-        qrcode: true,
-        integration: 'WHATSAPP-BAILEYS',
-      });
-      if (created.ok) mark('instance', 'ok', 'Criada');
+      // 20 s: com qrcode a Evolution conecta o Baileys dentro do create (~10 s); o proxy do Next corta em ~30 s.
+      const created = await this.evo.request(
+        'POST',
+        '/instance/create',
+        { instanceName: c.instance, qrcode: true, integration: 'WHATSAPP-BAILEYS' },
+        20000,
+      );
+      if (created.status === 0) {
+        const again = await this.evo.request('GET', '/instance/fetchInstances');
+        if (again.ok && instanceNames(again.body).includes(c.instance)) mark('instance', 'ok', 'Criada (a Evolution demorou a responder)');
+        else {
+          mark('instance', 'error', 'A Evolution demorou a responder ao criar a instância; clique em Conectar / Reparar de novo');
+          return report('unknown');
+        }
+      } else if (created.ok) mark('instance', 'ok', 'Criada');
       else if (alreadyExists(created)) mark('instance', 'ok', 'Já existia');
       else {
         mark('instance', 'error', `Falha ao criar a instância (HTTP ${created.status})`);
@@ -156,9 +165,10 @@ export class EvolutionProvisioningService {
     } else {
       const f = await this.evo.request('GET', `/webhook/find/${inst}`);
       const b = f.body as any;
-      const current = b?.webhook?.url ?? b?.url;
-      const enabled = (b?.webhook?.enabled ?? b?.enabled) !== false;
-      if (f.ok && current === url && enabled) mark('webhook', 'ok');
+      const w = b?.webhook ?? b;
+      const stored = await this.settings.get('whatsapp.webhookSecret');
+      if (!stored) mark('webhook', 'pending', 'Sem segredo gerado ainda — clique em Conectar');
+      else if (f.ok && w?.url === url && w?.enabled !== false && w?.headers?.['x-webhook-secret'] === stored) mark('webhook', 'ok');
       else mark('webhook', 'pending', 'Não verificado ou diferente do esperado — clique em Conectar');
     }
 

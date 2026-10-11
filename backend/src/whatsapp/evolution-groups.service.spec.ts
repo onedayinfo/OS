@@ -40,6 +40,14 @@ describe('EvolutionGroupsService.list', () => {
     expect(await make({ ok: true, status: 200, body: null }).svc.list()).toEqual([]);
   });
 
+  it('nome vazio cai para name e depois para o id', async () => {
+    const { svc } = make({ ok: true, status: 200, body: [
+      { id: 'a@g.us', subject: '', name: '' },
+      { id: 'b@g.us', subject: '  ', name: 'Nome B' },
+    ] });
+    expect((await svc.list()).map((g) => g.name)).toEqual(['a@g.us', 'Nome B']);
+  });
+
   it('Evolution fora do ar → 502; não configurada → 502; HTTP de erro → 502 com o status', async () => {
     await expect(make({ ok: false, status: 0, body: null }).svc.list()).rejects.toBeInstanceOf(BadGatewayException);
     await expect(make({}, [], null).svc.list()).rejects.toThrow(/não configurada/i);

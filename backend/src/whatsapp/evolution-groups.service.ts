@@ -35,7 +35,7 @@ export class EvolutionGroupsService {
       const id = g?.id ?? g?.remoteJid ?? g?.jid;
       if (typeof id !== 'string' || !id.endsWith('@g.us')) return [];
       const size = typeof g?.size === 'number' ? g.size : Array.isArray(g?.participants) ? g.participants.length : null;
-      return [{ id, name: String(g?.subject ?? g?.name ?? id), size }];
+      return [{ id, name: [g?.subject, g?.name].map((x) => (typeof x === 'string' ? x.trim() : '')).find(Boolean) || id, size }];
     });
 
     const linked = await this.prisma.whatsappGroup.findMany({

@@ -6,6 +6,12 @@ const settings = (vals: Record<string, string | undefined> = {}) => ({
 const reply = (body: unknown, init: { ok?: boolean; status?: number } = {}) =>
   vi.fn().mockResolvedValue({ ok: init.ok ?? true, status: init.status ?? 200, json: () => Promise.resolve(body) });
 
+beforeEach(() => {
+  vi.stubEnv('EVOLUTION_API_URL', '');
+  vi.stubEnv('EVOLUTION_API_KEY', '');
+  vi.stubEnv('WEBHOOK_BASE_URL', '');
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();

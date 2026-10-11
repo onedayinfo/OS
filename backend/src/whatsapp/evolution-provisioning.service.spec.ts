@@ -17,7 +17,7 @@ function make(o: {
       calls.push({ method, path, body });
       await Promise.resolve();
       const r = responses[`${method} ${path}`];
-      const out = typeof r === 'function' ? r(body) : r;
+      const out = typeof r === 'function' ? r(body, calls.filter((c) => c.method === method && c.path === path).length) : r;
       return out ?? { ok: false, status: 404, body: null };
     }),
   };
@@ -33,10 +33,16 @@ function make(o: {
     qr: vi.fn().mockResolvedValue({ base64: 'data:image/png;base64,AAA', pairingCode: null }),
   };
   const svc = new EvolutionProvisioningService(evo as any, settings as any, status as any);
-  return { svc, calls, store, settings, status, responses };
+  return { svc, calls, store, settings, status, responses, evo };
 }
 
 const stepStatus = (r: any) => Object.fromEntries(r.steps.map((s: any) => [s.id, s.status]));
+
+beforeEach(() => {
+  vi.stubEnv('EVOLUTION_API_URL', '');
+  vi.stubEnv('EVOLUTION_API_KEY', '');
+  vi.stubEnv('WEBHOOK_BASE_URL', '');
+});
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -175,15 +181,68 @@ describe('connect()', () => {
   });
 });
 
-describe('setup() (somente leitura)', () => {
-  it('não faz nenhum POST; webhook ok quando o find devolve a mesma URL', async () => {
-    const { svc, calls } = make({ responses: {
-      'GET /instance/fetchInstances': OK([{ name: 'os' }]),
-      'GET /webhook/find/os': OK({ enabled: true, url: WEBHOOK_URL }),
+describe('connect() — create com timeout', () => {
+  it('create status 0 mas instância aparece depois: ok, segue para o webhook; timeout 20000', async () => {
+    const { svc, evo } = make({ responses: {
+      'GET /instance/fetchInstances': (_b: any, n: number) => OK(n === 1 ? [] : [{ name: 'os' }]),
+      'POST /instance/create': { ok: false, status: 0, body: null },
+      'POST /webhook/set/os': OK({}),
     } });
-    const r = await svc.setup();
-    expect(calls.every((c) => c.method === 'GET')).toBe(true);
+    const r = await svc.connect();
     expect(stepStatus(r)).toEqual({ reachable: 'ok', instance: 'ok', webhook: 'ok', connection: 'ok' });
+    expect(r.steps.find((s) => s.id === 'instance')!.detail).toMatch(/demorou/);
+    const create = evo.request.mock.calls.find((c: any[]) => c[1] === '/instance/create')!;
+    expect(create[3]).toBe(20000);
+  });
+
+  it('create status 0 e instância não listada: erro, seguintes pendentes, sem webhook/set', async () => {
+    const { svc, calls } = make({ responses: {
+      'GET /instance/fetchInstances': OK([]),
+      'POST /instance/create': { ok: false, status: 0, body: null },
+    } });
+    const r = await svc.connect();
+    expect(stepStatus(r)).toEqual({ reachable: 'ok', instance: 'error', webhook: 'pending', connection: 'pending' });
+    expect(r.steps.find((s) => s.id === 'instance')!.detail).toBe('A Evolution demorou a responder ao criar a instância; clique em Conectar / Reparar de novo');
+    expect(calls.some((c) => c.path.startsWith('/webhook/set'))).toBe(false);
+  });
+});
+
+describe('setup() (somente leitura)', () => {
+  const SECRET = 's3cr3t';
+  const hook = (h?: string) => ({ enabled: true, url: WEBHOOK_URL, headers: h === undefined ? {} : { 'x-webhook-secret': h } });
+
+  it('não faz POST; webhook ok com URL, header e segredo iguais (corpo plano ou aninhado)', async () => {
+    for (const body of [hook(SECRET), { webhook: hook(SECRET) }]) {
+      const { svc, calls, settings } = make({
+        settings: { 'whatsapp.webhookSecret': SECRET },
+        responses: { 'GET /instance/fetchInstances': OK([{ name: 'os' }]), 'GET /webhook/find/os': OK(body) },
+      });
+      const r = await svc.setup();
+      expect(calls.every((c) => c.method === 'GET')).toBe(true);
+      expect(settings.set).not.toHaveBeenCalled();
+      expect(stepStatus(r)).toEqual({ reachable: 'ok', instance: 'ok', webhook: 'ok', connection: 'ok' });
+      expect(JSON.stringify(r)).not.toContain(SECRET);
+    }
+  });
+
+  it('header diferente ou ausente: pendente', async () => {
+    for (const h of ['outro', undefined]) {
+      const { svc } = make({
+        settings: { 'whatsapp.webhookSecret': SECRET },
+        responses: { 'GET /instance/fetchInstances': OK([{ name: 'os' }]), 'GET /webhook/find/os': OK(hook(h)) },
+      });
+      const r = await svc.setup();
+      expect(stepStatus(r).webhook).toBe('pending');
+      expect(JSON.stringify(r)).not.toContain(SECRET);
+    }
+  });
+
+  it('sem segredo guardado: pendente com detalhe próprio, sem gravar', async () => {
+    const { svc, settings } = make({ responses: { 'GET /instance/fetchInstances': OK([{ name: 'os' }]), 'GET /webhook/find/os': OK(hook(SECRET)) } });
+    const r = await svc.setup();
+    expect(stepStatus(r).webhook).toBe('pending');
+    expect(r.steps.find((s) => s.id === 'webhook')!.detail).toMatch(/Sem segredo/);
+    expect(settings.set).not.toHaveBeenCalled();
   });
 
   it('webhook não consultável ou diferente fica pendente (não erro)', async () => {
