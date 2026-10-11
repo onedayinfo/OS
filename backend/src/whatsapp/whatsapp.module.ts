@@ -8,6 +8,7 @@ import { TriggerPhrasesService } from './trigger-phrases.service.js';
 import { TriggerPhrasesController } from './trigger-phrases.controller.js';
 import { WhatsappStatusController } from './whatsapp-status.controller.js';
 import { EvolutionStatusService } from './evolution-status.service.js';
+import { EvolutionClient } from './evolution-client.js';
 import { AiUsageService } from './ai-usage.service.js';
 import { AiClassifierService } from './ai-classifier.service.js';
 import { TriageService } from './triage.service.js';
@@ -19,6 +20,6 @@ import { WhatsappMessagesController } from './whatsapp-messages.controller.js';
 @Module({
   imports: [TicketsModule],
   controllers: [WhatsappWebhookController, WhatsappGroupsController, TriggerPhrasesController, WhatsappStatusController, SuggestionsController, WhatsappMessagesController],
-  providers: [WhatsappService, WhatsappGroupsService, TriggerPhrasesService, EvolutionStatusService, AiUsageService, AiClassifierService, TriageService, WhatsappCron, SuggestionsService],
+  providers: [WhatsappService, WhatsappGroupsService, TriggerPhrasesService, EvolutionClient, EvolutionStatusService, AiUsageService, AiClassifierService, TriageService, WhatsappCron, SuggestionsService],
 })
 export class WhatsappModule {}
