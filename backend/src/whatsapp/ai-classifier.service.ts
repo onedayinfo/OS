@@ -62,11 +62,13 @@ Para cada ASSUNTO distinto nas mensagens NOVAS, devolva um item com:
 
 Use as mensagens de CONTEXTO apenas para entender o assunto; nunca as classifique. Mensagens sem conteúdo relevante não precisam de item. Não invente fatos.`;
 
+const oneLine = (s: string) => s.replace(/\s+/g, ' ').trim();
+
 export function buildUserPrompt(input: ClassifyInput): string {
   const ctx = input.context.length
-    ? input.context.map((l) => `${l.sender}: ${l.text}`).join('\n')
+    ? input.context.map((l) => `${oneLine(l.sender)}: ${oneLine(l.text)}`).join('\n')
     : '(sem contexto anterior)';
-  const novas = input.pending.map((l, i) => `[${i}] ${l.sender}: ${l.text}`).join('\n');
+  const novas = input.pending.map((l, i) => `[${i}] ${oneLine(l.sender)}: ${oneLine(l.text)}`).join('\n');
   return `Cliente: ${input.clientName}\n\nContexto (já tratado — não classificar):\n${ctx}\n\nMensagens novas:\n${novas}`;
 }
 
@@ -107,11 +109,12 @@ export class AiClassifierService {
     const client = new Anthropic({ apiKey });
     const response = await client.messages.parse({
       model: MODEL,
-      max_tokens: 2000,
+      max_tokens: 8000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: buildUserPrompt(input) }],
       output_config: { effort: 'low', format: zodOutputFormat(Schema) },
     });
+    if (response.stop_reason === 'max_tokens') throw new Error('Resposta da IA truncada (max_tokens).');
     if (response.stop_reason === 'refusal' || !response.parsed_output) {
       throw new Error('Resposta da IA recusada ou fora do formato.');
     }
