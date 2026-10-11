@@ -46,9 +46,9 @@ export class AiTransientError extends Error {
 }
 
 // ponytail: duck-typing (os testes mockam o SDK; instanceof APIError não é confiável).
-function toTransient(err: unknown): AiTransientError | null {
+export function toTransient(err: unknown): AiTransientError | null {
   if (typeof err !== 'object' || err === null) return null;
-  const e = err as { status?: unknown; name?: unknown; code?: unknown };
+  const e = err as { status?: unknown; name?: unknown; code?: unknown; message?: unknown; cause?: { code?: unknown } };
   const status = typeof e.status === 'number' ? e.status : undefined;
   if (status !== undefined) {
     if (status === 401 || status === 403) return new AiTransientError(`Chave da API da Anthropic recusada (HTTP ${status})`);
@@ -57,7 +57,11 @@ function toTransient(err: unknown): AiTransientError | null {
   }
   const conn =
     /Connection|Timeout/i.test(String(e.name ?? '')) ||
-    /^(ECONNRESET|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|UND_ERR_.*)$/.test(String(e.code ?? ''));
+    /^(ECONNRESET|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|UND_ERR_.*)$/.test(String(e.code ?? '')) ||
+    // SDK real: APIConnectionError/TimeoutError não definem `name`; a causa vem em `cause`.
+    /^APIConnection(Timeout)?Error$/.test(String((err as object).constructor?.name ?? '')) ||
+    /^(Connection error|Request timed out)\.$/.test(String(e.message ?? '')) ||
+    /^(ECONNRESET|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|UND_ERR_)/.test(String(e.cause?.code ?? ''));
   return conn ? new AiTransientError('IA indisponível (sem conexão)') : null;
 }
 
