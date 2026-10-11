@@ -17,7 +17,7 @@ export default function WhatsappTab() {
   const qc = useQueryClient();
   const { data: status } = useWhatsappStatus();
   const { data } = useQuery({ queryKey: ['settings'], queryFn: () => api<SettingsView>('/settings') });
-  const { data: setup } = useSetup();
+  const { data: setup, isLoading: setupLoading } = useSetup();
   const showUrl = !setup?.config.urlFromEnv;
   const showKey = !setup?.config.apiKeyFromEnv;
   const [form, setForm] = useState({
@@ -44,7 +44,7 @@ export default function WhatsappTab() {
           values: {
             'ai.dailyTokenLimit': form.aiLimit,
             'whatsapp.retentionDays': form.retention,
-            ...(showUrl ? { 'whatsapp.evolution.url': form.url } : {}),
+            ...(showUrl && form.url.trim() !== '' ? { 'whatsapp.evolution.url': form.url } : {}),
             ...(showKey && form.evoKey ? { 'whatsapp.evolution.apiKey': form.evoKey } : {}),
             ...(form.aiKey ? { 'ai.anthropicApiKey': form.aiKey } : {}),
           },
@@ -86,7 +86,9 @@ export default function WhatsappTab() {
 
       <section className="flex max-w-lg flex-col gap-4">
         <h2 className="text-[14px] font-semibold">Evolution API</h2>
-        {!showUrl && !showKey ? (
+        {setupLoading ? (
+          <p className="text-sm text-muted-foreground">Verificando…</p>
+        ) : !showUrl && !showKey ? (
           <p className="text-sm text-muted-foreground">Evolution configurada pelo ambiente da stack.</p>
         ) : (
           <>

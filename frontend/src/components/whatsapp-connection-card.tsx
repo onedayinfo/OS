@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 const MARK: Record<SetupStep['status'], string> = { ok: '✓', error: '✗', pending: '•' };
+const SR: Record<SetupStep['status'], string> = { ok: 'ok', error: 'erro', pending: 'pendente' };
 const TONE: Record<SetupStep['status'], 'green' | 'red' | 'neutral'> = { ok: 'green', error: 'red', pending: 'neutral' };
 
 export function WhatsappConnectionCard() {
@@ -24,7 +25,7 @@ export function WhatsappConnectionCard() {
         <ul className="flex flex-col gap-2" aria-label="Etapas da conexão">
           {report.steps.map((s) => (
             <li key={s.id} className="flex items-start gap-2 text-sm">
-              <Badge tone={TONE[s.status]}>{MARK[s.status]}</Badge>
+              <Badge tone={TONE[s.status]}>{MARK[s.status]}<span className="sr-only">{SR[s.status]}</span></Badge>
               <div>
                 <div className="font-medium">{s.label}</div>
                 {s.detail && <div className="text-xs text-muted-foreground">{s.detail}</div>}
