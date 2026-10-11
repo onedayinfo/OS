@@ -3,6 +3,12 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.12.6] - 2026-10-11
+
+### Adicionado
+- Importação de ativos: pré-visualização com validação linha a linha antes de gravar, coluna
+  opcional `id_rustdesk` e só `cliente`, `local`, `tipo` e `identificacao` obrigatórias no cabeçalho.
+
 ## [0.12.5] - 2026-10-11
 
 ### Adicionado

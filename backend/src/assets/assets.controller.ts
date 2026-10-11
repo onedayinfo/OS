@@ -29,9 +29,9 @@ export class AssetsController {
 
   @Post('import')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
-  importCsv(@UploadedFile() file: UF) {
+  importCsv(@UploadedFile() file: UF, @Query('dryRun') dryRun?: string) {
     if (!file) throw new BadRequestException('Arquivo ausente.');
-    return this.importer.import(file.buffer);
+    return this.importer.import(file.buffer, dryRun === 'true');
   }
 
   @Post()
