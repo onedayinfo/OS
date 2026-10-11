@@ -3,6 +3,18 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.12.4] - 2026-10-11
+
+### Corrigido
+- O backup lógico (JSON diário e exportação) cobria só 11 tabelas. Passa a cobrir todas (exceto
+  sessões): WhatsApp e IA (grupos, mensagens, frases, sugestões, consumo), contratos, visitas,
+  orçamentos, oportunidades, estoque, catálogo, locais, ativos e base de conhecimento. Formato v2.
+- Restaurar um backup v1 (antigo) continua funcionando e só toca nas tabelas que ele contém.
+- A restauração trata a referência circular orçamento <-> chamado.
+- Teste de integração faz exportar+restaurar de verdade e falha se um modelo novo do Prisma
+  ficar fora do backup.
+- Observação: arquivos anexados ficam no storage (disco/S3) e não entram no JSON.
+
 ## [0.12.3] - 2026-10-11
 
 ### Adicionado
