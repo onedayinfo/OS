@@ -155,4 +155,27 @@ describe('EvolutionGroupsService', () => {
     await resolve(G(null));
     expect(await svc.list()).toMatchObject({ groups: [], loading: false, updatedAt: expect.any(String) });
   });
+
+  it('trocar a instância invalida o cache: sem grupos, loading, uma só requisição para a nova', async () => {
+    const { svc, evo, resolve } = make();
+    await svc.list();
+    await resolve(G(BODY));
+    expect((await svc.list()).groups).toHaveLength(2);
+    evo.config.mockResolvedValue({ url: 'u', apiKey: 'k', instance: 'outra' });
+    const out = await svc.list();
+    expect(out).toMatchObject({ groups: [], loading: true, updatedAt: null });
+    await svc.list();
+    await vi.waitFor(() => expect(evo.request).toHaveBeenCalledTimes(2));
+    expect(evo.request.mock.calls[1][1]).toBe('/group/fetchAllGroups/outra?getParticipants=false');
+  });
+
+  it('usa a instância capturada no início da atualização, mesmo que a config mude depois', async () => {
+    const { svc, evo, resolve } = make();
+    await svc.list();
+    await vi.waitFor(() => expect(evo.request).toHaveBeenCalledTimes(1));
+    evo.config.mockResolvedValue({ url: 'u', apiKey: 'k', instance: 'outra' });
+    await resolve(G(BODY));
+    expect((svc as any).cache.instance).toBe('os');
+    expect(evo.request.mock.calls[0][1]).toContain('/os?');
+  });
 });

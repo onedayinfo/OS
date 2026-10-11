@@ -31,8 +31,9 @@ const FETCH_TIMEOUT_MS = 120_000;
 
 @Injectable()
 export class EvolutionGroupsService {
-  private cache: { groups: RawGroup[]; at: number } | null = null;
+  private cache: { groups: RawGroup[]; at: number; instance: string } | null = null;
   private inflight: Promise<void> | null = null;
+  private inflightInstance: string | null = null;
   private lastError: string | null = null;
 
   constructor(
@@ -40,44 +41,53 @@ export class EvolutionGroupsService {
     private readonly prisma: PrismaService,
   ) {}
 
-  private stale(): boolean {
-    return !this.cache || Date.now() - this.cache.at > FRESH_MS;
+  /** Cache só vale para a instância atual; de outra instância conta como ausente. */
+  private cacheFor(instance: string) {
+    return this.cache?.instance === instance ? this.cache : null;
+  }
+
+  private stale(instance: string): boolean {
+    const c = this.cacheFor(instance);
+    return !c || Date.now() - c.at > FRESH_MS;
   }
 
   /** Responde na hora com o cache; dispara a atualização em segundo plano se vazio/velho. */
   async list(): Promise<GroupsResponse> {
-    if (!(await this.evo.config())) throw new BadGatewayException('Evolution não configurada.');
-    if (this.stale()) void this.refresh();
-    return this.snapshot();
+    const c = await this.evo.config();
+    if (!c) throw new BadGatewayException('Evolution não configurada.');
+    if (this.stale(c.instance)) void this.refresh(c.instance);
+    return this.snapshot(c.instance);
   }
 
   /** Botão "Atualizar lista": dispara (single-flight) e responde na hora. */
   async forceRefresh(): Promise<GroupsResponse> {
-    if (!(await this.evo.config())) throw new BadGatewayException('Evolution não configurada.');
-    void this.refresh();
-    return this.snapshot();
+    const c = await this.evo.config();
+    if (!c) throw new BadGatewayException('Evolution não configurada.');
+    void this.refresh(c.instance);
+    return this.snapshot(c.instance);
   }
 
   /** Pré-carga (ex.: ao parear). Nunca lança. */
   warmUp(): void {
     void (async () => {
       try {
-        if ((await this.evo.config()) && this.stale()) void this.refresh();
+        const c = await this.evo.config();
+        if (c && this.stale(c.instance)) void this.refresh(c.instance);
       } catch {
         /* pré-carga é só otimização */
       }
     })();
   }
 
-  private refresh(): Promise<void> {
-    if (this.inflight) return this.inflight;
+  // A instância é capturada uma vez, na chamada: o cache é marcado com a mesma que foi consultada.
+  private refresh(instance: string): Promise<void> {
+    if (this.inflight) return this.inflightInstance === instance ? this.inflight : this.inflight.then(() => this.refresh(instance));
+    this.inflightInstance = instance;
     this.inflight = (async () => {
       try {
-        const c = await this.evo.config();
-        if (!c) return;
         const r = await this.evo.request(
           'GET',
-          `/group/fetchAllGroups/${encodeURIComponent(c.instance)}?getParticipants=false`,
+          `/group/fetchAllGroups/${encodeURIComponent(instance)}?getParticipants=false`,
           undefined,
           FETCH_TIMEOUT_MS,
         );
@@ -85,19 +95,21 @@ export class EvolutionGroupsService {
           this.lastError = r.status === 0 ? 'Evolution inalcançável ou demorou demais.' : `A Evolution respondeu HTTP ${r.status}.`;
           return;
         }
-        this.cache = { groups: parse(r.body), at: Date.now() };
+        this.cache = { groups: parse(r.body), at: Date.now(), instance };
         this.lastError = null;
       } catch {
         this.lastError = 'Falha ao consultar a Evolution.';
       } finally {
         this.inflight = null;
+        this.inflightInstance = null;
       }
     })();
     return this.inflight;
   }
 
-  private async snapshot(): Promise<GroupsResponse> {
-    const raw = this.cache?.groups ?? [];
+  private async snapshot(instance: string): Promise<GroupsResponse> {
+    const cache = this.cacheFor(instance);
+    const raw = cache?.groups ?? [];
     const linked = raw.length
       ? await this.prisma.whatsappGroup.findMany({
           where: { externalId: { in: raw.map((g) => g.id) } },
@@ -114,9 +126,9 @@ export class EvolutionGroupsService {
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     return {
       groups,
-      loading: this.cache === null && this.inflight !== null,
+      loading: cache === null && this.inflight !== null,
       refreshing: this.inflight !== null,
-      updatedAt: this.cache ? new Date(this.cache.at).toISOString() : null,
+      updatedAt: cache ? new Date(cache.at).toISOString() : null,
       error: this.lastError,
     };
   }

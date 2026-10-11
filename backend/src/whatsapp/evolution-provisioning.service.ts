@@ -68,7 +68,7 @@ export class EvolutionProvisioningService {
     return run;
   }
 
-  /** Mesmo checklist, só leitura (não cria nem grava nada). */
+  /** Mesmo checklist, somente leitura para os nossos dados (não cria nem grava nada); só dispara, em segundo plano, a pré-carga do cache de grupos. */
   setup(): Promise<SetupReport> {
     return this.execute(false);
   }
