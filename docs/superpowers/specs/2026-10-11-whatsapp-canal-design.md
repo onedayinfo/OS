@@ -38,6 +38,8 @@ Uso interno, single-tenant. Venda futura = uma stack por cliente (sem multi-tena
   custo extra) para uso futuro.
 - Mídia: áudio/imagem/documento são gravados só como tipo (`AUDIO`, `IMAGE`…), sem
   interpretação.
+- Botão "Buscar grupos da Evolution" (lista de grupos para escolher, em vez de colar o
+  ID à mão): ideia para uma fase futura; na fase 1 o ID é colado manualmente.
 - Multi-tenant; resposta pelo portal; retomar conversa do grupo dentro do chamado.
 
 ## 3. Modelo de dados (Prisma)

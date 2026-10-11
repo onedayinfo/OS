@@ -103,6 +103,7 @@ de funil, importação de leads, estágios configuráveis.
 |---|---|
 | **CI** (build + testes + push de imagem) | Antes da 0.3.0 — já está doendo |
 | **WhatsApp como canal** (Meta Cloud API ou provedor) | Quase obrigatório na vertical; candidato à 0.4.0 |
+| **WhatsApp: buscar grupos da Evolution** (escolher o grupo numa lista em vez de colar o ID) | Depois da fase 1 do WhatsApp (`2026-10-11-whatsapp-canal-design.md`) |
 | **Svix no webhook inbound** | Antes de ligar o inbound em produção |
 | **pg_dump agendado** | Cedo — o backup atual é lógico da app, não do Postgres |
 | **Realtime na fila** (SSE) | Quando o nº de agentes crescer |
