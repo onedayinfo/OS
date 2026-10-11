@@ -1,4 +1,4 @@
-import { SECRET_KEYS, SETTING_KEYS } from './settings.keys.js';
+import { ENV_FALLBACK, SECRET_KEYS, SETTING_KEYS } from './settings.keys.js';
 
 describe('chaves do WhatsApp/IA', () => {
   it('registra todas as chaves novas', () => {
@@ -20,5 +20,12 @@ describe('chaves do WhatsApp/IA', () => {
       expect(SECRET_KEYS.has(k)).toBe(true);
     }
     expect(SECRET_KEYS.has('whatsapp.evolution.url')).toBe(false);
+  });
+});
+
+describe('fallback de ambiente da Evolution', () => {
+  it('URL e chave da Evolution caem nas variáveis da stack', () => {
+    expect(ENV_FALLBACK['whatsapp.evolution.url']).toBe('EVOLUTION_API_URL');
+    expect(ENV_FALLBACK['whatsapp.evolution.apiKey']).toBe('EVOLUTION_API_KEY');
   });
 });

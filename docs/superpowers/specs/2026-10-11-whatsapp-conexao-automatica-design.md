@@ -41,8 +41,8 @@ Entregas:
   `docker-compose.yml` (dev; lá `WEBHOOK_BASE_URL` aponta para o host do backend visto
   de dentro do container da Evolution, p.ex. `http://host.docker.internal:3001`).
 - `settings.keys.ts` → `ENV_FALLBACK`: `whatsapp.evolution.url → EVOLUTION_API_URL`,
-  `whatsapp.evolution.apiKey → EVOLUTION_API_KEY`. O valor gravado na tela (se houver)
-  continua prevalecendo; sem valor, vale o ambiente. `describe()` já reporta
+  `whatsapp.evolution.apiKey → EVOLUTION_API_KEY`. **O ambiente prevalece**
+  sobre o gravado na tela (a stack é a fonte da verdade); sem variável, vale o gravado. `describe()` já reporta
   `<key>Set` para segredos com fallback de ambiente.
 - Instância: `whatsapp.evolution.instance` com **padrão `os`** no código quando vazio.
   A tela deixa de pedir.

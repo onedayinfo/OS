@@ -58,6 +58,11 @@ services:
       STORAGE_PATH: /app/uploads
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      # WhatsApp: o backend fala com a Evolution pela rede interna e diz a ela onde
+      # entregar o webhook. A chave é a MESMA da Evolution (EVOLUTION_API_KEY).
+      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-http://evolution-api:8080}
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:?defina EVOLUTION_API_KEY}
+      WEBHOOK_BASE_URL: ${WEBHOOK_BASE_URL:-http://backend:3001}
     volumes:
       - uploads:/app/uploads
     networks:

@@ -29,6 +29,9 @@ services:
       # Sobrescreve o host do .env (localhost) pelo nome do serviço na rede compose,
       # usando as mesmas credenciais do serviço postgres.
       DATABASE_URL: "postgresql://${POSTGRES_USER:-os}:${POSTGRES_PASSWORD:-os}@postgres:5432/${POSTGRES_DB:-os}?schema=public"
+      EVOLUTION_API_URL: http://evolution-api:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-dev-evolution-key}
+      WEBHOOK_BASE_URL: http://backend:3001
     volumes:
       - uploads:/app/uploads
     ports:

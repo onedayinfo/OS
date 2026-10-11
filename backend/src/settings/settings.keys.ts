@@ -46,6 +46,8 @@ export const ENV_FALLBACK: Readonly<Record<string, string>> = {
   'mail.from': 'MAIL_FROM',
   'resend.inboundSecret': 'RESEND_INBOUND_SECRET',
   'storage.path': 'STORAGE_PATH',
+  'whatsapp.evolution.url': 'EVOLUTION_API_URL',
+  'whatsapp.evolution.apiKey': 'EVOLUTION_API_KEY',
 };
 
 /** Chaves grandes que `describe()` nunca devolve cruas por peso (ex.: logo base64). */
