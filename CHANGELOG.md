@@ -3,6 +3,15 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.13.0] - 2026-10-12
+
+### Adicionado
+- Triagem do WhatsApp: seção **Conversas do dia**, agrupadas por cliente > grupo, com horário,
+  remetente e marcação por mensagem (chamado criado, sugestão da IA, ignorada, aguardando IA).
+  Textos cortados em 300 letras com "ver mais", seletor de data (histórico de até 90 dias) e
+  atualização a cada 30 s. Endpoint `GET /whatsapp/messages/conversations?date=AAAA-MM-DD`.
+- Triagem passa a mostrar o consumo da IA (dia e mês, em US$) no topo.
+
 ## [0.12.6] - 2026-10-11
 
 ### Adicionado
@@ -14,15 +23,6 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 ### Adicionado
 - Ativos: campo "ID RustDesk" e link "Conectar" na tela do ativo (abre o RustDesk do técnico já
   conectando na máquina do cliente via `rustdesk://`).
-
-## [0.13.0] - 2026-10-12
-
-### Adicionado
-- Triagem do WhatsApp: seção **Conversas do dia**, agrupadas por cliente > grupo, com horário,
-  remetente e marcação por mensagem (chamado criado, sugestão da IA, ignorada, aguardando IA).
-  Textos cortados em 300 letras com "ver mais", seletor de data (histórico de até 90 dias) e
-  atualização a cada 30 s. Endpoint `GET /whatsapp/messages/conversations?date=AAAA-MM-DD`.
-- Triagem passa a mostrar o consumo da IA (dia e mês, em US$) no topo.
 
 ## [0.12.4] - 2026-10-11
 
