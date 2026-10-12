@@ -262,3 +262,32 @@ export function useRefreshEvolutionGroups() {
 export const usd = (n: number) => `US$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const pauseText = (reason: WhatsappStatus['ai']['reason']) =>
   reason === 'MONTHLY_COST' ? 'até o mês que vem' : 'até amanhã';
+
+// --- conversas do dia ---
+export interface ConversationMessage {
+  id: string;
+  senderName: string | null;
+  senderPhone: string;
+  type: 'TEXT' | 'AUDIO' | 'IMAGE' | 'OTHER';
+  body: string | null;
+  sentAt: string;
+  aiStatus: 'PENDING' | 'ANALYZED' | 'SKIPPED' | 'FAILED';
+  ticket: { id: string; number: string } | null;
+  suggestion: 'OPEN' | 'ACCEPTED' | 'DISCARDED' | null;
+}
+export interface ConversationsResponse {
+  date: string;
+  clients: {
+    client: { id: string; name: string };
+    total: number;
+    groups: { id: string; name: string; messages: ConversationMessage[] }[];
+  }[];
+}
+
+export function useConversations(date: string) {
+  return useQuery({
+    queryKey: ['wa-conversations', date],
+    queryFn: () => api<ConversationsResponse>(`/whatsapp/messages/conversations?date=${date}`),
+    refetchInterval: 30_000,
+  });
+}
