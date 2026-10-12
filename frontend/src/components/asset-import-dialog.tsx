@@ -39,13 +39,13 @@ export function AssetImportDialog() {
     });
   };
 
-  const previewCsv = useMutation({
+  const previewFile = useMutation({
     mutationFn: (f: File) => send(f, true),
     onSuccess: setPreview,
-    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Falha ao ler o CSV.'),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Falha ao ler a planilha.'),
   });
 
-  const importCsv = useMutation({
+  const importFile = useMutation({
     mutationFn: (f: File) => send(f, false),
     onSuccess: (r) => {
       setPreview(null);
@@ -54,12 +54,12 @@ export function AssetImportDialog() {
       toast.success(`${r.created} ativo(s) importado(s).`);
     },
     onError: (e) =>
-      toast.error(e instanceof ApiError ? e.message : 'Falha ao importar o CSV.'),
+      toast.error(e instanceof ApiError ? e.message : 'Falha ao importar a planilha.'),
   });
 
   return (
     <div className="flex flex-col gap-3">
-      <a href="/modelo-ativos.csv" download className="text-sm text-primary hover:underline">
+      <a href="/modelo-ativos.xlsx" download className="text-sm text-primary hover:underline">
         Baixar modelo
       </a>
       <p className="text-xs text-muted-foreground">
@@ -70,18 +70,18 @@ export function AssetImportDialog() {
       <input
         ref={inputRef}
         type="file"
-        accept=".csv"
+        accept=".xlsx"
         className="text-sm"
         onChange={(e) => {
           const f = e.target.files?.[0] ?? null;
           setFile(f);
           setResult(null);
           setPreview(null);
-          if (f) previewCsv.mutate(f);
+          if (f) previewFile.mutate(f);
         }}
       />
 
-      {previewCsv.isPending && <p className="text-sm text-muted-foreground">Lendo o arquivo…</p>}
+      {previewFile.isPending && <p className="text-sm text-muted-foreground">Lendo o arquivo…</p>}
 
       {preview?.rows && (
         <div className="flex flex-col gap-2">
@@ -129,10 +129,10 @@ export function AssetImportDialog() {
       <div>
         <Button
           type="button"
-          disabled={!file || !preview || preview.created === 0 || importCsv.isPending}
-          onClick={() => file && importCsv.mutate(file)}
+          disabled={!file || !preview || preview.created === 0 || importFile.isPending}
+          onClick={() => file && importFile.mutate(file)}
         >
-          {importCsv.isPending ? 'Importando…' : preview ? `Importar ${preview.created}` : 'Importar'}
+          {importFile.isPending ? 'Importando…' : preview ? `Importar ${preview.created}` : 'Importar'}
         </Button>
       </div>
 

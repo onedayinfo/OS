@@ -109,13 +109,13 @@ export default function AssetsPage() {
         <h1 className="text-lg font-semibold">Ativos</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setImporting(true)}>
-            Importar CSV
+            Importar planilha
           </Button>
           <Button onClick={() => setCreating(true)}>Novo ativo</Button>
         </div>
       </div>
 
-      <Dialog open={importing} onClose={() => setImporting(false)} title="Importar ativos por CSV">
+      <Dialog open={importing} onClose={() => setImporting(false)} title="Importar ativos por planilha (.xlsx)">
         <AssetImportDialog />
       </Dialog>
 

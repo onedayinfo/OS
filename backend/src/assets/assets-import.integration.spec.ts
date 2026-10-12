@@ -1,10 +1,11 @@
+import ExcelJS from 'exceljs';
 import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AssetsImportService } from './assets-import.service.js';
 
 // Teste de INTEGRAÇÃO: Postgres real (`docker compose up -d postgres`). Sem
 // DATABASE_URL / banco no ar, o bloco pula com aviso (exit 0). Cobre o import
-// CSV ponta a ponta: 1 linha boa + 3 erros (tipo inexistente, data inválida,
+// XLSX ponta a ponta: 1 linha boa + 3 erros (tipo inexistente, data inválida,
 // número de série duplicado — este último é o caminho P2002 do @@unique).
 const PFX = `ATL-${Date.now()}`;
 
@@ -58,18 +59,17 @@ describe('AssetsImportService.import — integração (Postgres real)', () => {
     const cli = `${PFX} Cliente`;
     const loc = `${PFX} Matriz`;
     const tipo = `${PFX} Câmera`;
-    const head =
-      'cliente,local,tipo,identificacao,marca,modelo,numero_serie,ip,mac,instalado_em,garantia_ate,observacoes';
-    const rows = [
-      `${cli},${loc},${tipo},${PFX} CAM-BOA,,,SN-GOOD,,,,,`, // linha 2 — boa
-      `${cli},${loc},${PFX} Inexistente,${PFX} CAM-TIPO,,,,,,,,`, // linha 3 — tipo inexistente
-      `${cli},${loc},${tipo},${PFX} CAM-DATA,,,,,,31-12-2026,,`, // linha 4 — data inválida
-      `${cli},${loc},${tipo},${PFX} CAM-DUP,,,SN-GOOD,,,,,`, // linha 5 — série duplicada
-    ];
-    const csv = Buffer.from(`${head}\n${rows.join('\n')}\n`, 'utf8');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Ativos');
+    ws.addRow(['cliente', 'local', 'tipo', 'identificacao', 'marca', 'modelo', 'numero_serie', 'ip', 'mac', 'instalado_em', 'garantia_ate', 'observacoes']);
+    ws.addRow([cli, loc, tipo, `${PFX} CAM-BOA`, '', '', 'SN-GOOD']); // linha 2 — boa
+    ws.addRow([cli, loc, `${PFX} Inexistente`, `${PFX} CAM-TIPO`]); // linha 3 — tipo inexistente
+    ws.addRow([cli, loc, tipo, `${PFX} CAM-DATA`, '', '', '', '', '', '31-12-2026']); // linha 4 — data inválida
+    ws.addRow([cli, loc, tipo, `${PFX} CAM-DUP`, '', '', 'SN-GOOD']); // linha 5 — série duplicada
+    const xlsx = Buffer.from(await wb.xlsx.writeBuffer());
 
     const svc = new AssetsImportService(prisma as unknown as PrismaService);
-    const result = await svc.import(csv);
+    const result = await svc.import(xlsx);
 
     expect(result.created).toBe(1);
     expect(result.errors.map((e) => e.line).sort()).toEqual([3, 4, 5]);

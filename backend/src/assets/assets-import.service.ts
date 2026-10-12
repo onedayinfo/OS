@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { parse } from 'csv-parse/sync';
+import ExcelJS from 'exceljs';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { ImportPreviewRow, ImportResult, ImportRowError } from './dto/import-result.dto.js';
 
@@ -18,6 +18,31 @@ function parseDate(raw: string): { date: Date | null; bad: boolean } {
   return Number.isNaN(d.getTime()) ? { date: null, bad: true } : { date: d, bad: false };
 }
 
+/** Primeira aba do .xlsx → linhas {coluna: texto}; cabeçalho normalizado, linhas vazias ignoradas. */
+async function readXlsx(buffer: Buffer): Promise<Row[]> {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer as unknown as ArrayBuffer);
+  const ws = wb.worksheets[0];
+  if (!ws) return [];
+  const header: string[] = [];
+  ws.getRow(1).eachCell({ includeEmpty: true }, (c, n) => {
+    header[n] = c.text.trim().toLowerCase();
+  });
+  const out: Row[] = [];
+  ws.eachRow((r, rowNum) => {
+    if (rowNum === 1) return;
+    const row: Row = {};
+    header.forEach((h, n) => {
+      if (!h) return;
+      const c = r.getCell(n);
+      // data nativa do Excel vira YYYY-MM-DD (UTC); o resto usa o texto exibido
+      row[h] = (c.value instanceof Date ? c.value.toISOString().slice(0, 10) : c.text).trim();
+    });
+    if (Object.values(row).some((v) => v)) out.push(row);
+  });
+  return out;
+}
+
 @Injectable()
 export class AssetsImportService {
   constructor(private readonly prisma: PrismaService) {}
@@ -26,21 +51,17 @@ export class AssetsImportService {
   async import(buffer: Buffer, dryRun = false): Promise<ImportResult> {
     let records: Row[];
     try {
-      records = parse(buffer, {
-        columns: (header: string[]) => header.map((h) => h.trim().toLowerCase()),
-        skip_empty_lines: true,
-        trim: true,
-      });
+      records = await readXlsx(buffer);
     } catch {
-      throw new BadRequestException('CSV inválido: não foi possível ler o arquivo.');
+      throw new BadRequestException('XLSX inválido: não foi possível ler o arquivo.');
     }
     if (records.length === 0) {
-      throw new BadRequestException('CSV vazio ou sem linhas de dados.');
+      throw new BadRequestException('Planilha vazia ou sem linhas de dados.');
     }
     const present = Object.keys(records[0]);
     const missing = REQUIRED.filter((c) => !present.includes(c));
     if (missing.length) {
-      throw new BadRequestException(`CSV sem as colunas obrigatórias: ${missing.join(', ')}.`);
+      throw new BadRequestException(`Planilha sem as colunas obrigatórias: ${missing.join(', ')}.`);
     }
 
     const errors: ImportRowError[] = [];

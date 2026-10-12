@@ -3,6 +3,12 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.13.1] - 2026-10-12
+
+### Alterado
+- Importação de ativos: a planilha agora é `.xlsx` (primeira aba) em vez de CSV; novo `modelo-ativos.xlsx`.
+  Colunas e validações iguais às anteriores.
+
 ## [0.13.0] - 2026-10-12
 
 ### Adicionado
