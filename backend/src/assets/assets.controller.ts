@@ -29,9 +29,19 @@ export class AssetsController {
 
   @Post('import')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
-  importXlsx(@UploadedFile() file: UF, @Query('dryRun') dryRun?: string) {
+  importXlsx(
+    @UploadedFile() file: UF,
+    @Query('dryRun') dryRun?: string,
+    @Body('resolucoes') resolucoes?: string,
+  ) {
     if (!file) throw new BadRequestException('Arquivo ausente.');
-    return this.importer.import(file.buffer, dryRun === 'true');
+    let res: Record<string, string> = {};
+    try {
+      if (resolucoes) res = JSON.parse(resolucoes);
+    } catch {
+      throw new BadRequestException('Escolhas de importação inválidas.');
+    }
+    return this.importer.import(file.buffer, dryRun === 'true', res);
   }
 
   @Post()

@@ -3,6 +3,17 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.14.0] - 2026-10-12
+
+### Adicionado
+- Importação de ativos: cliente, local ou tipo que não existem no cadastro viram **pendências** na
+  pré-visualização, agrupadas por nome. Para cada uma dá para *criar novo*, *vincular a um já
+  cadastrado* (os de nome parecido aparecem primeiro) ou *ignorar as linhas*. Local novo vem
+  marcado para criar; cliente e tipo exigem escolha. Nada é gravado até clicar em Importar.
+
+### Alterado
+- A comparação de nomes na importação ignora acento, maiúscula e espaços repetidos.
+
 ## [0.13.1] - 2026-10-12
 
 ### Alterado

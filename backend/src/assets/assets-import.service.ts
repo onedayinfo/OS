@@ -1,13 +1,20 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
 import { PrismaService } from '../prisma/prisma.service.js';
-import type { ImportPreviewRow, ImportResult, ImportRowError } from './dto/import-result.dto.js';
+import { normalizeText as norm } from '../whatsapp/text.util.js';
+import type { ImportPendencia, ImportPreviewRow, ImportResult, ImportRowError } from './dto/import-result.dto.js';
 
 // Só estas colunas precisam existir no cabeçalho; as demais (marca, modelo, numero_serie, ip, mac,
 // id_rustdesk, instalado_em, garantia_ate, observacoes) são opcionais.
 const REQUIRED = ['cliente', 'local', 'tipo', 'identificacao'];
 
 type Row = Record<string, string | undefined>;
+
+/** Escolhas do usuário para nomes não encontrados: chave → 'criar' | 'ignorar' | 'id:<id>'. */
+export type ImportResolucoes = Record<string, string>;
+
+type Opcao = { id: string; name: string };
+type Decisao = { id?: string; create?: true; ignored?: true } | null;
 
 /** `YYYY-MM-DD` → Date; qualquer outra coisa → null com flag de erro. */
 function parseDate(raw: string): { date: Date | null; bad: boolean } {
@@ -43,12 +50,28 @@ async function readXlsx(buffer: Buffer): Promise<Row[]> {
   return out;
 }
 
+/** Ids de `lista` com nome parecido (um contém o outro, ou mesma primeira palavra). */
+function similares(nome: string, lista: Opcao[]): string[] {
+  const n = norm(nome);
+  return lista
+    .filter((x) => {
+      const m = norm(x.name);
+      return m.includes(n) || n.includes(m) || m.split(' ')[0] === n.split(' ')[0];
+    })
+    .slice(0, 5)
+    .map((x) => x.id);
+}
+
 @Injectable()
 export class AssetsImportService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** `dryRun`: valida tudo e devolve a pré-visualização por linha, sem gravar nada. */
-  async import(buffer: Buffer, dryRun = false): Promise<ImportResult> {
+  /**
+   * `dryRun`: valida tudo e devolve a pré-visualização por linha, sem gravar nada.
+   * Cliente/local/tipo sem correspondência no cadastro viram pendências; `resolucoes` diz o que
+   * fazer com cada uma (criar, vincular a um existente ou ignorar as linhas).
+   */
+  async import(buffer: Buffer, dryRun = false, resolucoes: ImportResolucoes = {}): Promise<ImportResult> {
     let records: Row[];
     try {
       records = await readXlsx(buffer);
@@ -64,9 +87,36 @@ export class AssetsImportService {
       throw new BadRequestException(`Planilha sem as colunas obrigatórias: ${missing.join(', ')}.`);
     }
 
+    // catálogo em memória (pequeno): comparação sem acento/maiúscula e sem 1 query por linha
+    const [clients, types, locations] = await Promise.all([
+      this.prisma.client.findMany({ where: { active: true }, select: { id: true, name: true } }),
+      this.prisma.assetType.findMany({ where: { active: true }, select: { id: true, name: true } }),
+      this.prisma.location.findMany({ select: { id: true, clientId: true, name: true } }),
+    ]);
+    const clientByName = new Map(clients.map((c) => [norm(c.name), c.id]));
+    const typeByName = new Map(types.map((t) => [norm(t.name), t.id]));
+    const locByKey = new Map(locations.map((l) => [`${l.clientId}|${norm(l.name)}`, l.id]));
+
+    const decide = (chave: string, existing: string | undefined, valid: (id: string) => boolean): Decisao => {
+      if (existing) return { id: existing };
+      const r = resolucoes[chave];
+      if (r === 'criar') return { create: true };
+      if (r === 'ignorar') return { ignored: true };
+      if (r?.startsWith('id:') && valid(r.slice(3))) return { id: r.slice(3) };
+      return null;
+    };
+
+    const pend = new Map<string, ImportPendencia>();
+    const addPend = (p: Omit<ImportPendencia, 'linhas'>) => {
+      const cur = pend.get(p.chave);
+      if (cur) cur.linhas++;
+      else pend.set(p.chave, { ...p, linhas: 1 });
+    };
+
     const errors: ImportRowError[] = [];
     const rows: ImportPreviewRow[] = [];
     const seenSerials = new Set<string>();
+    const made = new Map<string, string>(); // chave → id criado e já confirmado no banco
     let created = 0;
 
     for (let i = 0; i < records.length; i++) {
@@ -84,20 +134,50 @@ export class AssetsImportService {
           error: null,
         };
         rows.push(preview);
-        const client = await this.prisma.client.findFirst({
-          where: { name: row.cliente?.trim(), active: true },
-        });
-        if (!client) throw new Error(`Cliente "${row.cliente}" não encontrado.`);
+        const cliente = (row.cliente ?? '').trim();
+        const local = (row.local ?? '').trim();
+        const tipo = (row.tipo ?? '').trim();
+        const cKey = norm(cliente);
+        const lKey = norm(local);
+        const tKey = norm(tipo);
+        if (!cKey) throw new Error('Cliente obrigatório.');
+        if (!lKey) throw new Error('Local obrigatório.');
+        if (!tKey) throw new Error('Tipo obrigatório.');
 
-        const location = await this.prisma.location.findFirst({
-          where: { clientId: client.id, name: row.local?.trim() },
-        });
-        if (!location) throw new Error(`Local "${row.local}" não encontrado para o cliente.`);
+        const tChave = `t:${tKey}`;
+        const tDec = decide(tChave, typeByName.get(tKey), (id) => types.some((t) => t.id === id));
+        // tipo é independente do cliente: registra a pendência antes de qualquer erro da linha
+        if (!tDec) {
+          addPend({ chave: tChave, tipo: 'tipo', nome: tipo, sugestoes: similares(tipo, types), opcoes: types });
+        }
 
-        const type = await this.prisma.assetType.findFirst({
-          where: { name: row.tipo?.trim(), active: true },
-        });
-        if (!type) throw new Error(`Tipo "${row.tipo}" não encontrado.`);
+        const cChave = `c:${cKey}`;
+        const cDec = decide(cChave, clientByName.get(cKey), (id) => clients.some((c) => c.id === id));
+        if (!cDec) {
+          addPend({ chave: cChave, tipo: 'cliente', nome: cliente, sugestoes: similares(cliente, clients), opcoes: clients });
+          throw new Error(`Cliente "${cliente}" não encontrado.`);
+        }
+        if (cDec.ignored) throw new Error('Ignorada: cliente não será importado.');
+
+        const clientLocs = cDec.id ? locations.filter((l) => l.clientId === cDec.id) : [];
+        const lChave = `l:${cKey}|${lKey}`;
+        const lDec = decide(lChave, cDec.id ? locByKey.get(`${cDec.id}|${lKey}`) : undefined, (id) =>
+          clientLocs.some((l) => l.id === id),
+        );
+        if (!lDec) {
+          addPend({
+            chave: lChave,
+            tipo: 'local',
+            nome: local,
+            cliente,
+            sugestoes: similares(local, clientLocs),
+            opcoes: clientLocs,
+          });
+          throw new Error(`Local "${local}" não encontrado para o cliente.`);
+        }
+        if (lDec.ignored) throw new Error('Ignorada: local não será importado.');
+        if (!tDec) throw new Error(`Tipo "${tipo}" não encontrado.`);
+        if (tDec.ignored) throw new Error('Ignorada: tipo não será importado.');
 
         const label = row.identificacao?.trim();
         if (!label) throw new Error('Identificação obrigatória.');
@@ -113,9 +193,10 @@ export class AssetsImportService {
 
         if (dryRun) {
           if (serial) {
-            const key = `${client.id}|${serial}`;
-            const dup = seenSerials.has(key)
-              || (await this.prisma.asset.findFirst({ where: { clientId: client.id, serialNumber: serial } }));
+            const key = `${cDec.id ?? `novo:${cKey}`}|${serial}`;
+            const dup =
+              seenSerials.has(key) ||
+              (cDec.id && (await this.prisma.asset.findFirst({ where: { clientId: cDec.id, serialNumber: serial } })));
             if (dup) throw new Error(`Número de série "${serial}" já cadastrado para o cliente.`);
             seenSerials.add(key);
           }
@@ -123,14 +204,29 @@ export class AssetsImportService {
           continue;
         }
 
+        const staged = new Map<string, string>();
         try {
           // ponytail: dedup de numero_serie vem do @@unique([clientId, serialNumber]) do schema, não de um findFirst prévio
-          await this.prisma.$transaction((tx) =>
-            tx.asset.create({
+          // cliente/local/tipo novos nascem na mesma transação do ativo: se o ativo falhar, nada fica para trás
+          await this.prisma.$transaction(async (tx) => {
+            const ensure = async (chave: string, id: string | undefined, mk: () => Promise<{ id: string }>) => {
+              if (id) return id;
+              const hit = made.get(chave) ?? staged.get(chave);
+              if (hit) return hit;
+              const novo = (await mk()).id;
+              staged.set(chave, novo);
+              return novo;
+            };
+            const clientId = await ensure(cChave, cDec.id, () => tx.client.create({ data: { name: cliente } }));
+            const locationId = await ensure(lChave, lDec.id, () =>
+              tx.location.create({ data: { clientId, name: local } }),
+            );
+            const typeId = await ensure(tChave, tDec.id, () => tx.assetType.create({ data: { name: tipo } }));
+            await tx.asset.create({
               data: {
-                clientId: client.id,
-                locationId: location.id,
-                typeId: type.id,
+                clientId,
+                locationId,
+                typeId,
                 label,
                 brand: row.marca?.trim() || null,
                 model: row.modelo?.trim() || null,
@@ -143,8 +239,9 @@ export class AssetsImportService {
                 notes: row.observacoes?.trim() || null,
                 status: 'ACTIVE',
               },
-            }),
-          );
+            });
+          });
+          staged.forEach((v, k) => made.set(k, v));
         } catch (e) {
           if ((e as { code?: string }).code === 'P2002') {
             throw new Error(`Número de série "${serial}" já cadastrado para o cliente.`);
@@ -158,6 +255,6 @@ export class AssetsImportService {
         if (r) r.error = (e as Error).message;
       }
     }
-    return dryRun ? { created, errors, rows } : { created, errors };
+    return dryRun ? { created, errors, rows, pendencias: [...pend.values()] } : { created, errors };
   }
 }

@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 
 interface PreviewRow {
   line: number;
@@ -17,11 +18,27 @@ interface PreviewRow {
   error: string | null;
 }
 
+interface Pendencia {
+  chave: string;
+  tipo: 'cliente' | 'local' | 'tipo';
+  nome: string;
+  cliente?: string;
+  linhas: number;
+  sugestoes: string[];
+  opcoes: { id: string; name: string }[];
+}
+
 interface ImportResult {
   created: number;
   errors: { line: number; message: string }[];
   rows?: PreviewRow[];
+  pendencias?: Pendencia[];
 }
+
+// Escolhas por chave: 'criar' | 'ignorar' | 'id:<id>' (vazio = ainda não decidido).
+type Choices = Record<string, string>;
+
+const NOME = { cliente: 'Cliente', local: 'Local', tipo: 'Tipo' } as const;
 
 export function AssetImportDialog() {
   const qc = useQueryClient();
@@ -29,10 +46,12 @@ export function AssetImportDialog() {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [preview, setPreview] = useState<ImportResult | null>(null);
+  const [choices, setChoices] = useState<Choices>({});
 
-  const send = (f: File, dryRun: boolean) => {
+  const send = (f: File, dryRun: boolean, ch: Choices) => {
     const fd = new FormData();
     fd.append('file', f);
+    fd.append('resolucoes', JSON.stringify(ch));
     return api<ImportResult>(`/assets/import${dryRun ? '?dryRun=true' : ''}`, {
       method: 'POST',
       body: fd,
@@ -40,13 +59,26 @@ export function AssetImportDialog() {
   };
 
   const previewFile = useMutation({
-    mutationFn: (f: File) => send(f, true),
-    onSuccess: setPreview,
+    mutationFn: ({ f, ch }: { f: File; ch: Choices }) => send(f, true, ch),
+    onSuccess: (r, { f, ch }) => {
+      setPreview(r);
+      // local novo vem marcado para criar (barato e raramente erro de digitação); cliente e tipo, não
+      const defaults = Object.fromEntries(
+        (r.pendencias ?? []).filter((p) => p.tipo === 'local' && !(p.chave in ch)).map((p) => [p.chave, 'criar']),
+      );
+      if (Object.keys(defaults).length) decidir(f, { ...ch, ...defaults });
+    },
     onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Falha ao ler a planilha.'),
   });
 
+  // grava a escolha e revalida a planilha com ela (nada é gravado no banco até clicar em Importar)
+  const decidir = (f: File, next: Choices) => {
+    setChoices(next);
+    previewFile.mutate({ f, ch: next });
+  };
+
   const importFile = useMutation({
-    mutationFn: (f: File) => send(f, false),
+    mutationFn: (f: File) => send(f, false, choices),
     onSuccess: (r) => {
       setPreview(null);
       setResult(r);
@@ -77,11 +109,47 @@ export function AssetImportDialog() {
           setFile(f);
           setResult(null);
           setPreview(null);
-          if (f) previewFile.mutate(f);
+          setChoices({});
+          if (f) previewFile.mutate({ f, ch: {} });
         }}
       />
 
       {previewFile.isPending && <p className="text-sm text-muted-foreground">Lendo o arquivo…</p>}
+
+      {file && !!preview?.pendencias?.length && (
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 shadow-sm">
+          <p className="text-sm font-medium">Não encontrados no cadastro — o que fazer?</p>
+          {preview.pendencias.map((p) => {
+            const opcoes = [...p.opcoes].sort(
+              (a, b) => Number(p.sugestoes.includes(b.id)) - Number(p.sugestoes.includes(a.id)),
+            );
+            return (
+              <div key={p.chave} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                <span className="text-sm sm:w-1/2">
+                  {NOME[p.tipo]} <strong>{p.nome}</strong>
+                  {p.cliente && <span className="text-muted-foreground"> ({p.cliente})</span>}
+                  <span className="text-muted-foreground"> — {p.linhas} linha(s)</span>
+                </span>
+                <Select
+                  className="sm:w-1/2"
+                  value={choices[p.chave] ?? ''}
+                  onChange={(e) => decidir(file, { ...choices, [p.chave]: e.target.value })}
+                >
+                  <option value="">Escolher…</option>
+                  <option value="criar">Criar {NOME[p.tipo].toLowerCase()} novo</option>
+                  {opcoes.map((o) => (
+                    <option key={o.id} value={`id:${o.id}`}>
+                      Vincular a: {o.name}
+                      {p.sugestoes.includes(o.id) ? ' (parecido)' : ''}
+                    </option>
+                  ))}
+                  <option value="ignorar">Ignorar essas linhas</option>
+                </Select>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {preview?.rows && (
         <div className="flex flex-col gap-2">
