@@ -17,6 +17,7 @@ import {
 } from '@/lib/whatsapp';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs } from '@/components/ui/tabs';
 
 const errToast = (e: unknown) => toast.error(e instanceof ApiError ? e.message : 'Falha na operação.');
 const MAX_CHARS = 300;
@@ -64,6 +65,9 @@ function MessageRow({ m }: { m: ConversationMessage }) {
 function ConversationsSection() {
   const [date, setDate] = useState(todaySp);
   const { data, isLoading } = useConversations(date);
+  const [clientId, setClientId] = useState('');
+  // Aba escolhida; se o cliente não tem conversa nesse dia, cai na primeira.
+  const current = data?.clients.find((c) => c.client.id === clientId) ?? data?.clients[0];
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
@@ -81,14 +85,16 @@ function ConversationsSection() {
       {data?.clients.length === 0 && (
         <p className="py-4 text-sm text-muted-foreground">Nenhuma mensagem nos grupos neste dia.</p>
       )}
-      {data?.clients.map((c) => (
-        <details key={c.client.id} open className="rounded-xl bg-card p-4 shadow-sm">
-          <summary className="cursor-pointer text-sm font-medium">
-            {c.client.name} <span className="text-xs text-muted-foreground">({c.total} mensagens)</span>
-          </summary>
-          {c.groups.map((g) => (
-            <div key={g.id} className="mt-3">
-              <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">{g.name}</p>
+      {data && data.clients.length > 0 && (
+        <>
+          <Tabs
+            value={current?.client.id ?? ''}
+            onChange={setClientId}
+            tabs={data.clients.map((c) => ({ value: c.client.id, label: c.client.name, count: c.total }))}
+          />
+          {current?.groups.map((g) => (
+            <div key={g.id} className="rounded-xl bg-card p-4 shadow-sm">
+              <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">{g.name}</p>
               <ul className="flex flex-col gap-1.5">
                 {g.messages.map((m) => (
                   <MessageRow key={m.id} m={m} />
@@ -96,8 +102,8 @@ function ConversationsSection() {
               </ul>
             </div>
           ))}
-        </details>
-      ))}
+        </>
+      )}
     </section>
   );
 }

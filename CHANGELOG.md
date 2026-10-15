@@ -3,6 +3,12 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.14.1] - 2026-10-15
+
+### Alterado
+- Triagem do WhatsApp: as conversas do dia agora ficam em abas, uma por cliente (com a contagem
+  de mensagens), em vez de todos os clientes numa lista só.
+
 ## [0.14.0] - 2026-10-12
 
 ### Adicionado

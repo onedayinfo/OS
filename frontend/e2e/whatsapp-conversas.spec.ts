@@ -16,6 +16,7 @@ test('Triagem mostra as conversas do dia por cliente, corta em 300 letras e troc
   const group = await prisma.whatsappGroup.create({
     data: { externalId: `${stamp}@g.us`, name: `Conversas E2E ${stamp}`, clientId: E2E_CLIENT_ID },
   });
+  const cliente = await prisma.client.findUniqueOrThrow({ where: { id: E2E_CLIENT_ID } });
   const longo = 'a'.repeat(400);
   await prisma.whatsappMessage.createMany({
     data: [
@@ -28,6 +29,7 @@ test('Triagem mostra as conversas do dia por cliente, corta em 300 letras e troc
   try {
     await loginAsAdmin(page);
     await page.goto('/app/triagem');
+    await page.getByRole('button', { name: new RegExp(`^${cliente.name}`) }).click();
     await expect(page.getByText(`Conversas E2E ${stamp}`)).toBeVisible();
     await expect(page.getByText('bom dia equipe')).toBeVisible();
     await expect(page.getByText('Ignorada')).toBeVisible();
