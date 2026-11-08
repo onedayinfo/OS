@@ -281,3 +281,17 @@ describe('TicketsService.createFromQuote', () => {
     expect(events.record).toHaveBeenCalledWith(tx, 't-novo', 'CREATED', {}, undefined);
   });
 });
+
+describe('TicketsService.findOne — vazamento do código do agente', () => {
+  it('pede client com omit de agentEnrollCode e não devolve o campo', async () => {
+    const { service, prisma } = makeDeps();
+    prisma.ticket.findUnique.mockResolvedValue({
+      id: 't1', clientId: 'c1', requesterId: 'r1', slaDueAt: null, needsTriage: false,
+      client: { id: 'c1', name: 'ACME' }, requester: null, assignee: null,
+      comments: [], events: [], attachments: [], assets: [],
+    });
+    const out: any = await service.findOne('t1', { id: 'r1', type: 'CLIENT', clientId: 'c1' } as any);
+    expect(prisma.ticket.findUnique.mock.calls[0][0].include.client).toEqual({ omit: { agentEnrollCode: true } });
+    expect(out.client).not.toHaveProperty('agentEnrollCode');
+  });
+});

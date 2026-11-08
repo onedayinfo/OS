@@ -119,7 +119,7 @@ export class AssetsService {
   async findOne(id: string) {
     const asset = await this.prisma.asset.findUnique({
       where: { id },
-      include: { client: true, location: true, type: true },
+      include: { client: { omit: { agentEnrollCode: true } }, location: true, type: true },
     });
     if (!asset) throw new NotFoundException('Ativo não encontrado.');
     const recentTickets = await this.prisma.ticket.findMany({

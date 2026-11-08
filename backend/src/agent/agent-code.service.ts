@@ -31,7 +31,12 @@ export class AgentCodeService {
       }),
       this.gate.hasValidContract(clientId),
     ]);
-    return { code: c.agentEnrollCode ?? null, contractValid, counts: { linked, pending, ignored, stale } };
+    // Spec §13: sem contrato válido o cliente fica fora da contagem de "sem contato".
+    return {
+      code: c.agentEnrollCode ?? null,
+      contractValid,
+      counts: { linked, pending, ignored, stale: contractValid ? stale : 0 },
+    };
   }
 
   async regenerate(clientId: string) {

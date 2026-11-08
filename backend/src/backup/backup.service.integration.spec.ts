@@ -52,6 +52,10 @@ describe('BackupService.export (Postgres real)', () => {
     const day = `1999-01-${String(Date.now() % 28 + 1).padStart(2, '0')}`;
     let groupId: string | undefined;
     let deviceId: string | undefined;
+    let nullDeviceId: string | undefined;
+    let assetId: string | undefined;
+    let locId: string | undefined;
+    let typeId: string | undefined;
     if (client) {
       const g = await prisma.whatsappGroup.create({ data: { externalId: `${tag}@g.us`, clientId: client.id } });
       groupId = g.id;
@@ -62,6 +66,19 @@ describe('BackupService.export (Postgres real)', () => {
         },
       });
       deviceId = d.id;
+      // Json nulo (specs/software ausentes) também precisa sobreviver ao createMany.
+      nullDeviceId = (
+        await prisma.agentDevice.create({
+          data: { clientId: client.id, machineGuid: `${tag}-n`, hostname: 'BKPN', tokenHash: `${tag}-n` },
+        })
+      ).id;
+      locId = (await prisma.location.create({ data: { clientId: client.id, name: tag } })).id;
+      typeId = (await prisma.assetType.create({ data: { name: tag } })).id;
+      assetId = (
+        await prisma.asset.create({
+          data: { clientId: client.id, locationId: locId, typeId, label: `${tag}-asset` },
+        })
+      ).id;
       await prisma.whatsappMessage.create({
         data: { externalId: tag, groupId, type: 'TEXT', body: 'x', sentAt: new Date(), aiResult: { a: 1 } },
       });
@@ -73,6 +90,10 @@ describe('BackupService.export (Postgres real)', () => {
     try {
       await roundTrip();
     } finally {
+      if (assetId) await prisma.asset.deleteMany({ where: { id: assetId } });
+      if (locId) await prisma.location.deleteMany({ where: { id: locId } });
+      if (typeId) await prisma.assetType.deleteMany({ where: { id: typeId } });
+      if (nullDeviceId) await prisma.agentDevice.deleteMany({ where: { id: nullDeviceId } });
       if (deviceId) await prisma.agentDevice.deleteMany({ where: { id: deviceId } });
       if (groupId) await prisma.whatsappGroup.deleteMany({ where: { id: groupId } });
       await prisma.aiUsage.deleteMany({ where: { day } });
@@ -97,5 +118,11 @@ async function roundTrip() {
     );
     expect(dev?.specs).toEqual({ cpu: 'x', ram: 8 });
     expect(dev?.software).toEqual([{ name: 'a', version: '1' }]);
+    const nd = (after.data.agentDevice as { machineGuid: string; specs: unknown }[]).find((d) =>
+      d.machineGuid.endsWith('-n'),
+    );
+    expect(nd?.specs).toBeNull();
+    const na = (after.data.asset as { label: string; specs: unknown }[]).find((a) => a.label.endsWith('-asset'));
+    expect(na?.specs).toBeNull();
   }
 }

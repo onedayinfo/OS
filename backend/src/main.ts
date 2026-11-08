@@ -12,7 +12,7 @@ async function bootstrap() {
   // (usado pela verificação de assinatura HMAC do webhook inbound do Resend em
   // InboundController).
   // `bodyParser: false`: registramos os parsers à mão (abaixo) para dar 2 MB só a
-  // /api/agent (inventário de software), mantendo o padrão do Nest (100kb) no resto.
+  // /api/agent/checkin (inventário de software), mantendo o padrão do Nest (100kb) no resto.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true, bodyParser: false });
   app.setGlobalPrefix('api');
   // Atrás do Cloudflare Tunnel → cloudflared → container `frontend` (proxy do
@@ -40,8 +40,8 @@ async function bootstrap() {
   app.use(helmet({ contentSecurityPolicy: false }));
   // Rate limiting nas rotas de autenticação (antes do Nest tratar as rotas).
   setupRateLimit(app);
-  // O parser do /api/agent vem primeiro; o `json` padrão abaixo pula quem já foi lido.
-  app.use('/api/agent', express.json({ limit: '2mb' }));
+  // O parser do checkin vem primeiro; o `json` padrão abaixo pula quem já foi lido.
+  app.use('/api/agent/checkin', express.json({ limit: '2mb' }));
   app.useBodyParser('json');
   app.useBodyParser('urlencoded', { extended: true });
   app.use(cookieParser());

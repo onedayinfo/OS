@@ -29,6 +29,15 @@ describe('AgentCodeService', () => {
     await expect(s.regenerate('x')).rejects.toThrow('Cliente não encontrado.');
   });
 
+  it('summary zera stale sem contrato válido', async () => {
+    const { gate, s } = make();
+    gate.hasValidContract.mockResolvedValue(false);
+    const out = await s.summary('c1');
+    expect(out.contractValid).toBe(false);
+    expect(out.counts.stale).toBe(0);
+    expect(out.counts.linked).toBe(7);
+  });
+
   it('summary conta stale como LINKED sem contato há 30 dias', async () => {
     const { prisma, s } = make();
     const out = await s.summary('c1');

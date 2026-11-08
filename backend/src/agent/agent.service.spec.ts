@@ -61,6 +61,12 @@ describe('AgentService.enroll', () => {
     await expect(s.enroll(dto)).rejects.toThrow('Dispositivo ignorado.');
   });
 
+  it('findMany de casamento é determinístico (createdAt, id)', async () => {
+    const { prisma, s } = make();
+    await s.enroll(dto);
+    expect(prisma.agentDevice.findMany.mock.calls[0][0].orderBy).toEqual([{ createdAt: 'asc' }, { id: 'asc' }]);
+  });
+
   it('reenroll gera novo token (hash trocado)', async () => {
     const { prisma, s } = make();
     prisma.agentDevice.findMany.mockResolvedValue([{ id: 'd1', serialKey: 'SN1', status: 'LINKED' }]);

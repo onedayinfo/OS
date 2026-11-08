@@ -19,6 +19,14 @@ const makePrisma = () => ({
 });
 
 describe('AssetsService', () => {
+  it('findOne omite agentEnrollCode do cliente', async () => {
+    const prisma = makePrisma();
+    prisma.asset.findUnique.mockResolvedValue({ id: 'a1', clientId: 'c1', credentialsEnc: null, client: { id: 'c1' } } as any);
+    const out: any = await new AssetsService(prisma as any).findOne('a1');
+    expect(prisma.asset.findUnique.mock.calls[0][0].include.client).toEqual({ omit: { agentEnrollCode: true } });
+    expect(out.client).not.toHaveProperty('agentEnrollCode');
+  });
+
   it('create exige que o local pertença ao cliente', async () => {
     const prisma = makePrisma();
     prisma.location.findUnique.mockResolvedValue({ id: 'l1', clientId: 'OUTRO' });

@@ -2,6 +2,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import type { AgentDeviceStatus } from '@prisma/client';
@@ -20,6 +21,8 @@ const INVENTORY_TTL_MS = 24 * 3600e3;
 
 @Injectable()
 export class AgentService {
+  private readonly logger = new Logger(AgentService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly codes: AgentCodeService,
@@ -36,6 +39,7 @@ export class AgentService {
     const serialKey = serial ?? '';
     const existing = await this.prisma.agentDevice.findMany({
       where: { clientId: client.id, machineGuid: dto.machineGuid },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       select: { id: true, serialKey: true, status: true },
     });
     const m = matchDevice(existing, serialKey);
@@ -60,6 +64,8 @@ export class AgentService {
           ...(m.kind === 'adopt' ? { serialKey, serialNumber: serial } : {}),
         },
       });
+      if (cur.status === 'LINKED')
+        this.logger.warn(`Reenroll: token do dispositivo ${cur.id} (cliente ${client.id}) substituído.`);
       return { token, status: row.status };
     }
 
