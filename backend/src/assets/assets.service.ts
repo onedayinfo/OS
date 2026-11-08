@@ -27,6 +27,8 @@ export class AssetsService {
     if (dto.mac !== undefined) data.mac = dto.mac || null;
     if (dto.remoteId !== undefined) data.remoteId = dto.remoteId.replace(/\s+/g, '') || null;
     if (dto.notes !== undefined) data.notes = dto.notes || null;
+    if (dto.assignedTo !== undefined) data.assignedTo = dto.assignedTo.trim() || null;
+    if (dto.description !== undefined) data.description = dto.description.trim() || null;
     if (dto.status !== undefined) data.status = dto.status;
     if (dto.installedAt !== undefined) data.installedAt = dto.installedAt ? new Date(dto.installedAt) : null;
     if (dto.warrantyEndsAt !== undefined) {

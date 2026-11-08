@@ -194,6 +194,7 @@ export default function AssetsPage() {
               <th className="px-3 py-2 font-medium">Tipo</th>
               <th className="px-3 py-2 font-medium">Cliente</th>
               <th className="px-3 py-2 font-medium">Local</th>
+              <th className="px-3 py-2 font-medium">Responsável</th>
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2 font-medium">Nº série</th>
               <th className="px-3 py-2 font-medium">Garantia</th>
@@ -202,7 +203,7 @@ export default function AssetsPage() {
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
                   Carregando…
                 </td>
               </tr>
@@ -222,6 +223,7 @@ export default function AssetsPage() {
                 <td className="px-3 py-2 text-muted-foreground">
                   {a.location?.name ?? '—'}
                 </td>
+                <td className="px-3 py-2 text-muted-foreground">{a.assignedTo ?? '—'}</td>
                 <td className="px-3 py-2">
                   <Badge tone={STATUS_TONE[a.status]}>
                     {ASSET_STATUS_LABELS[a.status]}
@@ -245,7 +247,7 @@ export default function AssetsPage() {
             ))}
             {data && data.data.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
                   Nenhum ativo encontrado.
                 </td>
               </tr>

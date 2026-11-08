@@ -52,6 +52,20 @@ describe('AssetsService', () => {
     );
   });
 
+  it('create grava responsável e descrição, e string vazia vira null', async () => {
+    const prisma = makePrisma();
+    const s = new AssetsService(prisma as any);
+    await s.create({
+      clientId: 'c1', locationId: 'l1', typeId: 't1', label: 'X',
+      assignedTo: 'Maria – financeiro', description: '',
+    } as any);
+    expect(prisma.asset.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ assignedTo: 'Maria – financeiro', description: null }),
+      }),
+    );
+  });
+
   it('revealCredentials decifra o blob quando existe', async () => {
     const prisma = makePrisma();
     prisma.asset.findUnique.mockResolvedValue({ id: 'a1', credentialsEnc: 'BLOB' });

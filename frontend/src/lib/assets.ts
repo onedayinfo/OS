@@ -25,6 +25,9 @@ export interface Asset {
   installedAt: string | null;
   warrantyEndsAt: string | null;
   notes: string | null;
+  description: string | null;
+  assignedTo: string | null;
+  lastSeenAt: string | null;
   hasCredentials: boolean;
   client?: { id: string; name: string };
   location?: { id: string; name: string };

@@ -175,6 +175,8 @@ export default function AssetDetailPage({ params }: { params: { id: string } }) 
                 remoteId: asset.remoteId,
                 status: asset.status,
                 notes: asset.notes,
+                assignedTo: asset.assignedTo,
+                description: asset.description,
                 installedAt: asset.installedAt,
                 warrantyEndsAt: asset.warrantyEndsAt,
               }}
@@ -190,6 +192,8 @@ export default function AssetDetailPage({ params }: { params: { id: string } }) 
               <Field label="Tipo" value={asset.type?.name} />
               <Field label="Cliente" value={asset.client?.name} />
               <Field label="Local" value={asset.location?.name} />
+              <Field label="Responsável" value={asset.assignedTo} />
+              <Field label="Descrição" value={asset.description} />
               <Field label="Marca" value={asset.brand} />
               <Field label="Modelo" value={asset.model} />
               <Field label="Nº de série" value={asset.serialNumber} />
