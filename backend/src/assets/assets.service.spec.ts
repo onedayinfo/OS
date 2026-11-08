@@ -66,6 +66,19 @@ describe('AssetsService', () => {
     );
   });
 
+  it('update com assignedTo null grava null e description em branco vira null', async () => {
+    const prisma = makePrisma();
+    const s = new AssetsService(prisma as any);
+    await s.update('a1', { assignedTo: null } as any);
+    expect(prisma.asset.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ assignedTo: null }) }),
+    );
+    await s.update('a1', { description: '  ' } as any);
+    expect(prisma.asset.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ description: null }) }),
+    );
+  });
+
   it('revealCredentials decifra o blob quando existe', async () => {
     const prisma = makePrisma();
     prisma.asset.findUnique.mockResolvedValue({ id: 'a1', credentialsEnc: 'BLOB' });
