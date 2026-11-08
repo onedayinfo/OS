@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AssetsService } from '../assets/assets.service.js';
+import { serializeAsset } from '../assets/assets.serializer.js';
 import { syncAsset } from './asset-sync.js';
 import { normalizeSerial } from './serial.util.js';
 import type { ApproveDeviceDto } from './dto/approve-device.dto.js';
@@ -78,12 +79,17 @@ export class AgentDevicesService {
     return this.prisma.agentDevice.updateMany({ where: { id }, data: { status: 'PENDING' } });
   }
 
+  // relê após o sync e serializa (nunca expõe credentialsEnc)
+  private async fresh(assetId: string) {
+    return serializeAsset(await this.prisma.asset.findUniqueOrThrow({ where: { id: assetId } }));
+  }
+
   async approve(id: string, dto: ApproveDeviceDto) {
     const d = await this.get(id);
     await this.claim(id);
-    let asset: { id: string };
+    let assetId: string;
     try {
-      asset = await this.assets.create({
+      const asset = await this.assets.create({
         clientId: d.clientId, // sempre o do dispositivo
         locationId: dto.locationId,
         typeId: dto.typeId,
@@ -97,13 +103,14 @@ export class AgentDevicesService {
         ip: d.ip ?? undefined,
         mac: d.mac ?? undefined,
       });
-      await this.prisma.agentDevice.update({ where: { id }, data: { assetId: asset.id } });
+      assetId = asset.id;
+      await this.prisma.agentDevice.update({ where: { id }, data: { assetId } });
     } catch (e) {
       await this.revert(id);
       throw e;
     }
     await syncAsset(this.prisma, id);
-    return asset;
+    return this.fresh(assetId);
   }
 
   async link(id: string, assetId: string) {
@@ -122,7 +129,7 @@ export class AgentDevicesService {
       throw e;
     }
     await syncAsset(this.prisma, id);
-    return a;
+    return this.fresh(assetId);
   }
 
   // checkin já responde 403 para IGNORED: o token deixa de ser útil.

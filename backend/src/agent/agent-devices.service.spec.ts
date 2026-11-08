@@ -20,7 +20,7 @@ const make = (device: any = dev()) => {
       }),
       update: vi.fn().mockResolvedValue({}),
     },
-    asset: { findUnique: vi.fn(), findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
+    asset: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'a1', label: 'x', credentialsEnc: 'SEGREDO' }), findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
   };
   const assets: any = { create: vi.fn().mockResolvedValue({ id: 'a1' }) };
   return { prisma, assets, st, s: new AgentDevicesService(prisma, assets) };
@@ -28,6 +28,15 @@ const make = (device: any = dev()) => {
 const body: any = { locationId: 'l1', typeId: 't1', label: 'PC Ana' };
 
 describe('AgentDevicesService', () => {
+  it('approve e link não devolvem credentialsEnc', async () => {
+    const a = make();
+    expect(await a.s.approve('d1', body)).not.toHaveProperty('credentialsEnc');
+    const b = make();
+    b.prisma.asset.findUnique.mockResolvedValue({ id: 'a9', clientId: 'c1', credentialsEnc: 'SEGREDO' });
+    expect(await b.s.link('d1', 'a9')).not.toHaveProperty('credentialsEnc');
+    expect(b.prisma.asset.findUniqueOrThrow).toHaveBeenCalled();
+  });
+
   it('approve cria ativo com label e serial do dispositivo', async () => {
     const { assets, st, s } = make();
     const out = await s.approve('d1', body);
