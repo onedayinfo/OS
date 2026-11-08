@@ -51,9 +51,17 @@ describe('BackupService.export (Postgres real)', () => {
     const tag = `bkp-${Date.now()}`;
     const day = `1999-01-${String(Date.now() % 28 + 1).padStart(2, '0')}`;
     let groupId: string | undefined;
+    let deviceId: string | undefined;
     if (client) {
       const g = await prisma.whatsappGroup.create({ data: { externalId: `${tag}@g.us`, clientId: client.id } });
       groupId = g.id;
+      const d = await prisma.agentDevice.create({
+        data: {
+          clientId: client.id, machineGuid: tag, hostname: 'BKP', tokenHash: tag,
+          specs: { cpu: 'x', ram: 8 }, software: [{ name: 'a', version: '1' }], lastSeenAt: new Date(),
+        },
+      });
+      deviceId = d.id;
       await prisma.whatsappMessage.create({
         data: { externalId: tag, groupId, type: 'TEXT', body: 'x', sentAt: new Date(), aiResult: { a: 1 } },
       });
@@ -65,6 +73,7 @@ describe('BackupService.export (Postgres real)', () => {
     try {
       await roundTrip();
     } finally {
+      if (deviceId) await prisma.agentDevice.deleteMany({ where: { id: deviceId } });
       if (groupId) await prisma.whatsappGroup.deleteMany({ where: { id: groupId } });
       await prisma.aiUsage.deleteMany({ where: { day } });
     }
@@ -83,5 +92,10 @@ async function roundTrip() {
     expect(after.data.whatsappMessage.length).toBeGreaterThan(0);
     expect(after.data.ticketSuggestion.length).toBeGreaterThan(0);
     expect(after.data.aiUsage.length).toBeGreaterThan(0);
+    const dev = (after.data.agentDevice as { machineGuid: string; specs: unknown; software: unknown }[]).find((d) =>
+      d.machineGuid.startsWith('bkp-'),
+    );
+    expect(dev?.specs).toEqual({ cpu: 'x', ram: 8 });
+    expect(dev?.software).toEqual([{ name: 'a', version: '1' }]);
   }
 }

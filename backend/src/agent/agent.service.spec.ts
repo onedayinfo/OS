@@ -78,7 +78,7 @@ describe('AgentService.enroll', () => {
 
 describe('AgentService.checkin', () => {
   const dev = (o: any = {}) => ({ id: 'd1', clientId: 'c1', status: 'PENDING', inventoryAt: null, ...o });
-  const upd = (prisma: any) => (({ data }: any) => Promise.resolve({ ...dev(), ...data }));
+  const upd = () => (({ data }: any) => Promise.resolve({ ...dev(), ...data }));
 
   it('token desconhecido -> 401', async () => {
     const { prisma, s } = make();
@@ -106,7 +106,7 @@ describe('AgentService.checkin', () => {
   it('sem inventário atualiza lastSeenAt/hostname/agentVersion e pede inventário', async () => {
     const { prisma, s } = make();
     prisma.agentDevice.findUnique.mockResolvedValue(dev());
-    prisma.agentDevice.update.mockImplementation(upd(prisma));
+    prisma.agentDevice.update.mockImplementation(upd());
     const out = await s.checkin('x', { hostname: 'PC9', agentVersion: '1.2' });
     const data = prisma.agentDevice.update.mock.calls[0][0].data;
     expect(data).toMatchObject({ hostname: 'PC9', agentVersion: '1.2' });
@@ -119,7 +119,7 @@ describe('AgentService.checkin', () => {
   it('com inventário grava specs/software/inventoryAt e não pede mais', async () => {
     const { prisma, s } = make();
     prisma.agentDevice.findUnique.mockResolvedValue(dev());
-    prisma.agentDevice.update.mockImplementation(upd(prisma));
+    prisma.agentDevice.update.mockImplementation(upd());
     const out = await s.checkin('x', { hostname: 'h', inventory: { specs: { cpu: 'i5' }, software: [{ name: 'Chrome' }] } });
     const data = prisma.agentDevice.update.mock.calls[0][0].data;
     expect(data).toMatchObject({ specs: { cpu: 'i5' }, software: [{ name: 'Chrome' }] });
