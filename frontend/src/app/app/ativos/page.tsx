@@ -12,6 +12,7 @@ import {
   type AssetStatus,
   type AssetType,
 } from '@/lib/assets';
+import { usePendingAgentCount } from '@/lib/agent';
 import { AssetForm, type AssetFormPayload } from '@/components/asset-form';
 import { AssetImportDialog } from '@/components/asset-import-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -91,6 +92,8 @@ export default function AssetsPage() {
     queryFn: () => api<Paged<Asset>>(`/assets?${queryString}`),
   });
 
+  const pending = usePendingAgentCount().data?.total ?? 0;
+
   const create = useMutation({
     mutationFn: (v: AssetFormPayload) =>
       api<Asset>('/assets', { method: 'POST', body: v }),
@@ -108,6 +111,9 @@ export default function AssetsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Ativos</h1>
         <div className="flex gap-2">
+          <Link href="/app/ativos/fila">
+            <Button variant="outline">Fila de cadastro ({pending})</Button>
+          </Link>
           <Button variant="outline" onClick={() => setImporting(true)}>
             Importar planilha
           </Button>

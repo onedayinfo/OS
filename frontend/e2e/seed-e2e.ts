@@ -37,6 +37,7 @@ async function cleanup(prisma: InstanceType<typeof PrismaClient>): Promise<void>
   // deleteMany de Ticket acima, mas o próprio Quote (itens em cascata) trava
   // a FK do client se não for removido antes.
   await prisma.quote.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
+  await prisma.agentDevice.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
   await prisma.asset.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
   await prisma.location.deleteMany({ where: { clientId: E2E_CLIENT_ID } });
   // Attachment.uploadedBy e KnowledgeArticle.createdBy não têm onDelete:
