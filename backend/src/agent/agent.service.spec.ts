@@ -10,7 +10,9 @@ const make = () => {
       count: vi.fn().mockResolvedValue(0),
       create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ ...data })),
       update: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ status: 'PENDING', ...data })),
+      findUnique: vi.fn().mockResolvedValue(null),
     },
+    asset: { update: vi.fn().mockResolvedValue({}) },
   };
   const codes: any = { clientByCode: vi.fn().mockResolvedValue({ id: 'c1' }) };
   const gate: any = { hasValidContract: vi.fn().mockResolvedValue(true) };
@@ -71,5 +73,74 @@ describe('AgentService.enroll', () => {
     expect(h1).toBe(hashToken(a.token));
     expect(h2).toBe(hashToken(b.token));
     expect(prisma.agentDevice.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('AgentService.checkin', () => {
+  const dev = (o: any = {}) => ({ id: 'd1', clientId: 'c1', status: 'PENDING', inventoryAt: null, ...o });
+  const upd = (prisma: any) => (({ data }: any) => Promise.resolve({ ...dev(), ...data }));
+
+  it('token desconhecido -> 401', async () => {
+    const { prisma, s } = make();
+    prisma.agentDevice.findUnique.mockResolvedValue(null);
+    await expect(s.checkin('x', { hostname: 'h' })).rejects.toThrow('Token inválido.');
+    expect(prisma.agentDevice.findUnique.mock.calls[0][0].where).toEqual({ tokenHash: hashToken('x') });
+  });
+
+  it('IGNORED -> 403 sem update', async () => {
+    const { prisma, s } = make();
+    prisma.agentDevice.findUnique.mockResolvedValue(dev({ status: 'IGNORED' }));
+    await expect(s.checkin('x', { hostname: 'h' })).rejects.toThrow('Dispositivo ignorado.');
+    expect(prisma.agentDevice.update).not.toHaveBeenCalled();
+  });
+
+  it('sem contrato -> 403 sem update', async () => {
+    const { prisma, gate, s } = make();
+    prisma.agentDevice.findUnique.mockResolvedValue(dev());
+    gate.hasValidContract.mockResolvedValue(false);
+    await expect(s.checkin('x', { hostname: 'h' })).rejects.toThrow('O cliente não possui contrato ativo.');
+    expect(prisma.agentDevice.update).not.toHaveBeenCalled();
+    expect(prisma.asset.update).not.toHaveBeenCalled();
+  });
+
+  it('sem inventário atualiza lastSeenAt/hostname/agentVersion e pede inventário', async () => {
+    const { prisma, s } = make();
+    prisma.agentDevice.findUnique.mockResolvedValue(dev());
+    prisma.agentDevice.update.mockImplementation(upd(prisma));
+    const out = await s.checkin('x', { hostname: 'PC9', agentVersion: '1.2' });
+    const data = prisma.agentDevice.update.mock.calls[0][0].data;
+    expect(data).toMatchObject({ hostname: 'PC9', agentVersion: '1.2' });
+    expect(data.lastSeenAt).toBeInstanceOf(Date);
+    expect(data).not.toHaveProperty('specs');
+    expect(out).toEqual({ status: 'PENDING', wantInventory: true });
+    expect(prisma.asset.update).not.toHaveBeenCalled();
+  });
+
+  it('com inventário grava specs/software/inventoryAt e não pede mais', async () => {
+    const { prisma, s } = make();
+    prisma.agentDevice.findUnique.mockResolvedValue(dev());
+    prisma.agentDevice.update.mockImplementation(upd(prisma));
+    const out = await s.checkin('x', { hostname: 'h', inventory: { specs: { cpu: 'i5' }, software: [{ name: 'Chrome' }] } });
+    const data = prisma.agentDevice.update.mock.calls[0][0].data;
+    expect(data).toMatchObject({ specs: { cpu: 'i5' }, software: [{ name: 'Chrome' }] });
+    expect(data.inventoryAt).toBeInstanceOf(Date);
+    expect(out.wantInventory).toBe(false);
+  });
+
+  it('inventário com mais de 24h pede novo', async () => {
+    const { prisma, s } = make();
+    prisma.agentDevice.findUnique.mockResolvedValue(dev());
+    prisma.agentDevice.update.mockImplementation(async () => dev({ inventoryAt: new Date(Date.now() - 25 * 3600e3) }));
+    expect((await s.checkin('x', { hostname: 'h' })).wantInventory).toBe(true);
+  });
+
+  it('LINKED sincroniza o ativo', async () => {
+    const { prisma, s } = make();
+    prisma.agentDevice.findUnique
+      .mockResolvedValueOnce(dev({ status: 'LINKED' }))
+      .mockResolvedValue({ id: 'd1', asset: { id: 'a1' } });
+    prisma.agentDevice.update.mockImplementation(({ data }: any) => Promise.resolve({ ...dev({ status: 'LINKED' }), ...data }));
+    await s.checkin('x', { hostname: 'h' });
+    expect(prisma.asset.update).toHaveBeenCalled();
   });
 });

@@ -7,13 +7,16 @@ import {
 import type { AgentDeviceStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AgentCodeService } from './agent-code.service.js';
+import { syncAsset } from './asset-sync.js';
 import { ContractGate } from './contract-gate.service.js';
+import { CheckinDto } from './dto/checkin.dto.js';
 import { EnrollDto } from './dto/enroll.dto.js';
 import { matchDevice } from './match-device.util.js';
 import { normalizeSerial } from './serial.util.js';
-import { newToken } from './token.util.js';
+import { hashToken, newToken } from './token.util.js';
 
 const MAX_PENDING = 50;
+const INVENTORY_TTL_MS = 24 * 3600e3;
 
 @Injectable()
 export class AgentService {
@@ -78,5 +81,33 @@ export class AgentService {
       },
     });
     return { token, status: row.status };
+  }
+
+  async checkin(token: string, dto: CheckinDto): Promise<{ status: AgentDeviceStatus; wantInventory: boolean }> {
+    const dev = await this.prisma.agentDevice.findUnique({ where: { tokenHash: hashToken(token) } });
+    if (!dev) throw new UnauthorizedException('Token inválido.');
+    if (dev.status === 'IGNORED') throw new ForbiddenException('Dispositivo ignorado.');
+    if (!(await this.gate.hasValidContract(dev.clientId)))
+      throw new ForbiddenException('O cliente não possui contrato ativo.');
+
+    const now = new Date();
+    const row = await this.prisma.agentDevice.update({
+      where: { id: dev.id },
+      data: {
+        lastSeenAt: now,
+        hostname: dto.hostname,
+        agentVersion: dto.agentVersion,
+        ip: dto.ip,
+        mac: dto.mac,
+        manufacturer: dto.manufacturer,
+        model: dto.model,
+        ...(dto.inventory
+          ? { specs: dto.inventory.specs as any, software: dto.inventory.software as any, inventoryAt: now }
+          : {}),
+      },
+    });
+    if (row.status === 'LINKED') await syncAsset(this.prisma, row.id);
+    const wantInventory = !row.inventoryAt || now.getTime() - row.inventoryAt.getTime() > INVENTORY_TTL_MS;
+    return { status: row.status, wantInventory };
   }
 }
