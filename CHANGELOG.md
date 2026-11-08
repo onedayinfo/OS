@@ -3,6 +3,19 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.15.0] - 2026-11-08
+
+### Adicionado
+- Fila de cadastro de PCs: máquinas que se apresentam ao OS entram numa fila. Aprovar cria o
+  ativo (com o nome do PC já preenchido) ou vincula a um ativo existente; também dá para ignorar.
+- Aba **Agente** na ficha do cliente: código de instalação por cliente (gerar/regenerar) e
+  contadores de PCs pendentes, vinculados e ignorados.
+- Ativos: campos **Responsável** e **Descrição**.
+
+### Observações
+- O agente Windows e o instalador chegam na próxima fase. Os PCs só se conectam enquanto o
+  cliente tiver contrato ativo.
+
 ## [0.14.1] - 2026-10-15
 
 ### Alterado

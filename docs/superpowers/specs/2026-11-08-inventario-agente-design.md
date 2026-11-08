@@ -46,7 +46,8 @@ antivírus/SmartScreen ou travar o PC do funcionário, a fase falhou.
 
 **`AgentDevice`** (uma linha por máquina que já se apresentou; é a fila **e** o vínculo):
 - `id`, `clientId`, `machineGuid` (`HKLM\SOFTWARE\Microsoft\Cryptography\MachineGuid`),
-  `@@unique([clientId, machineGuid])`.
+  identidade `@@unique([clientId, machineGuid, serialKey])`, onde `serialKey` é o serial
+  normalizado ou `''` (vazio).
 - `hostname`, `serialNumber?` (BIOS), `status` (`PENDING | LINKED | IGNORED`),
   `assetId? @unique`.
 - `tokenHash` — credencial própria do dispositivo (§5), `agentVersion`, `lastSeenAt`,
@@ -59,7 +60,7 @@ antivírus/SmartScreen ou travar o PC do funcionário, a fase falhou.
 (valor ajustável em Configurações).
 
 **`Client`**: `agentEnrollCode String? @unique` (código de instalação do cliente,
-aleatório de 32 bytes, regenerável).
+32 caracteres hex (16 bytes aleatórios), regenerável).
 
 Software como `Json` e não tabela é escolha simples: se surgir a necessidade de "quais
 clientes têm o programa X", promove-se a tabela depois.
@@ -172,7 +173,7 @@ e lista por regra). Só leitura; não gera orçamento. Uma máquina sem contato 
 
 ## 11. Fases (um plano por fase)
 
-1. **Servidor:** campos novos no `Asset`, `AgentDevice`, enroll/checkin, código por
+1. **Servidor (implementada na 0.15.0, branch `feat/inventario-agente`):** campos novos no `Asset`, `AgentDevice`, enroll/checkin, código por
    cliente + regra de contrato, fila e vínculo, telas de fila e aba do cliente. Testável
    com `curl`, sem agente.
 2. **Agente + instalador:** coleta de hardware/software, serviço, assinatura, geração
@@ -212,3 +213,12 @@ e lista por regra). Só leitura; não gera orçamento. Uma máquina sem contato 
   usam a tabela `Setting` (chave/valor) existente, novas chaves em `settings.keys.ts`.
 - **LGPD:** a tela de aviso do instalador é **informativa, não bloqueia**; o
   consentimento/base legal fica no contrato com o cliente.
+
+### Decisões da implementação (fase 1)
+
+- **Reenroll** troca o token do dispositivo e mantém o status (caso de reinstalação do agente).
+- **Sem rate limit no checkin**: já exige token e o corpo é limitado a 2 MB.
+- PC com código **revogado/regenerado** continua fazendo checkin; só novos enrolls são bloqueados.
+- **IGNORED/restaurar:** ignorar revoga o token (checkin 403); restaurar volta o dispositivo
+  para `PENDING`.
+- `link` e `approve` retornam o **ativo serializado**.
