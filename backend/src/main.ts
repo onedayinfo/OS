@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import express from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
 import { setupRateLimit } from './common/rate-limit.js';
@@ -9,7 +11,9 @@ async function bootstrap() {
   // `rawBody: true` preenche `req.rawBody` com os bytes originais da requisição
   // (usado pela verificação de assinatura HMAC do webhook inbound do Resend em
   // InboundController).
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  // `bodyParser: false`: registramos os parsers à mão (abaixo) para dar 2 MB só a
+  // /api/agent (inventário de software), mantendo o padrão do Nest (100kb) no resto.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true, bodyParser: false });
   app.setGlobalPrefix('api');
   // Atrás do Cloudflare Tunnel → cloudflared → container `frontend` (proxy do
   // Next). Confia em 1 hop de proxy para `req.ip` / `X-Forwarded-For` valerem.
@@ -27,7 +31,7 @@ async function bootstrap() {
   // E2E: `OPTIONS /api/auth/login` tomando 429 travava o login no front sem
   // erro nenhum aparecer, porque o fetch nunca recebia resposta utilizável.
   app.enableCors({
-    origin: [process.env.APP_URL, process.env.PORTAL_URL].filter(Boolean),
+    origin: [process.env.APP_URL, process.env.PORTAL_URL].filter(Boolean) as string[],
     credentials: true,
   });
   // helmet com config padrão. contentSecurityPolicy desligado: a CSP default do
@@ -36,6 +40,10 @@ async function bootstrap() {
   app.use(helmet({ contentSecurityPolicy: false }));
   // Rate limiting nas rotas de autenticação (antes do Nest tratar as rotas).
   setupRateLimit(app);
+  // O parser do /api/agent vem primeiro; o `json` padrão abaixo pula quem já foi lido.
+  app.use('/api/agent', express.json({ limit: '2mb' }));
+  app.useBodyParser('json');
+  app.useBodyParser('urlencoded', { extended: true });
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   // Guards globais (JwtAuthGuard antes de RolesGuard) são registrados como APP_GUARD no CommonModule.

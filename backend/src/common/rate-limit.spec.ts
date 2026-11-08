@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import rateLimit from 'express-rate-limit';
 import type { Request } from 'express';
-import { clientIp, rateLimitKey } from './rate-limit.js';
+import { clientIp, rateLimitKey, setupRateLimit } from './rate-limit.js';
 
 const req = (h: Record<string, string>, ip?: string) =>
   ({ headers: h, ip }) as unknown as Request;
@@ -50,6 +50,14 @@ describe('rateLimitKey (keyGenerator do rate limit)', () => {
 
   it('string vazia → fallback "unknown"', () => {
     expect(rateLimitKey(req({}, ''))).toBe('unknown');
+  });
+});
+
+describe('setupRateLimit', () => {
+  it('limita /api/agent/enroll', () => {
+    const app = { use: vi.fn() };
+    setupRateLimit(app as never);
+    expect(app.use.mock.calls.map((c) => c[0])).toContain('/api/agent/enroll');
   });
 });
 
