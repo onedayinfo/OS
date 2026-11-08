@@ -30,7 +30,9 @@ const id: Record<string, string> = {};
 async function cleanup(p: PrismaClient) {
   const clients = { client: { name: { startsWith: PFX } } };
   await p.agentDevice.deleteMany({ where: clients });
-  await p.asset.deleteMany({ where: { label: { startsWith: PFX } } });
+  await p.asset.deleteMany({
+    where: { OR: [{ label: { startsWith: PFX } }, { client: { name: { startsWith: PFX } } }] },
+  });
   await p.contract.deleteMany({ where: clients });
   await p.location.deleteMany({ where: { name: { startsWith: PFX } } });
   await p.assetType.deleteMany({ where: { name: { startsWith: PFX } } });
@@ -203,5 +205,21 @@ describe('Agente — integração enroll→aprovar→checkin (Postgres real)', (
       orderBy: { serialKey: 'asc' },
     });
     expect(rows.map((r) => [r.serialKey, r.cloneSuspect])).toEqual([['SER-C1', false], ['SER-C2', true]]);
+  });
+  it('rotas de gestão: sem autenticação → 403; papel fora de ADMIN/AGENT → 403 e nada muda', async (ctx) => {
+    if (!available) return ctx.skip();
+    // o stub de guard nega (403) quando falta x-test-role
+    await http().get('/agent-devices').expect(403);
+    await http().post(`/clients/${id.c}/agent/code`).expect(403);
+    for (const role of ['CONTACT', 'MANAGER']) {
+      await http().get('/agent-devices').set('x-test-role', role).expect(403);
+      await http().get(`/clients/${id.c}/agent`).set('x-test-role', role).expect(403);
+      await http().post(`/clients/${id.c}/agent/code`).set('x-test-role', role).expect(403);
+    }
+    const dev = await prisma!.agentDevice.findFirstOrThrow({ where: { clientId: id.c, status: 'PENDING' } });
+    const body = { locationId: id.loc, typeId: id.type, label: `${PFX} Nao-deve-criar` };
+    await http().post(`/agent-devices/${dev.id}/approve`).set('x-test-role', 'CONTACT').send(body).expect(403);
+    expect((await prisma!.agentDevice.findUniqueOrThrow({ where: { id: dev.id } })).status).toBe('PENDING');
+    expect(await prisma!.asset.count({ where: { label: { startsWith: `${PFX} Nao` } } })).toBe(0);
   });
 });
