@@ -1,5 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { hostParaNome } from './host-name.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ContractGate } from './contract-gate.service.js';
 
@@ -44,6 +46,15 @@ export class AgentCodeService {
     const code = randomBytes(16).toString('hex');
     await this.prisma.client.update({ where: { id: clientId }, data: { agentEnrollCode: code } });
     return { code };
+  }
+
+  /** MSI único publicado no build; o nome com o código é o que o instalador lê. */
+  async installer(clientId: string, forwardedHost?: string, host?: string) {
+    const c = await this.client(clientId);
+    if (!c.agentEnrollCode) throw new ConflictException('Gere o código de instalação antes de baixar o instalador.');
+    const path = process.env.AGENT_MSI_PATH ?? '/app/agent-dist/AgenteOS.msi';
+    if (!existsSync(path)) throw new NotFoundException('Instalador ainda não publicado.');
+    return { path, filename: `AgenteOS-${[c.agentEnrollCode, hostParaNome(forwardedHost, host)].filter(Boolean).join('-')}.msi` };
   }
 
   async clientByCode(code: string) {

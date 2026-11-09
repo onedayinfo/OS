@@ -8,3 +8,7 @@ uploads/
 *.tsbuildinfo
 .superpowers/
 .claude/settings.local.json
+
+# MSI do agente (gerado por agent/instalador/build-msi.ps1)
+backend/agent-dist/*
+!backend/agent-dist/.gitkeep

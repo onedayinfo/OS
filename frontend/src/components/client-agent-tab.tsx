@@ -2,13 +2,30 @@
 
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ApiError } from '@/lib/api';
+import { ApiError, getAccessToken } from '@/lib/api';
 import { useClientAgent, useRegenerateAgentCode } from '@/lib/agent';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 const errToast = (e: unknown) => toast.error(e instanceof ApiError ? e.message : 'Falha na operação.');
+
+async function baixarInstalador(clientId: string) {
+  const res = await fetch(`/api/clients/${clientId}/agent/installer`, {
+    headers: { Authorization: `Bearer ${getAccessToken() ?? ''}` },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new ApiError(res.status, await res.json().catch(() => null));
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+?)"/)?.[1] ?? 'AgenteOS.msi';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
 
 export function ClientAgentTab({ clientId }: { clientId: string }) {
   const { data, isLoading } = useClientAgent(clientId);
@@ -70,6 +87,9 @@ export function ClientAgentTab({ clientId }: { clientId: string }) {
               </Button>
               <Button type="button" variant="outline" disabled={regen.isPending} onClick={() => generate(true)}>
                 Gerar novo código
+              </Button>
+              <Button type="button" onClick={() => baixarInstalador(clientId).catch(errToast)}>
+                Baixar instalador
               </Button>
             </div>
           </>
