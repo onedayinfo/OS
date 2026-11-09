@@ -21,7 +21,7 @@
     <MediaTemplate EmbedCab="yes" />
 
     <!-- endereço do servidor; sobrescreva na linha de comando: msiexec /i AgenteOS-<código>.msi SERVIDOR_URL=https://... -->
-    <Property Id="SERVIDOR_URL" Value="https://os.onedayinfo.com.br" Secure="yes" />
+    <Property Id="SERVIDOR_URL" Value="https://os.onedayinformatica.com.br" Secure="yes" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="AgenteOS" />

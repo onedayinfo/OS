@@ -6,7 +6,7 @@ using OsAgent;
 using OsAgent.Coleta;
 
 // ponytail: domínio padrão do servidor; o MSI sobrescreve via --servidor (propriedade SERVIDOR_URL)
-const string ServidorPadrao = "https://os.onedayinfo.com.br";
+const string ServidorPadrao = "https://os.onedayinformatica.com.br";
 
 if (args.Length > 0 && args[0] == "coletar")
 {
