@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace OsAgent;
 
-public record AgentConfig(string ServidorUrl, string? Codigo, string? TokenProtegido);
+public record AgentConfig(string ServidorUrl, string? Codigo, string? TokenProtegido, DateTime? UltimoContato = null);
 
 public class ConfigStore
 {

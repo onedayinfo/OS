@@ -53,6 +53,7 @@ public class AgentWorker(ConfigStore store) : BackgroundService
                 if (!enviar && r.WantInventory) { await api.CheckinAsync(id, inv, ct); enviar = true; }
                 if (enviar) { hashEnviado = inv.Hash; enviadoEm = DateTime.UtcNow; Log.Info("Inventário enviado."); }
                 falhas = 0; ultimoErro = null;
+                try { store.Salvar((store.Carregar() ?? cfg) with { UltimoContato = DateTime.UtcNow }); } catch { /* só informativo */ }
                 espera = Heartbeat;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }

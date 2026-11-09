@@ -6,12 +6,36 @@ public static class NomeArquivo
 {
     static readonly Regex Re = new(@"AgenteOS-([0-9a-f]{32})(?![0-9a-f])", RegexOptions.IgnoreCase);
 
-    /// <summary>Extrai o código de instalação do nome do arquivo (aceita " (1)" e maiúsculas).</summary>
-    public static string? ExtrairCodigo(string? caminho)
+    static readonly Regex Host = new(@"^(localhost|[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+)$");
+    static readonly Regex Sufixo = new(@"(\s*\(\d+\))?\.msi$", RegexOptions.IgnoreCase);
+
+    public static string? ExtrairCodigo(string? caminho) => Extrair(caminho).codigo;
+
+    /// <summary>Código (32 hex) e, se válido, o host do servidor: AgenteOS-&lt;cod&gt;[-&lt;host&gt;][ (1)].msi. Host inválido é ignorado.</summary>
+    public static (string? codigo, string? host) Extrair(string? caminho)
     {
-        if (string.IsNullOrEmpty(caminho)) return null;
-        var m = Re.Match(Path.GetFileName(caminho));
-        return m.Success ? m.Groups[1].Value.ToLowerInvariant() : null;
+        if (string.IsNullOrEmpty(caminho)) return (null, null);
+        var nome = Path.GetFileName(caminho);
+        var m = Re.Match(nome);
+        if (!m.Success) return (null, null);
+        var resto = Sufixo.Replace(nome[(m.Index + m.Length)..], "").ToLowerInvariant();
+        var host = resto.StartsWith('-') && Host.IsMatch(resto[1..]) ? resto[1..] : null;
+        return (m.Groups[1].Value.ToLowerInvariant(), host);
+    }
+}
+
+public static class Instalacao
+{
+    /// <summary>Precedência: SERVIDOR_URL explícito &gt; host do nome do arquivo &gt; já salvo &gt; padrão. Vazio não vale. URL inválida lança ArgumentException.</summary>
+    public static string ResolverServidor(string? explicito, string? hostDoArquivo, string? salvo, string padrao)
+    {
+        string? url = null;
+        if (!string.IsNullOrWhiteSpace(explicito)) url = explicito.Trim();
+        else if (!string.IsNullOrEmpty(hostDoArquivo)) url = "https://" + hostDoArquivo;
+        else if (!string.IsNullOrWhiteSpace(salvo)) url = salvo;
+        url ??= padrao;
+        ApiClient.ValidarUrl(url);
+        return url.TrimEnd('/');
     }
 }
 

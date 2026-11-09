@@ -20,8 +20,9 @@
     <MajorUpgrade DowngradeErrorMessage="Uma versão mais nova do Agente OS já está instalada. Desinstale-a antes de instalar esta." />
     <MediaTemplate EmbedCab="yes" />
 
-    <!-- endereço do servidor; sobrescreva na linha de comando: msiexec /i AgenteOS-<código>.msi SERVIDOR_URL=https://... -->
-    <Property Id="SERVIDOR_URL" Value="https://os.onedayinformatica.com.br" Secure="yes" />
+    <!-- Servidor: VAZIO por padrão. Ordem: SERVIDOR_URL (msiexec) > host no nome do arquivo (AgenteOS-código-host.msi) >
+         já salvo (reinstalação) > domínio padrão do agente. Ex.: msiexec /i AgenteOS-código.msi SERVIDOR_URL=https://os.cliente.com.br -->
+    <Property Id="SERVIDOR_URL" Secure="yes" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="AgenteOS" />
