@@ -15,6 +15,19 @@ docker login
 
 Publica `onedayinformatica/os-backend:0.15.0` + `:latest` e `onedayinformatica/os-frontend:0.15.0` + `:latest`.
 
+### Instalador do agente Windows (MSI)
+
+O MSI não fica no git. Antes do `build-and-push.sh`, no Windows:
+
+```powershell
+agent/instalador/build-msi.ps1
+Copy-Item agent/instalador/saida/AgenteOS.msi backend/agent-dist/AgenteOS.msi
+```
+
+A imagem do backend leva a pasta `backend/agent-dist/` (rota `GET /clients/:id/agent/installer`,
+caminho configurável por `AGENT_MSI_PATH`). Sem o arquivo, o botão "Baixar instalador" avisa que
+ainda não foi publicado.
+
 > Se o servidor do Portainer for `linux/amd64` e você builda noutra arquitetura,
 > edite o script para incluir `--platform linux/amd64` nos `docker build`.
 

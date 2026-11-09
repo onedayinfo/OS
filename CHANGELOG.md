@@ -3,6 +3,18 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.16.0] - 2026-11-08
+
+### Adicionado
+- Agente Windows (serviço que envia heartbeat e inventário de hardware/software) e instalador
+  MSI. O código do cliente vai no nome do arquivo (`AgenteOS-<código>.msi`).
+- Aba **Agente**: botão **Baixar instalador**, que entrega o MSI já com o código do cliente.
+
+### Observações
+- O MSI não vem no código-fonte: gere com `agent/instalador/build-msi.ps1` e copie para
+  `backend/agent-dist/AgenteOS.msi` antes de publicar a imagem (ver `deploy/README.md`).
+  Sem ele, o download responde "Instalador ainda não publicado".
+
 ## [0.15.0] - 2026-11-08
 
 ### Adicionado
