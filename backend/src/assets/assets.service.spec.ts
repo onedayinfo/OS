@@ -19,6 +19,14 @@ const makePrisma = () => ({
 });
 
 describe('AssetsService', () => {
+  it('findOne omite agentEnrollCode do cliente', async () => {
+    const prisma = makePrisma();
+    prisma.asset.findUnique.mockResolvedValue({ id: 'a1', clientId: 'c1', credentialsEnc: null, client: { id: 'c1' } } as any);
+    const out: any = await new AssetsService(prisma as any).findOne('a1');
+    expect(prisma.asset.findUnique.mock.calls[0][0].include.client).toEqual({ omit: { agentEnrollCode: true } });
+    expect(out.client).not.toHaveProperty('agentEnrollCode');
+  });
+
   it('create exige que o local pertença ao cliente', async () => {
     const prisma = makePrisma();
     prisma.location.findUnique.mockResolvedValue({ id: 'l1', clientId: 'OUTRO' });
@@ -49,6 +57,33 @@ describe('AssetsService', () => {
     await s.create({ clientId: 'c1', locationId: 'l1', typeId: 't1', label: 'X', serialNumber: '' } as any);
     expect(prisma.asset.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ serialNumber: null }) }),
+    );
+  });
+
+  it('create grava responsável e descrição, e string vazia vira null', async () => {
+    const prisma = makePrisma();
+    const s = new AssetsService(prisma as any);
+    await s.create({
+      clientId: 'c1', locationId: 'l1', typeId: 't1', label: 'X',
+      assignedTo: 'Maria – financeiro', description: '',
+    } as any);
+    expect(prisma.asset.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ assignedTo: 'Maria – financeiro', description: null }),
+      }),
+    );
+  });
+
+  it('update com assignedTo null grava null e description em branco vira null', async () => {
+    const prisma = makePrisma();
+    const s = new AssetsService(prisma as any);
+    await s.update('a1', { assignedTo: null } as any);
+    expect(prisma.asset.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ assignedTo: null }) }),
+    );
+    await s.update('a1', { description: '  ' } as any);
+    expect(prisma.asset.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ description: null }) }),
     );
   });
 

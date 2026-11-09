@@ -35,6 +35,7 @@ import { DashboardModule } from './dashboard/dashboard.module.js';
 import { KnowledgeModule } from './knowledge/knowledge.module.js';
 import { CrmModule } from './crm/crm.module.js';
 import { WhatsappModule } from './whatsapp/whatsapp.module.js';
+import { AgentModule } from './agent/agent.module.js';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { WhatsappModule } from './whatsapp/whatsapp.module.js';
     KnowledgeModule,
     CrmModule,
     WhatsappModule,
+    AgentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

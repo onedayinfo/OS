@@ -151,6 +151,7 @@ model Client {
   emailDomains String[]
   notes        String?
   active       Boolean  @default(true)
+  agentEnrollCode String? @unique
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -164,6 +165,7 @@ model Client {
   whatsappGroups  WhatsappGroup[]
   triggerPhrases  TriggerPhrase[]
   ticketSuggestions TicketSuggestion[]
+  agentDevices    AgentDevice[]
 
   @@map("clients")
 }
@@ -592,10 +594,15 @@ model Asset {
   warrantyEndsAt DateTime?
   status         AssetStatus @default(ACTIVE)
   notes          String?
+  description    String?
+  assignedTo     String?
+  specs          Json?
+  lastSeenAt     DateTime?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
   client      Client       @relation(fields: [clientId], references: [id])
+  agentDevice AgentDevice?
   location    Location     @relation(fields: [locationId], references: [id])
   type        AssetType    @relation(fields: [typeId], references: [id])
   tickets     Ticket[]     @relation("TicketAssets")
@@ -607,6 +614,44 @@ model Asset {
   @@index([locationId])
   @@index([typeId])
   @@map("assets")
+}
+
+enum AgentDeviceStatus {
+  PENDING
+  LINKED
+  IGNORED
+}
+
+model AgentDevice {
+  id           String            @id @default(cuid())
+  clientId     String
+  machineGuid  String
+  serialKey    String            @default("")
+  hostname     String
+  serialNumber String?
+  manufacturer String?
+  model        String?
+  ip           String?
+  mac          String?
+  status       AgentDeviceStatus @default(PENDING)
+  cloneSuspect Boolean           @default(false)
+  assetId      String?           @unique
+  tokenHash    String            @unique
+  agentVersion String?
+  firstSeenAt  DateTime          @default(now())
+  lastSeenAt   DateTime?
+  specs        Json?
+  software     Json?
+  inventoryAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id])
+  asset  Asset? @relation(fields: [assetId], references: [id])
+
+  @@unique([clientId, machineGuid, serialKey])
+  @@index([clientId, status])
+  @@map("agent_devices")
 }
 
 model SlaPolicy {

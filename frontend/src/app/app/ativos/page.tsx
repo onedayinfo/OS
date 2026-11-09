@@ -12,6 +12,7 @@ import {
   type AssetStatus,
   type AssetType,
 } from '@/lib/assets';
+import { usePendingAgentCount } from '@/lib/agent';
 import { AssetForm, type AssetFormPayload } from '@/components/asset-form';
 import { AssetImportDialog } from '@/components/asset-import-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -91,6 +92,8 @@ export default function AssetsPage() {
     queryFn: () => api<Paged<Asset>>(`/assets?${queryString}`),
   });
 
+  const pending = usePendingAgentCount().data?.total ?? 0;
+
   const create = useMutation({
     mutationFn: (v: AssetFormPayload) =>
       api<Asset>('/assets', { method: 'POST', body: v }),
@@ -108,6 +111,9 @@ export default function AssetsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Ativos</h1>
         <div className="flex gap-2">
+          <Link href="/app/ativos/fila">
+            <Button variant="outline">Fila de cadastro ({pending})</Button>
+          </Link>
           <Button variant="outline" onClick={() => setImporting(true)}>
             Importar planilha
           </Button>
@@ -194,6 +200,7 @@ export default function AssetsPage() {
               <th className="px-3 py-2 font-medium">Tipo</th>
               <th className="px-3 py-2 font-medium">Cliente</th>
               <th className="px-3 py-2 font-medium">Local</th>
+              <th className="px-3 py-2 font-medium">Responsável</th>
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2 font-medium">Nº série</th>
               <th className="px-3 py-2 font-medium">Garantia</th>
@@ -202,7 +209,7 @@ export default function AssetsPage() {
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
                   Carregando…
                 </td>
               </tr>
@@ -222,6 +229,7 @@ export default function AssetsPage() {
                 <td className="px-3 py-2 text-muted-foreground">
                   {a.location?.name ?? '—'}
                 </td>
+                <td className="px-3 py-2 text-muted-foreground">{a.assignedTo ?? '—'}</td>
                 <td className="px-3 py-2">
                   <Badge tone={STATUS_TONE[a.status]}>
                     {ASSET_STATUS_LABELS[a.status]}
@@ -245,7 +253,7 @@ export default function AssetsPage() {
             ))}
             {data && data.data.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
                   Nenhum ativo encontrado.
                 </td>
               </tr>

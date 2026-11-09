@@ -35,6 +35,8 @@ export function setupRateLimit(app: INestApplication): void {
   const strict = rateLimit({ ...base, max: 10 }); // login + set-password
   const forgot = rateLimit({ ...base, max: 5 });
 
+  // Enroll do agente: escritório instalando vários PCs atrás do mesmo IP.
+  app.use('/api/agent/enroll', rateLimit({ ...base, max: 30 }));
   app.use('/api/auth/login', strict);
   app.use('/api/auth/set-password', strict);
   app.use('/api/auth/forgot-password', forgot);

@@ -423,7 +423,8 @@ export class TicketsService {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id },
       include: {
-        client: true,
+        // `omit`: Client.agentEnrollCode é segredo do agente e o detalhe é visível ao portal.
+        client: { omit: { agentEnrollCode: true } },
         requester: true,
         assignee: true,
         category: true,

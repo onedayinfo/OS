@@ -28,6 +28,8 @@ export interface AssetFormPayload {
   remoteId: string;
   status: AssetStatus;
   notes: string;
+  assignedTo: string;
+  description: string;
   installedAt?: string;
   warrantyEndsAt?: string;
   credentials?: { username: string; password: string };
@@ -46,6 +48,8 @@ export interface AssetInitial {
   remoteId?: string | null;
   status?: AssetStatus;
   notes?: string | null;
+  assignedTo?: string | null;
+  description?: string | null;
   installedAt?: string | null;
   warrantyEndsAt?: string | null;
 }
@@ -98,6 +102,8 @@ export function AssetForm({
   );
   const [status, setStatus] = useState<AssetStatus>(initial?.status ?? 'ACTIVE');
   const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [assignedTo, setAssignedTo] = useState(initial?.assignedTo ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
   const [credUser, setCredUser] = useState('');
   const [credPass, setCredPass] = useState('');
 
@@ -148,6 +154,8 @@ export function AssetForm({
           remoteId: remoteId.trim(),
           status,
           notes: notes.trim(),
+          assignedTo: assignedTo.trim(),
+          description: description.trim(),
         };
         if (installedAt) payload.installedAt = installedAt;
         if (warrantyEndsAt) payload.warrantyEndsAt = warrantyEndsAt;
@@ -269,6 +277,26 @@ export function AssetForm({
             onChange={(e) => setWarrantyEndsAt(e.target.value)}
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="a-assigned">Responsável</Label>
+        <Input
+          id="a-assigned"
+          maxLength={200}
+          value={assignedTo}
+          onChange={(e) => setAssignedTo(e.target.value)}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="a-description">Descrição</Label>
+        <Input
+          id="a-description"
+          maxLength={500}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
       </div>
 
       <div className="flex flex-col gap-1.5">

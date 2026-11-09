@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import {
-  IsIn, IsISO8601, IsOptional, IsString, MinLength, ValidateNested,
+  IsIn, IsISO8601, IsOptional, IsString, MaxLength, MinLength, ValidateNested,
 } from 'class-validator';
 
 export class CredentialsDto {
@@ -30,4 +30,6 @@ export class CreateAssetDto {
 
   @IsOptional() @IsIn(['ACTIVE', 'MAINTENANCE', 'INACTIVE']) status?: 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE';
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsString() @MaxLength(200) assignedTo?: string;
+  @IsOptional() @IsString() @MaxLength(500) description?: string;
 }
