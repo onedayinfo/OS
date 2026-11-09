@@ -25,6 +25,9 @@ COPY prisma ./prisma
 # baixa seu binário nativo — necessário para `prisma db seed`.
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
+# MSI do agente (opcional): o glob casa a pasta agent-dist/ (que sempre existe, com
+# .gitkeep) e copia o conteúdo; sem AgenteOS.msi a rota de download responde 404.
+COPY agent-dist* ./agent-dist/
 EXPOSE 3001
 # Aplica migrations, roda o seed idempotente (admin, políticas de SLA e
 # categorias) e sobe a API. Sem SEED_ADMIN_* o seed apenas pula o admin.

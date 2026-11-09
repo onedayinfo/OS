@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { AgentCodeService } from './agent-code.service.js';
 
 const make = () => {
@@ -47,5 +50,29 @@ describe('AgentCodeService', () => {
     expect(staleCall.where.status).toBe('LINKED');
     expect(staleCall.where.OR[0]).toEqual({ lastSeenAt: null });
     expect(staleCall.where.OR[1].lastSeenAt.lt).toBeInstanceOf(Date);
+  });
+
+  describe('installer', () => {
+    afterEach(() => delete process.env.AGENT_MSI_PATH);
+
+    it('cliente sem código -> 409', async () => {
+      const { prisma, s } = make();
+      prisma.client.findUnique.mockResolvedValue({ id: 'c1', agentEnrollCode: null });
+      await expect(s.installer('c1')).rejects.toThrow('Gere o código de instalação antes de baixar o instalador.');
+    });
+
+    it('MSI ausente -> 404', async () => {
+      const { s } = make();
+      process.env.AGENT_MSI_PATH = join(tmpdir(), 'nao-existe-agente.msi');
+      await expect(s.installer('c1')).rejects.toThrow('Instalador ainda não publicado.');
+    });
+
+    it('MSI presente -> caminho e nome AgenteOS-<codigo>.msi', async () => {
+      const { s } = make();
+      const f = join(mkdtempSync(join(tmpdir(), 'msi-')), 'AgenteOS.msi');
+      writeFileSync(f, 'x');
+      process.env.AGENT_MSI_PATH = f;
+      await expect(s.installer('c1')).resolves.toEqual({ path: f, filename: 'AgenteOS-abc.msi' });
+    });
   });
 });
