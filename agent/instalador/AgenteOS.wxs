@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Instalador do Agente OS (WiX Toolset 5.0.2). Gerado por build-msi.ps1.
+  Variáveis vindas do script (-d): Version, PublishDir, AvisoRtf.
+  O arquivo precisa se chamar AgenteOS-<código de 32 caracteres>.msi: o código do cliente é lido do NOME do arquivo.
+-->
+<?ifndef Version?>
+<?define Version = "0.1.0"?>
+<?endif?>
+<?define Manufacturer = "One Day Informática"?>
+
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <!-- UpgradeCode fixo: nunca mude (é o que faz uma versão nova substituir a anterior) -->
+  <Package Name="Agente OS" Manufacturer="$(var.Manufacturer)" Version="$(var.Version)"
+           UpgradeCode="15CC5478-6B11-4D51-8EC2-5A48360F3920" Language="1046" Codepage="1252" Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="Uma versão mais nova do Agente OS já está instalada. Desinstale-a antes de instalar esta." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- endereço do servidor; sobrescreva na linha de comando: msiexec /i AgenteOS-<código>.msi SERVIDOR_URL=https://... -->
+    <Property Id="SERVIDOR_URL" Value="https://os.onedayinfo.com.br" Secure="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="AgenteOS" />
+    </StandardDirectory>
+
+    <Feature Id="Agente" Title="Agente OS" Level="1">
+      <ComponentRef Id="AgenteServico" />
+    </Feature>
+
+    <!--
+      Grava o código do cliente (extraído do NOME deste .msi) em C:\ProgramData\AgenteOS\config.json.
+      Ação adiada (precisa do OsAgent.exe já copiado), como SYSTEM, antes de o serviço iniciar.
+      Falhou (sem código no nome) => a instalação inteira é desfeita, com mensagem em português (erro 1722 abaixo).
+      Na desinstalação não roda; a pasta ProgramData\AgenteOS (token, log) é mantida, para reinstalar sem duplicar o PC.
+    -->
+    <CustomAction Id="GravarCodigo" FileRef="OsAgentExe" Execute="deferred" Impersonate="no" Return="check"
+                  ExeCommand="instalar --msi &quot;[OriginalDatabase]&quot; --servidor &quot;[SERVIDOR_URL]&quot;" />
+    <InstallExecuteSequence>
+      <Custom Action="GravarCodigo" After="InstallServices" Condition="NOT (REMOVE=&quot;ALL&quot;)" />
+    </InstallExecuteSequence>
+
+    <!-- Interface mínima: aviso do que é coletado (com aceite) + progresso. Sem interface (/qn) tudo é automático. -->
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.AvisoRtf)" />
+    <ui:WixUI Id="WixUI_Minimal" />
+    <UI>
+      <Error Id="1722" Message="Não foi possível configurar o Agente OS. Baixe o instalador novamente pela aba Agente do cliente no sistema de OS e não renomeie o arquivo (o nome precisa começar com AgenteOS e terminar com o código do cliente). A instalação foi desfeita." />
+    </UI>
+  </Package>
+
+  <Fragment>
+    <Component Id="AgenteServico" Directory="INSTALLFOLDER">
+      <File Id="OsAgentExe" Source="$(var.PublishDir)\OsAgent.exe" KeyPath="yes" />
+      <ServiceInstall Name="AgenteOS" DisplayName="Agente OS"
+                      Description="Envia o inventário e o sinal de funcionamento deste computador ao sistema de OS da empresa de suporte."
+                      Type="ownProcess" Start="auto" ErrorControl="normal" Account="LocalSystem" Vital="yes">
+        <!-- religa 60 s depois de parar por erro -->
+        <util:ServiceConfig FirstFailureActionType="restart" SecondFailureActionType="restart" ThirdFailureActionType="restart"
+                            RestartServiceDelayInSeconds="60" ResetPeriodInDays="1" />
+      </ServiceInstall>
+      <ServiceControl Id="AgenteOSServiceControl" Name="AgenteOS" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+    </Component>
+  </Fragment>
+</Wix>

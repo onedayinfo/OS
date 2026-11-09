@@ -8,8 +8,9 @@ public record AgentConfig(string ServidorUrl, string? Codigo, string? TokenProte
 
 public class ConfigStore
 {
-    public static readonly string PastaPadrao =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "AgenteOS");
+    // AGENTEOS_DADOS só existe para testes/diagnóstico; em produção vale C:\ProgramData\AgenteOS
+    public static readonly string PastaPadrao = Environment.GetEnvironmentVariable("AGENTEOS_DADOS")
+        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "AgenteOS");
     static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     readonly string _pasta;
@@ -43,6 +44,7 @@ public class ConfigStore
     public void RestringirAcesso()
     {
         Directory.CreateDirectory(_pasta);
+        if (Environment.GetEnvironmentVariable("AGENTEOS_DADOS") is not null) return; // modo teste: não tranca a pasta
         var di = new DirectoryInfo(_pasta);
         var sec = new System.Security.AccessControl.DirectorySecurity();
         sec.SetAccessRuleProtection(true, false);
