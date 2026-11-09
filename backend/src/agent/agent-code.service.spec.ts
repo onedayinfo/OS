@@ -73,6 +73,10 @@ describe('AgentCodeService', () => {
       writeFileSync(f, 'x');
       process.env.AGENT_MSI_PATH = f;
       await expect(s.installer('c1')).resolves.toEqual({ path: f, filename: 'AgenteOS-abc.msi' });
+      await expect(s.installer('c1', undefined, 'os.cliente.com.br:443')).resolves.toEqual({
+        path: f,
+        filename: 'AgenteOS-abc-os.cliente.com.br.msi',
+      });
     });
   });
 });

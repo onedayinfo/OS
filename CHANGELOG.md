@@ -7,7 +7,7 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Adicionado
 - Agente Windows (serviço que envia heartbeat e inventário de hardware/software) e instalador
-  MSI. O código do cliente vai no nome do arquivo (`AgenteOS-<código>.msi`).
+  MSI. O código do cliente vai no nome do arquivo (`AgenteOS-<código>-<domínio>.msi`; o domínio é o de onde o OS foi acessado, ou `PUBLIC_HOST`).
 - Aba **Agente**: botão **Baixar instalador**, que entrega o MSI já com o código do cliente.
 
 ### Observações

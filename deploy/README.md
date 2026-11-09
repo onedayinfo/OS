@@ -28,6 +28,13 @@ A imagem do backend leva a pasta `backend/agent-dist/` (rota `GET /clients/:id/a
 caminho configurável por `AGENT_MSI_PATH`). Sem o arquivo, o botão "Baixar instalador" avisa que
 ainda não foi publicado.
 
+O arquivo baixado se chama `AgenteOS-<código>-<host>.msi`, com o domínio pelo qual o OS foi
+acessado (cabeçalho `X-Forwarded-Host`, senão `Host`). Atrás do Cloudflare Tunnel o navegador
+fala com o Next (container `frontend`), que repassa `/api` ao backend com `X-Forwarded-Host`
+(o backend já confia em 1 hop de proxy, `trust proxy` em `main.ts`). Se o seu proxy não repassar
+o host original, defina `PUBLIC_HOST=os.cliente.com.br` no backend; ela vence os cabeçalhos. Host
+inválido ou ausente cai no nome `AgenteOS-<código>.msi`.
+
 > Se o servidor do Portainer for `linux/amd64` e você builda noutra arquitetura,
 > edite o script para incluir `--platform linux/amd64` nos `docker build`.
 
