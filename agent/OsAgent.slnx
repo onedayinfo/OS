@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="OsAgent/OsAgent.csproj" />
+  <Project Path="OsAgent.Tests/OsAgent.Tests.csproj" />
+</Solution>
