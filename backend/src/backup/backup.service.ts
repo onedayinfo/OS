@@ -39,6 +39,7 @@ export const TABLE_ORDER = [
   'location',
   'asset',
   'agentDevice',
+  'integration',
   'contract',
   'contractSlaPolicy',
   'catalogItem',

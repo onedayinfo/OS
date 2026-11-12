@@ -3,6 +3,19 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não lançado]
+
+### Adicionado
+- Webhook de eventos externos: `POST /api/integrations/events` abre chamados a partir de
+  sistemas e dispositivos (monitoramento, central de alarme, NVR, scripts). JSON com `title`
+  (obrigatório), `description`, `severity` (low|medium|high|urgent → prioridade), `externalId`
+  e `assetSerial`. Autenticação por `Authorization: Bearer <token>` (ou `x-webhook-token`).
+- Aba **Integrações** em Configurações (só ADMIN): cada integração tem cliente fixo, categoria
+  padrão opcional e token próprio (mostrado uma vez; dá para regenerar, desativar e excluir).
+- Evento repetido com o mesmo `externalId` enquanto o chamado anterior estiver aberto não abre
+  outro: entra como evento interno na timeline desse chamado.
+- Chamado mostra a origem "Integração: <nome>"; limite de 60 eventos/min por IP.
+
 ## [0.16.0] - 2026-11-08
 
 ### Adicionado

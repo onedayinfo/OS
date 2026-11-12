@@ -18,7 +18,13 @@ export type TicketStatus =
   | 'CLOSED'
   | 'CANCELLED';
 export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-export type TicketOrigin = 'EMAIL' | 'PORTAL' | 'MANUAL' | 'CONTRACT' | 'WHATSAPP';
+export type TicketOrigin =
+  | 'EMAIL'
+  | 'PORTAL'
+  | 'MANUAL'
+  | 'CONTRACT'
+  | 'WHATSAPP'
+  | 'INTEGRATION';
 export type CommentVisibility = 'INTERNAL' | 'PUBLIC';
 
 export interface TicketListItem {
@@ -86,6 +92,7 @@ export interface TicketEvent {
     | 'EMAIL_IN'
     | 'EMAIL_OUT'
     | 'WHATSAPP_IN'
+    | 'INTEGRATION_EVENT'
     | 'VISIT_SCHEDULED'
     | 'VISIT_STARTED'
     | 'VISIT_COMPLETED'
@@ -108,6 +115,7 @@ export interface TicketDetail extends TicketListItem {
   assignee: PublicUser | null;
   category: { id: string; name: string } | null;
   contract?: { id: string; name: string } | null;
+  integration?: { id: string; name: string } | null;
   comments: TicketComment[];
   events: TicketEvent[];
   attachments: Attachment[];
@@ -138,6 +146,7 @@ export const ORIGIN_LABELS: Record<TicketOrigin, string> = {
   MANUAL: 'Manual',
   CONTRACT: 'Contrato',
   WHATSAPP: 'WhatsApp',
+  INTEGRATION: 'Integração',
 };
 
 export const TERMINAL_STATUSES: TicketStatus[] = ['RESOLVED', 'CLOSED', 'CANCELLED'];

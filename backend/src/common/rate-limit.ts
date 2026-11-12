@@ -37,6 +37,8 @@ export function setupRateLimit(app: INestApplication): void {
 
   // Enroll do agente: escritório instalando vários PCs atrás do mesmo IP.
   app.use('/api/agent/enroll', rateLimit({ ...base, max: 30 }));
+  // Webhook de integrações: 60/min por IP (token já é a barreira principal).
+  app.use('/api/integrations/events', rateLimit({ ...base, max: 60 }));
   app.use('/api/auth/login', strict);
   app.use('/api/auth/set-password', strict);
   app.use('/api/auth/forgot-password', forgot);

@@ -18,6 +18,7 @@ import WhatsappTab from './tabs/whatsapp-tab';
 import StorageTab from './tabs/storage-tab';
 import AppearanceTab from './tabs/appearance-tab';
 import BackupTab from './tabs/backup-tab';
+import IntegrationsTab from './tabs/integrations-tab';
 
 function errToast(e: unknown) {
   toast.error(e instanceof ApiError ? e.message : 'Falha na operação.');
@@ -556,6 +557,7 @@ export default function ConfigPage() {
           { value: 'checklists', label: 'Checklists' },
           { value: 'email', label: 'E-mail' },
           { value: 'whatsapp', label: 'WhatsApp' },
+          { value: 'integracoes', label: 'Integrações' },
           { value: 'armazenamento', label: 'Armazenamento' },
           { value: 'aparencia', label: 'Aparência' },
           { value: 'backup', label: 'Backup' },
@@ -574,6 +576,7 @@ export default function ConfigPage() {
       {tab === 'checklists' && isAdmin && <ChecklistTemplatesTab />}
       {tab === 'email' && isAdmin && <EmailTab />}
       {tab === 'whatsapp' && isAdmin && <WhatsappTab />}
+      {tab === 'integracoes' && isAdmin && <IntegrationsTab />}
       {tab === 'armazenamento' && isAdmin && <StorageTab />}
       {tab === 'aparencia' && isAdmin && <AppearanceTab />}
       {tab === 'backup' && isAdmin && <BackupTab />}

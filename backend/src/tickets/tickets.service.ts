@@ -29,6 +29,7 @@ const INTERNAL_EVENT_TYPES = new Set<TicketEventType>([
   'ASSIGNED',
   'PRIORITY_CHANGED',
   'EMAIL_OUT',
+  'INTEGRATION_EVENT',
 ]);
 
 const TERMINAL_STATUSES: TicketStatus[] = ['RESOLVED', 'CLOSED', 'CANCELLED'];
@@ -118,6 +119,9 @@ export type CreateTicketInput = {
   origin?: TicketOrigin;
   locationId?: string | null;
   assetIds?: string[];
+  /** Só para `origin: 'INTEGRATION'` (webhook de eventos externos). */
+  integrationId?: string | null;
+  externalId?: string | null;
 };
 
 @Injectable()
@@ -207,6 +211,8 @@ export class TicketsService {
           origin,
           locationId,
           contractId,
+          integrationId: input.integrationId ?? null,
+          externalId: input.externalId ?? null,
           ...(assetIds.length
             ? { assets: { connect: assetIds.map((id) => ({ id })) } }
             : {}),
@@ -430,6 +436,7 @@ export class TicketsService {
         category: true,
         location: true,
         contract: { select: { id: true, name: true } },
+        integration: { select: { id: true, name: true } },
         // `select` (não `include`): `include` traria todo scalar de Asset,
         // inclusive `credentialsEnc`, e o retorno espalha `...ticket`.
         // Spec §3.2: o detalhe do chamado só expõe id/label/tipo do ativo — nada
@@ -467,6 +474,7 @@ export class TicketsService {
       assignee: isClientSide || !ticket.assignee ? null : publicUser(ticket.assignee),
       slaDueAt: isClientSide ? null : ticket.slaDueAt,
       needsTriage: isClientSide ? false : ticket.needsTriage,
+      integration: isClientSide ? null : ticket.integration,
       attachments: (ticket.attachments ?? []).map(publicAttachment),
       comments: visibleComments.map((c) => ({
         ...c,

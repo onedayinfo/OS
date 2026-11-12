@@ -43,6 +43,7 @@ enum TicketOrigin {
   CONTRACT
   QUOTE
   WHATSAPP
+  INTEGRATION
 }
 
 enum AssetStatus {
@@ -110,6 +111,7 @@ enum TicketEventType {
   VISIT_COMPLETED
   VISIT_CANCELLED
   WHATSAPP_IN
+  INTEGRATION_EVENT
 }
 
 model User {
@@ -166,6 +168,7 @@ model Client {
   triggerPhrases  TriggerPhrase[]
   ticketSuggestions TicketSuggestion[]
   agentDevices    AgentDevice[]
+  integrations    Integration[]
 
   @@map("clients")
 }
@@ -184,6 +187,7 @@ model Category {
   slaOverrides CategorySlaPolicy[]
   knowledgeArticles KnowledgeArticle[]
   triggerPhrases TriggerPhrase[]
+  integrations Integration[]
 
   @@map("categories")
 }
@@ -678,6 +682,8 @@ model Ticket {
   locationId      String?
   contractId      String?
   originQuoteId   String?
+  integrationId   String?
+  externalId      String?
   needsTriage     Boolean        @default(false)
   slaDueAt        DateTime?
   slaBreachNotifiedAt DateTime?
@@ -696,6 +702,7 @@ model Ticket {
   location      Location?       @relation(fields: [locationId], references: [id])
   contract      Contract?       @relation(fields: [contractId], references: [id])
   originQuote   Quote?          @relation("TicketOriginQuote", fields: [originQuoteId], references: [id])
+  integration   Integration?    @relation(fields: [integrationId], references: [id], onDelete: SetNull)
   quotes        Quote[]         @relation("QuoteTicket")
   assets        Asset[]         @relation("TicketAssets")
   comments      TicketComment[]
@@ -715,6 +722,7 @@ model Ticket {
   @@index([locationId])
   @@index([originQuoteId])
   @@index([contractId])
+  @@index([integrationId, externalId])
   @@map("tickets")
 }
 
@@ -954,4 +962,25 @@ model AiUsage {
   calls        Int    @default(0)
 
   @@map("ai_usage")
+}
+
+/// Sistema/dispositivo externo que abre chamados via `POST /api/integrations/events`.
+model Integration {
+  id          String    @id @default(cuid())
+  name        String
+  clientId    String
+  categoryId  String?
+  /// sha256 (hex) do token; o token puro só é mostrado na criação/regeneração.
+  tokenHash   String    @unique
+  active      Boolean   @default(true)
+  lastEventAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tickets  Ticket[]
+
+  @@index([clientId])
+  @@map("integrations")
 }

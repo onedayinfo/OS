@@ -138,7 +138,10 @@ export function TicketSidebar({ ticket }: { ticket: TicketDetail }) {
 
       <Panel title="Detalhes" icon="info">
         <Row label="Categoria">{ticket.category?.name ?? '—'}</Row>
-        <Row label="Origem">{ORIGIN_LABELS[ticket.origin]}</Row>
+        <Row label="Origem">
+          {ORIGIN_LABELS[ticket.origin]}
+          {ticket.integration ? `: ${ticket.integration.name}` : ''}
+        </Row>
         <Row label="Prioridade">{PRIORITY_LABELS[ticket.priority]}</Row>
         <Row label="Criado em">{fmt(ticket.createdAt)}</Row>
         <Row label="SLA">{fmt(ticket.slaDueAt)}</Row>
