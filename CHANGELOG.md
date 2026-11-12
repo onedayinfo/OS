@@ -3,7 +3,7 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
-## [Não lançado]
+## [0.17.0] - 2026-11-12
 
 ### Adicionado
 - Webhook de eventos externos: `POST /api/integrations/events` abre chamados a partir de
