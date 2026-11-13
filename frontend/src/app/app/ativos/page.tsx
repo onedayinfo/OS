@@ -13,6 +13,7 @@ import {
   type AssetType,
 } from '@/lib/assets';
 import { usePendingAgentCount } from '@/lib/agent';
+import { SEVERITY_TONE, relativeTime } from '@/lib/improvements';
 import { AssetForm, type AssetFormPayload } from '@/components/asset-form';
 import { AssetImportDialog } from '@/components/asset-import-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -93,6 +94,7 @@ export default function AssetsPage() {
   });
 
   const pending = usePendingAgentCount().data?.total ?? 0;
+  const improvementTotal = data?.data.reduce((n, a) => n + (a.improvementCount ?? 0), 0) ?? 0;
 
   const create = useMutation({
     mutationFn: (v: AssetFormPayload) =>
@@ -111,6 +113,9 @@ export default function AssetsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Ativos</h1>
         <div className="flex gap-2">
+          <Link href="/app/ativos/melhorias">
+            <Button variant="outline">Melhorias sugeridas{data ? ` (${improvementTotal})` : ''}</Button>
+          </Link>
           <Link href="/app/ativos/fila">
             <Button variant="outline">Fila de cadastro ({pending})</Button>
           </Link>
@@ -204,12 +209,13 @@ export default function AssetsPage() {
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2 font-medium">Nº série</th>
               <th className="px-3 py-2 font-medium">Garantia</th>
+              <th className="px-3 py-2 font-medium">Último contato</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
                   Carregando…
                 </td>
               </tr>
@@ -223,6 +229,11 @@ export default function AssetsPage() {
                   >
                     {a.label}
                   </Link>
+                  {!!a.improvementCount && a.improvementMax && (
+                    <Badge tone={SEVERITY_TONE[a.improvementMax]} className="ml-2" title="Melhorias sugeridas">
+                      {a.improvementCount} {a.improvementCount === 1 ? 'melhoria' : 'melhorias'}
+                    </Badge>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-muted-foreground">{a.type?.name ?? '—'}</td>
                 <td className="px-3 py-2 text-muted-foreground">{a.client?.name ?? '—'}</td>
@@ -249,11 +260,17 @@ export default function AssetsPage() {
                     ? new Date(a.warrantyEndsAt).toLocaleDateString('pt-BR')
                     : '—'}
                 </td>
+                <td
+                  className="px-3 py-2 text-muted-foreground"
+                  title={a.lastSeenAt ? new Date(a.lastSeenAt).toLocaleString('pt-BR') : undefined}
+                >
+                  {a.lastSeenAt ? relativeTime(a.lastSeenAt) : '—'}
+                </td>
               </tr>
             ))}
             {data && data.data.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">
                   Nenhum ativo encontrado.
                 </td>
               </tr>
