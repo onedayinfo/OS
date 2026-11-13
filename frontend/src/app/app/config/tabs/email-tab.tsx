@@ -51,6 +51,9 @@ export default function EmailTab() {
       )}
       <div className="flex flex-col gap-1">
         <Label>Chave da API do Resend</Label>
+        <p className="text-xs text-muted-foreground">
+          Para receber chamados por e-mail, a chave precisa de <b>Full access</b>.
+        </p>
         <Input
           type="password"
           placeholder={keySet ? '•••••••• (configurada)' : 'rk_live_…'}
@@ -67,10 +70,17 @@ export default function EmailTab() {
         />
       </div>
       <div className="flex flex-col gap-1">
-        <Label>Segredo do webhook inbound</Label>
+        <Label>Segredo de assinatura do webhook (recebimento por e-mail)</Label>
+        <p className="text-xs text-muted-foreground">
+          No Resend, crie um webhook com o evento <code>email.received</code> para{' '}
+          <code className="break-all">
+            {typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/resend/inbound
+          </code>{' '}
+          e cole aqui o <b>Signing secret</b> dele. Deixe vazio se não for receber e-mails.
+        </p>
         <Input
           type="password"
-          placeholder={secretSet ? '•••••••• (configurado)' : ''}
+          placeholder={secretSet ? '•••••••• (configurado)' : 'whsec_…'}
           value={form.inboundSecret}
           onChange={(e) => setForm((f) => ({ ...f, inboundSecret: e.target.value }))}
         />

@@ -5,10 +5,11 @@ import { TicketsModule } from '../tickets/tickets.module.js';
 import { AttachmentsModule } from '../attachments/attachments.module.js';
 import { InboundController } from './inbound.controller.js';
 import { InboundService } from './inbound.service.js';
+import { ResendReceivingService } from './resend-receiving.service.js';
 
 @Module({
   imports: [UsersModule, ClientsModule, TicketsModule, AttachmentsModule],
   controllers: [InboundController],
-  providers: [InboundService],
+  providers: [InboundService, ResendReceivingService],
 })
 export class InboundModule {}

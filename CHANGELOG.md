@@ -3,6 +3,16 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.17.1] - 2026-11-13
+
+### Corrigido
+- Chamados por e-mail funcionam com o Resend de verdade: o webhook `email.received` passa a ser
+  verificado pela assinatura Svix (`svix-id`/`svix-timestamp`/`svix-signature`, segredo `whsec_…`,
+  janela de 5 min) e o corpo, cabeçalhos e anexos são buscados na API de Receiving do Resend (o
+  evento só traz o `email_id`). E-mail só em HTML vira texto. Outros eventos são ignorados.
+- Config > E-mail explica onde achar o segredo e a URL do webhook; a chave da API precisa de
+  Full access para ler os e-mails recebidos.
+
 ## [0.17.0] - 2026-11-12
 
 ### Adicionado

@@ -10,10 +10,10 @@ Numa máquina com Docker e acesso ao código:
 
 ```bash
 docker login
-./deploy/build-and-push.sh onedayinformatica 0.17.0
+./deploy/build-and-push.sh onedayinformatica 0.17.1
 ```
 
-Publica `onedayinformatica/os-backend:0.17.0` + `:latest` e `onedayinformatica/os-frontend:0.17.0` + `:latest`.
+Publica `onedayinformatica/os-backend:0.17.1` + `:latest` e `onedayinformatica/os-frontend:0.17.1` + `:latest`.
 
 ### Instalador do agente Windows (MSI)
 
@@ -91,11 +91,22 @@ precisa de `COOKIE_SECURE=false`).
 
 ### Webhook de e-mail de entrada (opcional)
 
-Se for usar recebimento de chamado por e-mail, aponte o MX do subdomínio de
-suporte para o Resend e configure o webhook dele para
-`https://<APP_URL>/api/webhooks/resend/inbound` com o mesmo `RESEND_INBOUND_SECRET`.
-(Nota: a validação de assinatura hoje é HMAC simples; o Resend usa Svix —
-trocar antes de ligar em produção.)
+Para abrir chamados por e-mail (todo o passo é feito em Config > E-mail e no painel do Resend):
+
+1. No Resend, em **Domains**, ative **Receiving** no domínio (ou num subdomínio, ex.:
+   `suporte.suaempresa.com.br`) e crie no DNS o registro **MX** que ele mostrar. Sem
+   domínio próprio, dá para testar com o endereço `<id>.resend.app` da aba Receiving.
+2. No Resend, em **Webhooks**, crie um webhook para
+   `https://<APP_URL>/api/webhooks/resend/inbound` com o evento **`email.received`**.
+3. Copie o **Signing secret** (`whsec_…`) do webhook e cole em Config > E-mail >
+   "Segredo de assinatura do webhook". A assinatura é verificada no padrão Svix.
+4. A **chave da API** em Config > E-mail precisa de **Full access** (uma chave só de
+   envio não lê os e-mails recebidos): o webhook só traz o `email_id`; corpo e anexos
+   são buscados na API do Resend.
+
+Remetente cadastrado como contato → chamado no cliente dele; domínio em "Domínios de
+e-mail" do cliente → contato novo (inativo) + chamado; desconhecido → fila de triagem.
+Resposta com `[#AAAA-NNNN]` no assunto vira comentário no chamado.
 
 ### Rate limiting
 
