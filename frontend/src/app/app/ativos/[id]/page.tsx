@@ -11,6 +11,7 @@ import { AssetForm, type AssetFormPayload } from '@/components/asset-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
+import { AssetInventoryTab } from '@/components/asset-inventory-tab';
 
 const STATUS_TONE: Record<AssetStatus, 'green' | 'amber' | 'neutral'> = {
   ACTIVE: 'green',
@@ -153,6 +154,7 @@ export default function AssetDetailPage({ params }: { params: { id: string } }) 
         tabs={[
           { value: 'dados', label: 'Dados' },
           { value: 'credenciais', label: 'Credenciais' },
+          { value: 'inventario', label: 'Inventário' },
           { value: 'fotos', label: 'Fotos' },
           { value: 'historico', label: 'Histórico' },
         ]}
@@ -260,6 +262,8 @@ export default function AssetDetailPage({ params }: { params: { id: string } }) 
           )}
         </div>
       )}
+
+      {tab === 'inventario' && <AssetInventoryTab assetId={id} />}
 
       {tab === 'fotos' && (
         <div className="flex flex-col gap-3 pt-4">
