@@ -10,10 +10,10 @@ Numa máquina com Docker e acesso ao código:
 
 ```bash
 docker login
-./deploy/build-and-push.sh onedayinformatica 0.17.1
+./deploy/build-and-push.sh onedayinformatica 0.18.0
 ```
 
-Publica `onedayinformatica/os-backend:0.17.1` + `:latest` e `onedayinformatica/os-frontend:0.17.1` + `:latest`.
+Publica `onedayinformatica/os-backend:0.18.0` + `:latest` e `onedayinformatica/os-frontend:0.18.0` + `:latest`.
 
 ### Instalador do agente Windows (MSI)
 
