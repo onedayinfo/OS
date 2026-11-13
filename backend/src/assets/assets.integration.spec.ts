@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { AssetsController } from './assets.controller.js';
 import { AssetsService } from './assets.service.js';
 import { AssetsImportService } from './assets-import.service.js';
+import { ImprovementsService } from '../agent/improvements.service.js';
 
 // Teste de INTEGRAÇÃO: Postgres real (`docker compose up -d postgres`). Sem
 // DATABASE_URL / banco no ar, o bloco pula com aviso (exit 0). Cobre o boundary
@@ -145,6 +146,7 @@ describe('Assets — integração (Postgres real)', () => {
         providers: [
           AssetsService,
           AssetsImportService,
+          { provide: ImprovementsService, useValue: { annotate: async (d: unknown) => d } },
           Reflector,
           { provide: PrismaService, useValue: prisma },
           // roda antes do RolesGuard: popula req.user a partir do header de teste.

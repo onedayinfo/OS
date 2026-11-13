@@ -13,6 +13,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../common/roles.decorator.js';
 import type { UploadedFile as UF } from '../attachments/storage.util.js';
+import { ImprovementsService } from '../agent/improvements.service.js';
 import { AssetsService } from './assets.service.js';
 import { AssetsImportService } from './assets-import.service.js';
 import { CreateAssetDto } from './dto/create-asset.dto.js';
@@ -25,6 +26,7 @@ export class AssetsController {
   constructor(
     private readonly assets: AssetsService,
     private readonly importer: AssetsImportService,
+    private readonly improvements: ImprovementsService,
   ) {}
 
   @Post('import')
@@ -50,13 +52,19 @@ export class AssetsController {
   }
 
   @Get()
-  findAll(@Query() query: ListAssetsDto) {
-    return this.assets.findAll(query);
+  async findAll(@Query() query: ListAssetsDto) {
+    const r = await this.assets.findAll(query);
+    return { ...r, data: await this.improvements.annotate(r.data) };
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.assets.findOne(id);
+  }
+
+  @Get(':id/inventory')
+  inventory(@Param('id') id: string) {
+    return this.improvements.inventory(id);
   }
 
   @Get(':id/credentials')
