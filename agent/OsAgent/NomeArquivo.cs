@@ -26,6 +26,19 @@ public static class NomeArquivo
 
 public static class Instalacao
 {
+    /// <summary>Precedência: CODIGO explícito &gt; código do nome do arquivo &gt; já salvo. Null = nenhum. Explícito inválido lança ArgumentException.</summary>
+    public static string? ResolverCodigo(string? explicito, string? doArquivo, string? salvo)
+    {
+        if (!string.IsNullOrWhiteSpace(explicito))
+        {
+            var c = string.Concat(explicito.Where(ch => !char.IsWhiteSpace(ch))).ToLowerInvariant();
+            if (!System.Text.RegularExpressions.Regex.IsMatch(c, "^[0-9a-f]{32}$"))
+                throw new ArgumentException("O código de instalação deve ter 32 caracteres (números de 0 a 9 e letras de a a f).");
+            return c;
+        }
+        return doArquivo ?? (string.IsNullOrWhiteSpace(salvo) ? null : salvo);
+    }
+
     /// <summary>Precedência: SERVIDOR_URL explícito &gt; host do nome do arquivo &gt; já salvo &gt; padrão. Vazio não vale. URL inválida lança ArgumentException.</summary>
     public static string ResolverServidor(string? explicito, string? hostDoArquivo, string? salvo, string padrao)
     {

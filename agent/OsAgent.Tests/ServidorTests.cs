@@ -43,4 +43,28 @@ public class ServidorTests
         Assert.Throws<ArgumentException>(() => Instalacao.ResolverServidor("http://a.com", null, null, "https://d.com"));
         Assert.Throws<ArgumentException>(() => Instalacao.ResolverServidor("lixo", null, null, "https://d.com"));
     }
+
+    [Fact]
+    public void Codigo_precedencia_explicito_arquivo_salvo()
+    {
+        const string A = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", B = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", C2 = "cccccccccccccccccccccccccccccccc";
+        Assert.Equal(A, Instalacao.ResolverCodigo(A, B, C2));
+        Assert.Equal(B, Instalacao.ResolverCodigo("", B, C2));
+        Assert.Equal(B, Instalacao.ResolverCodigo("   ", B, C2));
+        Assert.Equal(C2, Instalacao.ResolverCodigo(null, null, C2));
+        Assert.Null(Instalacao.ResolverCodigo(null, null, null));
+    }
+
+    [Fact]
+    public void Codigo_explicito_normaliza_espacos_e_maiusculas()
+    {
+        Assert.Equal("0123456789abcdef0123456789abcdef", Instalacao.ResolverCodigo("  0123456789ABCDEF 0123456789abcdef\r\n", null, null));
+    }
+
+    [Theory]
+    [InlineData("0123456789abcdef0123456789abcde")]
+    [InlineData("0123456789abcdef0123456789abcdefa")]
+    [InlineData("0123456789abcdef0123456789abcdeg")]
+    public void Codigo_explicito_invalido_lanca(string v) =>
+        Assert.Throws<ArgumentException>(() => Instalacao.ResolverCodigo(v, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", null));
 }
