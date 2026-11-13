@@ -3,6 +3,19 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.18.0] - 2026-11-13
+
+### Adicionado
+- Ficha do ativo: aba **Inventário** (hardware, discos com uso e SMART, sistema, BIOS, TPM/Secure Boot,
+  último contato e lista de software com busca) para PCs com o agente instalado.
+- **Sugestões de melhoria** automáticas (RAM baixa, HDD, disco cheio, disco com falha, Windows 10 sem
+  suporte, sem suporte ao Windows 11, equipamento antigo): selo na lista de ativos e página
+  "Melhorias sugeridas" agrupada por cliente. Limiares editáveis em Configurações.
+- Instalador do agente: tela para digitar o código quando o nome do arquivo não o traz; `CODIGO=` no `msiexec`.
+
+### Corrigido
+- Agente chamava `/agent/...` sem o prefixo `/api` (enroll e checkin davam 404).
+
 ## [0.17.1] - 2026-11-13
 
 ### Corrigido
