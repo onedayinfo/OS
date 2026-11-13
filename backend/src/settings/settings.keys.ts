@@ -27,6 +27,10 @@ export const SETTING_KEYS = [
   'ai.dailyTokenLimit',
   'ai.dailyCostLimitUsd',
   'ai.monthlyCostLimitUsd',
+  'improvements.ramMinGb',
+  'improvements.diskFreePct',
+  'improvements.biosMaxYears',
+  'improvements.staleDays',
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];

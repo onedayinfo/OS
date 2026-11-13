@@ -19,6 +19,7 @@ import StorageTab from './tabs/storage-tab';
 import AppearanceTab from './tabs/appearance-tab';
 import BackupTab from './tabs/backup-tab';
 import IntegrationsTab from './tabs/integrations-tab';
+import ImprovementsTab from './tabs/improvements-tab';
 
 function errToast(e: unknown) {
   toast.error(e instanceof ApiError ? e.message : 'Falha na operação.');
@@ -558,6 +559,7 @@ export default function ConfigPage() {
           { value: 'email', label: 'E-mail' },
           { value: 'whatsapp', label: 'WhatsApp' },
           { value: 'integracoes', label: 'Integrações' },
+          { value: 'melhorias', label: 'Sugestões de melhoria' },
           { value: 'armazenamento', label: 'Armazenamento' },
           { value: 'aparencia', label: 'Aparência' },
           { value: 'backup', label: 'Backup' },
@@ -577,6 +579,7 @@ export default function ConfigPage() {
       {tab === 'email' && isAdmin && <EmailTab />}
       {tab === 'whatsapp' && isAdmin && <WhatsappTab />}
       {tab === 'integracoes' && isAdmin && <IntegrationsTab />}
+      {tab === 'melhorias' && isAdmin && <ImprovementsTab />}
       {tab === 'armazenamento' && isAdmin && <StorageTab />}
       {tab === 'aparencia' && isAdmin && <AppearanceTab />}
       {tab === 'backup' && isAdmin && <BackupTab />}

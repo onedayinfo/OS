@@ -19,7 +19,7 @@ public class ApiClient
     {
         ValidarUrl(servidorUrl);
         _http = http;
-        _http.BaseAddress = new Uri(servidorUrl.TrimEnd('/') + "/");
+        _http.BaseAddress = new Uri(servidorUrl.TrimEnd('/') + "/api/");
         _http.Timeout = TimeSpan.FromSeconds(30);
         _codigo = codigo;
         _token = token;

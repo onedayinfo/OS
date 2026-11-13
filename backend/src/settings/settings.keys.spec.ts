@@ -31,3 +31,12 @@ describe('fallback de ambiente da Evolution', () => {
     expect(ENV_FALLBACK['whatsapp.evolution.apiKey']).toBe('EVOLUTION_API_KEY');
   });
 });
+
+describe('chaves de sugestões de melhoria', () => {
+  it('registra os 4 limiares como não secretos', () => {
+    for (const k of ['ramMinGb', 'diskFreePct', 'biosMaxYears', 'staleDays']) {
+      expect(SETTING_KEYS).toContain(`improvements.${k}`);
+      expect(SECRET_KEYS.has(`improvements.${k}`)).toBe(false);
+    }
+  });
+});

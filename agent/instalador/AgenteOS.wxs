@@ -24,6 +24,10 @@
          já salvo (reinstalação) > domínio padrão do agente. Ex.: msiexec /i AgenteOS-código.msi SERVIDOR_URL=https://os.cliente.com.br -->
     <Property Id="SERVIDOR_URL" Secure="yes" />
 
+    <!-- Código de instalação (32 caracteres). Opcional: normalmente vem do nome do arquivo AgenteOS-código.msi.
+         Vale mais que o nome do arquivo: msiexec /i AgenteOS.msi /qn CODIGO=<código>. Também é preenchido pela tela do instalador. -->
+    <Property Id="CODIGO" Secure="yes" />
+
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="AgenteOS" />
     </StandardDirectory>
@@ -39,16 +43,78 @@
       Na desinstalação não roda; a pasta ProgramData\AgenteOS (token, log) é mantida, para reinstalar sem duplicar o PC.
     -->
     <CustomAction Id="GravarCodigo" FileRef="OsAgentExe" Execute="deferred" Impersonate="no" Return="check"
-                  ExeCommand="instalar --msi &quot;[OriginalDatabase]&quot; --servidor &quot;[SERVIDOR_URL]&quot;" />
+                  ExeCommand="instalar --msi &quot;[OriginalDatabase]&quot; --servidor &quot;[SERVIDOR_URL]&quot; --codigo &quot;[CODIGO]&quot;" />
     <InstallExecuteSequence>
       <Custom Action="GravarCodigo" After="InstallServices" Condition="NOT (REMOVE=&quot;ALL&quot;)" />
     </InstallExecuteSequence>
 
     <!-- Interface mínima: aviso do que é coletado (com aceite) + progresso. Sem interface (/qn) tudo é automático. -->
     <WixVariable Id="WixUILicenseRtf" Value="$(var.AvisoRtf)" />
-    <ui:WixUI Id="WixUI_Minimal" />
+    <!--
+      Interface: Boas-vindas, aviso de coleta (com aceite), [Código de instalação], Pronto para instalar.
+      A tela do código só aparece quando o NOME do arquivo não parece trazer o código. Limite: o MSI não tem expressão regular,
+      então o teste é só "o caminho do .msi não contém AgenteOS-" (sem diferenciar maiúsculas) e o código não foi passado por CODIGO=.
+      Um nome como AgenteOS-abc.msi (com "AgenteOS-" mas sem 32 caracteres válidos) NÃO mostra a tela e a instalação é desfeita
+      pela validação do OsAgent.exe (mensagem em português). O botão Avançar não faz nada enquanto o campo está vazio (WiX 5 não permite desabilitar o botão por condição neste desenho) (limite de 32 caracteres no campo);
+      a validação dos 32 caracteres hexadecimais é feita pelo OsAgent.exe ao gravar a configuração.
+    -->
+    <UI Id="AgenteUI">
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
+      <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="PrepareDlg" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ResumeDlg" />
+      <DialogRef Id="UserExit" />
+      <DialogRef Id="CancelDlg" />
+
+      <Dialog Id="CodigoDlg" Width="370" Height="270" Title="Agente OS - Código de instalação">
+        <Control Id="Titulo" Type="Text" X="20" Y="15" Width="330" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Código de instalação" />
+        <Control Id="Explica" Type="Text" X="20" Y="40" Width="330" Height="75" Transparent="yes" NoPrefix="yes"
+                 Text="O nome deste arquivo não traz o código do cliente (acontece quando o arquivo é renomeado, por exemplo ao ser enviado por WhatsApp). Digite ou cole abaixo o código de instalação, com 32 caracteres. Você encontra o código no sistema de OS: abra a ficha do cliente e vá na aba Agente. O botão Avançar só funciona com o campo preenchido." />
+        <Control Id="CodigoRotulo" Type="Text" X="20" Y="125" Width="330" Height="12" Transparent="yes" NoPrefix="yes" Text="Código de instalação:" />
+        <Control Id="CodigoCampo" Type="Edit" X="20" Y="140" Width="330" Height="18" Property="CODIGO" Text="{32}" />
+        <Control Id="Linha" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Voltar" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Voltar">
+          <Publish Event="NewDialog" Value="LicenseAgreementDlg" />
+        </Control>
+        <Control Id="Avancar" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Avançar">
+          <Publish Event="NewDialog" Value="VerifyReadyDlg" Condition="CODIGO &lt;&gt; &quot;&quot;" />
+        </Control>
+        <Control Id="Cancelar" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancelar">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999" />
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="LicenseAgreementDlg" Condition="NOT Installed" />
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="Installed AND PATCH" />
+      <Publish Dialog="LicenseAgreementDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" />
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="CodigoDlg" Order="1"
+               Condition="NOT CODIGO AND NOT (OriginalDatabase ~&gt;&lt; &quot;AgenteOS-&quot;)" />
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="2"
+               Condition="CODIGO OR (OriginalDatabase ~&gt;&lt; &quot;AgenteOS-&quot;)" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="CodigoDlg" Order="1"
+               Condition="NOT Installed AND NOT (OriginalDatabase ~&gt;&lt; &quot;AgenteOS-&quot;)" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="LicenseAgreementDlg" Order="2"
+               Condition="NOT Installed AND (OriginalDatabase ~&gt;&lt; &quot;AgenteOS-&quot;)" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="3" Condition="Installed AND NOT PATCH" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="4" Condition="Installed AND PATCH" />
+      <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
+    </UI>
+    <UIRef Id="WixUI_Common" />
+
     <UI>
-      <Error Id="1722" Message="Não foi possível configurar o Agente OS. Baixe o instalador novamente pela aba Agente do cliente no sistema de OS e não renomeie o arquivo (o nome precisa começar com AgenteOS e terminar com o código do cliente). A instalação foi desfeita." />
+      <Error Id="1722" Message="Não foi possível configurar o Agente OS. Confira o código de instalação (32 caracteres, da ficha do cliente, aba Agente, no sistema de OS). Se o arquivo foi renomeado, informe o código na tela do instalador ou use CODIGO=código na linha de comando. A instalação foi desfeita." />
     </UI>
   </Package>
 

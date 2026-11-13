@@ -20,17 +20,18 @@ if (args.Length > 0 && args[0] == "coletar")
 if (args.Length > 0 && args[0] == "instalar")
 {
     string? Arg(string nome) { var i = Array.IndexOf(args, nome); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
-    var (codigo, hostArquivo) = NomeArquivo.Extrair(Arg("--msi"));
-    if (codigo is null)
-    {
-        Console.Error.WriteLine("Este instalador não tem o código do cliente no nome do arquivo. " +
-            "Baixe o instalador novamente pela aba Agente do cliente (o nome deve ser AgenteOS-<código>.msi) e não renomeie o arquivo.");
-        return 1;
-    }
+    var (codigoArquivo, hostArquivo) = NomeArquivo.Extrair(Arg("--msi"));
     var store = new ConfigStore();
     try
     {
         var atual = store.Carregar();
+        var codigo = Instalacao.ResolverCodigo(Arg("--codigo"), codigoArquivo, atual?.Codigo);
+        if (codigo is null)
+        {
+            Console.Error.WriteLine("Não foi possível descobrir o código de instalação: o nome do arquivo não traz o código (AgenteOS-<código>.msi). " +
+                "Informe o código na tela do instalador, ou instale com CODIGO=<código> na linha de comando. O código fica na ficha do cliente, aba Agente, no sistema de OS.");
+            return 1;
+        }
         var url = Instalacao.ResolverServidor(Arg("--servidor"), hostArquivo, atual?.ServidorUrl, ServidorPadrao);
         // reinstalar/atualizar com o mesmo código mantém o token (não duplica o PC)
         var token = atual?.Codigo == codigo ? atual.TokenProtegido : null;
@@ -41,7 +42,7 @@ if (args.Length > 0 && args[0] == "instalar")
     }
     catch (ArgumentException e)
     {
-        Console.Error.WriteLine("Endereço do servidor inválido: " + e.Message);
+        Console.Error.WriteLine("Dado de instalação inválido: " + e.Message);
         return 3;
     }
     catch (Exception e)
