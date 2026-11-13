@@ -25,7 +25,7 @@ public class ApiClientTests
     {
         var h = new Falso(HttpStatusCode.OK, "{\"token\":\"T123\",\"status\":\"PENDING\"}");
         Assert.Equal("T123", await Novo(h).EnrollAsync(Id));
-        Assert.Equal("/agent/enroll", h.UltimaRota);
+        Assert.Equal("/api/agent/enroll", h.UltimaRota);
         Assert.Contains("\"machineGuid\":\"guid-1\"", h.UltimoCorpo);
         Assert.DoesNotContain("serialNumber", h.UltimoCorpo);
     }
