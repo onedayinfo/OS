@@ -10,6 +10,7 @@ function isSecretKey(key: string): boolean {
 /** Cópia profunda com valores de chaves sensíveis trocados por '***' e Buffers por '[binary]'. */
 export function redact(value: unknown): unknown {
   if (Buffer.isBuffer(value)) return '[binary]';
+  if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) return value.map(redact);
   if (value && typeof value === 'object') {
     return Object.fromEntries(

@@ -24,26 +24,31 @@ export class AuditService {
 
   /** Fire-and-forget: nunca lança nem usa o Logger (evita loop); falha vai para stderr. */
   record(e: AuditEntry): void {
-    const data = limitSize(redact(e.data));
-    this.prisma.auditLog
-      .create({
-        data: {
-          kind: e.kind,
-          level: e.level,
-          module: e.module,
-          message: e.message,
-          actorId: e.actorId ?? null,
-          actorLabel: e.actorLabel ?? null,
-          ip: e.ip ?? null,
-          method: e.method,
-          path: e.path,
-          status: e.status,
-          data: data === undefined || data === null ? Prisma.JsonNull : (data as Prisma.InputJsonValue),
-        },
-      })
-      .catch((err: unknown) => {
-        process.stderr.write(`[audit] falha ao gravar log: ${err instanceof Error ? err.message : String(err)}\n`);
-      });
+    const falha = (err: unknown) =>
+      process.stderr.write(`[audit] falha ao gravar log: ${err instanceof Error ? err.message : String(err)}
+`);
+    try {
+      const data = limitSize(redact(e.data));
+      this.prisma.auditLog
+        .create({
+          data: {
+            kind: e.kind,
+            level: e.level,
+            module: e.module,
+            message: e.message,
+            actorId: e.actorId ?? null,
+            actorLabel: e.actorLabel ?? null,
+            ip: e.ip ?? null,
+            method: e.method,
+            path: e.path,
+            status: e.status,
+            data: data === undefined || data === null ? Prisma.JsonNull : (data as Prisma.InputJsonValue),
+          },
+        })
+        .catch(falha);
+    } catch (err) {
+      falha(err); // ex.: referência circular / BigInt em `data`
+    }
   }
 
   async list({ page = 1, pageSize = 20, q, kind, actorId, module, from, to }: AuditQueryDto) {

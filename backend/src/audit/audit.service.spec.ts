@@ -31,6 +31,18 @@ describe('AuditService', () => {
     expect(stderr).toHaveBeenCalledWith(expect.stringContaining('db fora'));
   });
 
+  it('record não lança com data cíclico ou BigInt', () => {
+    const { svc } = setup();
+    const stderr = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const a: any = {};
+    a.a = a;
+    const base = { kind: 'ACTION', level: 'info', module: 'x', message: 'm' } as const;
+    expect(() => svc.record({ ...base, data: a })).not.toThrow();
+    expect(() => svc.record({ ...base, data: { n: 1n } })).not.toThrow();
+    expect(stderr).toHaveBeenCalled();
+  });
+
   it('list monta where e paginação', async () => {
     const { prisma, svc } = setup();
     const r = await svc.list({ kind: 'ERROR', q: 's3', page: 2, pageSize: 10 });

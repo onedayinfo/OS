@@ -18,6 +18,9 @@ describe('redact', () => {
     expect(redact([{ token: 't' }])).toEqual([{ token: '***' }]);
     expect(redact({ s3: { secretAccessKey: 'x' } })).toEqual({ s3: { secretAccessKey: '***' } });
   });
+  it('converte Date em ISO', () => {
+    expect(redact({ d: new Date('2026-01-02T03:04:05.000Z') })).toEqual({ d: '2026-01-02T03:04:05.000Z' });
+  });
   it('substitui buffers', () => {
     expect(redact({ f: Buffer.from('x') })).toEqual({ f: '[binary]' });
   });
