@@ -79,6 +79,16 @@ export class AuditService {
     return { data, total, page, pageSize };
   }
 
+  /** Módulos que já têm registros, para o filtro da tela. */
+  async modules(): Promise<string[]> {
+    const rows = await this.prisma.auditLog.findMany({
+      distinct: ['module'],
+      select: { module: true },
+      orderBy: { module: 'asc' },
+    });
+    return rows.map((r) => r.module);
+  }
+
   async purgeOlderThan(days: number): Promise<number> {
     const { count } = await this.prisma.auditLog.deleteMany({
       where: { createdAt: { lt: new Date(Date.now() - days * 86_400_000) } },

@@ -54,6 +54,17 @@ describe('AuditService', () => {
     expect(r).toMatchObject({ total: 0, page: 2, pageSize: 10 });
   });
 
+  it('modules devolve os módulos distintos em ordem alfabética', async () => {
+    const { prisma, svc } = setup();
+    prisma.auditLog.findMany.mockResolvedValueOnce([{ module: 'auth' }, { module: 'tickets' }]);
+    expect(await svc.modules()).toEqual(['auth', 'tickets']);
+    expect(prisma.auditLog.findMany).toHaveBeenCalledWith({
+      distinct: ['module'],
+      select: { module: true },
+      orderBy: { module: 'asc' },
+    });
+  });
+
   it('purgeOlderThan usa now - dias', async () => {
     const { prisma, svc } = setup();
     expect(await svc.purgeOlderThan(90)).toBe(3);
