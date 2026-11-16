@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 import { IntegrationsService, extractToken } from './integrations.service.js';
 import { hashToken } from '../agent/token.util.js';
 
@@ -92,5 +92,76 @@ describe('IntegrationsService.ingest', () => {
     await svc.ingest('tok', { title: 'x', assetSerial: 'SN1' });
     expect(prisma.asset.findFirst.mock.calls[0][0].where).toEqual({ clientId: 'c1', serialNumber: 'SN1' });
     expect(tickets.create.mock.calls[0][0]).toMatchObject({ assetIds: ['a1'], locationId: 'l1' });
+  });
+});
+
+describe('IntegrationsService.ingest — construtor de eventos', () => {
+  const UNIFI = {
+    alarm: {
+      name: 'Device Update Status',
+      triggers: [{ key: 'update', device: 'SN-CAM-1', eventId: 'ev1' }],
+      thumbnail: 'data:image/jpeg;base64,' + 'A'.repeat(5000),
+    },
+  };
+  const MAPPING = {
+    title: 'UniFi: {{alarm.name}}',
+    description: 'Gatilho {{alarm.triggers.0.key}}',
+    externalId: '{{alarm.name}}',
+    assetSerial: '{{alarm.triggers.0.device}}',
+    priority: 'HIGH',
+  };
+
+  it('sem mapeamento e sem title → captura (sem chamado) e guarda o exemplo cortado', async () => {
+    const { svc, tickets, prisma } = make();
+    const r = await svc.ingest('tok', UNIFI);
+    expect(r).toEqual({ captured: true });
+    expect(tickets.create).not.toHaveBeenCalled();
+    const data = prisma.integration.update.mock.calls[0][0].data;
+    expect(data.lastPayload.alarm.name).toBe('Device Update Status');
+    expect(data.lastPayload.alarm.thumbnail.length).toBeLessThan(600);
+    expect(data.lastPayloadAt).toBeInstanceOf(Date);
+  });
+
+  it('com mapeamento → abre chamado com os campos renderizados', async () => {
+    const { svc, tickets, prisma } = make({
+      integ: { ...INTEG, mapping: MAPPING },
+      asset: { id: 'a1', locationId: 'l1' },
+    });
+    const r = await svc.ingest('tok', UNIFI);
+    expect(r).toEqual({ ticketId: 't9', number: '000009', created: true });
+    expect(tickets.create.mock.calls[0][0]).toMatchObject({
+      title: 'UniFi: Device Update Status',
+      description: 'Gatilho update',
+      priority: 'HIGH',
+      externalId: 'Device Update Status',
+      assetIds: ['a1'],
+      locationId: 'l1',
+    });
+    expect(prisma.asset.findFirst.mock.calls[0][0].where).toEqual({ clientId: 'c1', serialNumber: 'SN-CAM-1' });
+  });
+
+  it('mapeamento tem prioridade sobre o formato padrão; dedup por externalId renderizado', async () => {
+    const { svc, tickets, events } = make({
+      integ: { ...INTEG, mapping: MAPPING },
+      open: { id: 't1', number: '000001' },
+    });
+    const r = await svc.ingest('tok', { ...UNIFI, title: 'ignorado' });
+    expect(r).toEqual({ ticketId: 't1', number: '000001', created: false });
+    expect(tickets.create).not.toHaveBeenCalled();
+    expect(events.record.mock.calls[0][3]).toMatchObject({ title: 'UniFi: Device Update Status' });
+  });
+
+  it('mapeamento que gera título vazio → 422', async () => {
+    const { svc } = make({ integ: { ...INTEG, mapping: { title: '{{nao.existe}}' } } });
+    await expect(svc.ingest('tok', UNIFI)).rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+
+  it('formato padrão inválido → 400; corpo não-objeto → captura', async () => {
+    const { svc } = make();
+    await expect(svc.ingest('tok', { title: 'x', severity: 'pânico' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    await expect(svc.ingest('tok', [1, 2])).resolves.toEqual({ captured: true });
+    await expect(svc.ingest('tok', undefined)).resolves.toEqual({ captured: true });
   });
 });

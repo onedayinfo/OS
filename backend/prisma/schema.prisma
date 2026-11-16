@@ -974,6 +974,11 @@ model Integration {
   tokenHash   String    @unique
   active      Boolean   @default(true)
   lastEventAt DateTime?
+  /// Modelos {{caminho}} por campo do chamado (construtor de eventos); null = formato padrão/captura.
+  mapping       Json?
+  /// Último JSON recebido (strings longas cortadas), usado como exemplo para mapear.
+  lastPayload   Json?
+  lastPayloadAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

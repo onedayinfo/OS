@@ -3,7 +3,6 @@ import type { Response } from 'express';
 import { Public } from '../common/public.decorator.js';
 import { Roles } from '../common/roles.decorator.js';
 import { IntegrationsService, extractToken } from './integrations.service.js';
-import { IntegrationEventDto } from './dto/integration-event.dto.js';
 import { CreateIntegrationDto, UpdateIntegrationDto } from './dto/integration.dto.js';
 
 /** Webhook público: sistemas externos autenticam com o token da integração. */
@@ -16,11 +15,13 @@ export class IntegrationEventsController {
   async receive(
     @Headers('authorization') auth: string | undefined,
     @Headers('x-webhook-token') headerToken: string | undefined,
-    @Body() dto: IntegrationEventDto,
+    // `unknown` → o ValidationPipe global não mexe: aceita qualquer JSON (o
+    // formato padrão é validado no service; o resto vai pelo mapeamento/captura).
+    @Body() payload: unknown,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.integrations.ingest(extractToken(auth, headerToken), dto);
-    res.status(result.created ? 201 : 200);
+    const result = await this.integrations.ingest(extractToken(auth, headerToken), payload);
+    res.status('captured' in result ? 202 : result.created ? 201 : 200);
     return result;
   }
 }
@@ -33,6 +34,11 @@ export class IntegrationsController {
   @Get()
   findAll() {
     return this.integrations.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.integrations.findOne(id);
   }
 
   @Post()

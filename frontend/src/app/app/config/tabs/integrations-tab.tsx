@@ -9,12 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import IntegrationMapping from './integration-mapping';
 
 interface Integration {
   id: string;
   name: string;
   active: boolean;
   lastEventAt: string | null;
+  lastPayloadAt: string | null;
+  mapping: unknown;
   client: { id: string; name: string };
   category: { id: string; name: string } | null;
   token?: string;
@@ -39,9 +42,10 @@ function TokenBox({ integ, onClose }: { integ: Integration; onClose: () => void 
       <p className="text-xs text-muted-foreground">URL: {url}</p>
       <pre className="overflow-x-auto rounded bg-muted p-2 text-xs">{curl}</pre>
       <p className="text-xs text-muted-foreground">
-        Campos: <b>title</b> (obrigatório), description, severity (low|medium|high|urgent),
+        Formato padrão: <b>title</b> (obrigatório), description, severity (low|medium|high|urgent),
         externalId (evita chamado duplicado enquanto o anterior estiver aberto), assetSerial
-        (nº de série do ativo do cliente).
+        (nº de série do ativo do cliente). Outro formato: o evento fica guardado e você mapeia
+        os campos em “Mapear campos”.
       </p>
       <div className="flex gap-2">
         <Button
@@ -65,6 +69,7 @@ export default function IntegrationsTab() {
   const qc = useQueryClient();
   const [form, setForm] = useState({ name: '', clientId: '', categoryId: '' });
   const [shown, setShown] = useState<Integration | null>(null);
+  const [mapping, setMapping] = useState<string | null>(null);
   const invalidate = () => qc.invalidateQueries({ queryKey: ['integrations'] });
 
   const { data } = useQuery({
@@ -125,6 +130,8 @@ export default function IntegrationsTab() {
       <p className="text-sm text-muted-foreground">
         Sistemas e dispositivos externos (monitoramento, central de alarme, NVR, scripts) abrem
         chamados com um <code>POST</code> JSON. Cada integração tem token próprio e cliente fixo.
+        Se o equipamento manda um formato próprio (ex.: UniFi Protect), envie um evento e use
+        <b> Mapear campos</b> para ligar os dados recebidos aos campos do chamado.
       </p>
 
       {shown?.token && <TokenBox integ={shown} onClose={() => setShown(null)} />}
@@ -199,11 +206,21 @@ export default function IntegrationsTab() {
               {i.category ? ` · ${i.category.name}` : ''}
             </span>
             <Badge tone={i.active ? 'green' : 'neutral'}>{i.active ? 'Ativa' : 'Inativa'}</Badge>
+            <Badge tone={i.mapping ? 'blue' : i.lastPayloadAt ? 'amber' : 'neutral'}>
+              {i.mapping ? 'Mapeada' : i.lastPayloadAt ? 'Exemplo recebido' : 'Aguardando evento'}
+            </Badge>
             <span className="text-xs text-muted-foreground">
               Último evento:{' '}
               {i.lastEventAt ? new Date(i.lastEventAt).toLocaleString('pt-BR') : 'nunca'}
             </span>
             <span className="ml-auto flex gap-3">
+              <button
+                type="button"
+                className="text-primary hover:underline"
+                onClick={() => setMapping(mapping === i.id ? null : i.id)}
+              >
+                Mapear campos
+              </button>
               <button
                 type="button"
                 className="text-primary hover:underline"
@@ -232,6 +249,11 @@ export default function IntegrationsTab() {
                 Excluir
               </button>
             </span>
+            {mapping === i.id && (
+              <div className="basis-full pt-2">
+                <IntegrationMapping key={i.id} id={i.id} onClose={() => setMapping(null)} />
+              </div>
+            )}
           </li>
         ))}
       </ul>

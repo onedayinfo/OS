@@ -3,6 +3,20 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.19.0] - 2026-11-16
+
+### Adicionado
+- **Construtor de eventos** nas Integrações: o webhook `POST /api/integrations/events` aceita
+  qualquer JSON (ex.: UniFi Protect). O último evento recebido fica guardado como exemplo e, em
+  **Mapear campos**, cada campo do chamado (título, descrição, ID externo, nº de série do ativo)
+  recebe um modelo com marcadores `{{caminho}}` clicando nos dados do exemplo, com
+  pré-visualização. Prioridade fixa por integração.
+- Sem mapeamento, eventos fora do formato padrão só são guardados (`202`, sem chamado); o formato
+  padrão (`title`…) continua funcionando como antes. Limite de 2 MB nesta rota; textos longos (ex.:
+  miniatura em base64) são cortados no exemplo salvo.
+- Mapeamento cujo título não acha nenhum dado no evento responde `422` (evita chamado "vazio" quando
+  chega um evento de outro formato).
+
 ## [0.18.0] - 2026-11-13
 
 ### Adicionado

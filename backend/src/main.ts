@@ -42,6 +42,8 @@ async function bootstrap() {
   setupRateLimit(app);
   // O parser do checkin vem primeiro; o `json` padrão abaixo pula quem já foi lido.
   app.use('/api/agent/checkin', express.json({ limit: '2mb' }));
+  // Webhook de integrações: equipamentos mandam JSON próprio (ex.: miniatura base64 do UniFi).
+  app.use('/api/integrations/events', express.json({ limit: '2mb' }));
   app.useBodyParser('json');
   app.useBodyParser('urlencoded', { extended: true });
   app.use(cookieParser());
