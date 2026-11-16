@@ -31,6 +31,7 @@ export const SETTING_KEYS = [
   'improvements.diskFreePct',
   'improvements.biosMaxYears',
   'improvements.staleDays',
+  'audit.retentionDays',
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];

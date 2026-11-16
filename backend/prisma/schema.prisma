@@ -142,6 +142,7 @@ model User {
   opportunitiesOwned   Opportunity[]
   opportunityNotes     OpportunityNote[]
   whatsappMessages     WhatsappMessage[]
+  auditLogs            AuditLog[]
 
   @@map("users")
 }
@@ -988,4 +989,31 @@ model Integration {
 
   @@index([clientId])
   @@map("integrations")
+}
+
+enum AuditKind {
+  ACTION
+  ERROR
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  kind       AuditKind
+  level      String // info | warn | error
+  actorId    String?
+  actorLabel String?
+  ip         String?
+  method     String?
+  path       String?
+  status     Int?
+  module     String
+  message    String
+  data       Json?
+  actor      User?     @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([kind, createdAt])
+  @@index([actorId])
+  @@map("audit_logs")
 }
