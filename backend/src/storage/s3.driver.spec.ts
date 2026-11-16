@@ -68,3 +68,25 @@ describe('S3StorageDriver', () => {
     expect(await d.list('backups/')).toEqual(['backups/1.json', 'backups/2.json']);
   });
 });
+
+describe('describeStorageError', () => {
+  it('mostra HTTP do endpoint quando o SDK devolve UnknownError', async () => {
+    const { describeStorageError } = await import('./s3.driver.js');
+    const err = Object.assign(new Error('UnknownError'), {
+      name: 'UnknownError',
+      $metadata: { httpStatusCode: 502 },
+    });
+    expect(describeStorageError(err)).toBe('UnknownError — endpoint respondeu HTTP 502');
+  });
+  it('mostra código S3 e causa de rede', async () => {
+    const { describeStorageError } = await import('./s3.driver.js');
+    expect(
+      describeStorageError(
+        Object.assign(new Error('Access Denied'), { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } }),
+      ),
+    ).toBe('AccessDenied — Access Denied — endpoint respondeu HTTP 403');
+    expect(describeStorageError(Object.assign(new Error('getaddrinfo ENOTFOUND x'), { code: 'ENOTFOUND' }))).toBe(
+      'getaddrinfo ENOTFOUND x — rede: ENOTFOUND',
+    );
+  });
+});
