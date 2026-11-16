@@ -18,6 +18,7 @@ import WhatsappTab from './tabs/whatsapp-tab';
 import StorageTab from './tabs/storage-tab';
 import AppearanceTab from './tabs/appearance-tab';
 import BackupTab from './tabs/backup-tab';
+import AuditTab from './tabs/audit-tab';
 import IntegrationsTab from './tabs/integrations-tab';
 import ImprovementsTab from './tabs/improvements-tab';
 
@@ -563,6 +564,7 @@ export default function ConfigPage() {
           { value: 'armazenamento', label: 'Armazenamento' },
           { value: 'aparencia', label: 'Aparência' },
           { value: 'backup', label: 'Backup' },
+          { value: 'auditoria', label: 'Auditoria' },
         ]
       : []),
   ];
@@ -583,6 +585,7 @@ export default function ConfigPage() {
       {tab === 'armazenamento' && isAdmin && <StorageTab />}
       {tab === 'aparencia' && isAdmin && <AppearanceTab />}
       {tab === 'backup' && isAdmin && <BackupTab />}
+      {tab === 'auditoria' && isAdmin && <AuditTab />}
     </div>
   );
 }
