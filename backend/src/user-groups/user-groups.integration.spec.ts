@@ -259,6 +259,10 @@ describe('Grupos de permissão — integração (Postgres real)', () => {
       'u2',
     ).expect(403);
     await as(http().patch(`/users/${id.u1}`).send({ active: true }), 'u2').expect(403);
+    const c = await prisma!.user.create({
+      data: { name: 'c2', email: `c2${EMAIL}`, role: 'CONTACT', type: 'CLIENT', clientId: id.client, passwordHash: 'x' },
+    });
+    await as(http().patch(`/users/${c.id}`).send({ phone: '11987654321', active: false }), 'u2').expect(200);
   });
 
   it('u0 (admin pleno) não coloca grupo em si mesmo → 403', async (ctx) => {

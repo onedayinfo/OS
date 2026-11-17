@@ -25,7 +25,6 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Screen('config')
   update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() actor: CurrentUserData) {
     return this.users.update(id, dto, actor);
   }

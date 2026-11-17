@@ -172,6 +172,11 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto, actor: CurrentUserData) {
     const found = await this.prisma.user.findUnique({ where: { id } });
     if (!found) throw new NotFoundException('Usuário não encontrado.');
+    // Editar usuário interno exige a tela `config`; contato (CLIENT) segue sem tela.
+    if (found.type === 'INTERNAL') {
+      const screens = await this.groups.screensFor(actor.id);
+      if (screens && !screens.includes('config')) throw new ForbiddenException('Sem acesso a esta tela.');
+    }
     // Admin pleno só é editado por admin pleno (ex.: desativar o dono do sistema).
     if (found.role === 'ADMIN' && !found.groupId) await assertFullAdmin(this.groups, actor.id);
     const data: { name?: string; active?: boolean; phone?: string | null; groupId?: string | null } = {};
