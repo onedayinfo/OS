@@ -297,7 +297,10 @@ function UsersTab() {
     password: '',
     groupId: '',
   });
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['users', 'INTERNAL'] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['users', 'INTERNAL'] });
+    qc.invalidateQueries({ queryKey: ['user-groups'] }); // memberCount
+  };
 
   const { data } = useQuery({
     queryKey: ['users', 'INTERNAL'],
