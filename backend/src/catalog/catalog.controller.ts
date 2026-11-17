@@ -1,15 +1,18 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen, SkipScreen } from '../common/screen.decorator.js';
 import { CatalogService } from './catalog.service.js';
 import { CreateCatalogItemDto } from './dto/create-catalog-item.dto.js';
 import { UpdateCatalogItemDto } from './dto/update-catalog-item.dto.js';
 import { ListCatalogItemsDto } from './dto/list-catalog-items.dto.js';
 
+@Screen('catalogo')
 @Controller('catalog-items')
 @Roles('ADMIN', 'AGENT')
 export class CatalogController {
   constructor(private readonly catalog: CatalogService) {}
 
+  @SkipScreen()
   @Get()
   findAll(@Query() query: ListCatalogItemsDto) {
     return this.catalog.findAll(query);

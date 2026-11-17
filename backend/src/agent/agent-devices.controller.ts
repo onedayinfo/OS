@@ -1,11 +1,13 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen } from '../common/screen.decorator.js';
 import { AgentDevicesService } from './agent-devices.service.js';
 import { ApproveDeviceDto } from './dto/approve-device.dto.js';
 import { LinkDeviceDto } from './dto/link-device.dto.js';
 import { ListDevicesDto } from './dto/list-devices.dto.js';
 
 @Roles('ADMIN', 'AGENT')
+@Screen('ativos')
 @Controller('agent-devices')
 export class AgentDevicesController {
   constructor(private readonly svc: AgentDevicesService) {}

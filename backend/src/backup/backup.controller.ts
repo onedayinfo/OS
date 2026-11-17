@@ -14,11 +14,13 @@ import type { Response } from 'express';
 import { CurrentUser } from '../common/current-user.decorator.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen } from '../common/screen.decorator.js';
 import { StorageService } from '../storage/storage.service.js';
 import type { UploadedFile as UF } from '../attachments/storage.util.js';
 import { BackupService } from './backup.service.js';
 import { ImportBackupDto } from './dto/import-backup.dto.js';
 
+@Screen('config')
 @Controller('backup')
 @Roles('ADMIN')
 export class BackupController {

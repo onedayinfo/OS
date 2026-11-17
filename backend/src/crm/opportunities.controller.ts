@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen } from '../common/screen.decorator.js';
 import { CurrentUser } from '../common/current-user.decorator.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { OpportunitiesService } from './opportunities.service.js';
@@ -9,6 +10,7 @@ import { ListOpportunitiesDto } from './dto/list-opportunities.dto.js';
 import { ChangeStageDto } from './dto/change-stage.dto.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
 
+@Screen('crm')
 @Controller('opportunities')
 @Roles('ADMIN', 'AGENT')
 export class OpportunitiesController {

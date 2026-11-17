@@ -13,7 +13,7 @@ function makeService() {
     },
   };
   const mail = { sendInvite: vi.fn().mockResolvedValue(undefined) };
-  return { service: new UsersService(prisma as any, mail as any), prisma };
+  return { service: new UsersService(prisma as any, mail as any, {} as any), prisma };
 }
 
 describe('telefone do contato', () => {
@@ -26,20 +26,20 @@ describe('telefone do contato', () => {
 
   it('update: string vazia limpa o telefone; ausente não mexe', async () => {
     const { service, prisma } = makeService();
-    await service.update('u1', { phone: '' } as any);
+    await service.update('u1', { phone: '' } as any, {} as any);
     expect(prisma.user.update.mock.calls[0][0].data).toEqual({ phone: null });
-    await service.update('u1', { name: 'B' } as any);
+    await service.update('u1', { name: 'B' } as any, {} as any);
     expect(prisma.user.update.mock.calls[1][0].data).toEqual({ name: 'B' });
   });
 
   it('telefone curto demais é erro (não apaga em silêncio); em branco ainda limpa', async () => {
     const { service, prisma } = makeService();
-    await expect(service.update('u1', { phone: '123' } as any)).rejects.toThrow('Telefone inválido.');
+    await expect(service.update('u1', { phone: '123' } as any, {} as any)).rejects.toThrow('Telefone inválido.');
     await expect(
       service.createContact('c1', { name: 'N', email: 'n@x.com', role: 'CONTACT', phone: '12-34' } as any),
     ).rejects.toThrow('Telefone inválido.');
     expect(prisma.user.update).not.toHaveBeenCalled();
-    await service.update('u1', { phone: '   ' } as any);
+    await service.update('u1', { phone: '   ' } as any, {} as any);
     expect(prisma.user.update.mock.calls[0][0].data).toEqual({ phone: null });
   });
 });

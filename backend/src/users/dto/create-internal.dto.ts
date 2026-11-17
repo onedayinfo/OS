@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, MinLength, ValidateIf } from 'class-validator';
 
 export class CreateInternalDto {
   @IsString()
@@ -14,4 +14,9 @@ export class CreateInternalDto {
   @IsString()
   @MinLength(8)
   password!: string;
+
+  @ValidateIf((_o, v) => v !== null)
+  @IsOptional()
+  @IsString()
+  groupId?: string | null;
 }

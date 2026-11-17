@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import type { UserType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -9,6 +15,8 @@ import { CreateContactDto } from './dto/create-contact.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { publicUser, publicUsers } from './user-view.js';
 import { normalizePhone } from '../common/phone.util.js';
+import type { CurrentUserData } from '../common/current-user.decorator.js';
+import { UserGroupsService } from '../user-groups/user-groups.service.js';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -17,15 +25,41 @@ export class UsersService {
   /** Vazio limpa (null); preenchido mas curto demais é erro, não apagamento silencioso. */
   private phoneOrThrow(raw: string | null | undefined): string | null {
     const p = normalizePhone(raw);
-    if (!p && raw && raw.trim()) throw new BadRequestException('Telefone inválido.');
+    if (!p && raw && raw.trim())
+      throw new BadRequestException('Telefone inválido.');
     return p;
   }
-
 
   constructor(
     private readonly prisma: PrismaService,
     @Inject('MailSender') private readonly mail: MailSender,
+    private readonly groups: UserGroupsService,
   ) {}
+
+  /** Só o admin pleno (sem grupo) atribui/remove grupo; só INTERNAL tem grupo. */
+  private async assertCanSetGroup(
+    actor: CurrentUserData,
+    target: { type: string },
+  ) {
+    if (!(await this.groups.isFullAdmin(actor.id))) {
+      throw new ForbiddenException('Sem acesso a esta tela.');
+    }
+    if (target.type !== 'INTERNAL') {
+      throw new BadRequestException('Grupos são só para usuários internos.');
+    }
+  }
+
+  /** FK inexistente (P2003) / registro ausente (P2025) → 400 amigável. */
+  private async withGroupCheck<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code === 'P2003' || code === 'P2025')
+        throw new BadRequestException('Grupo não encontrado.');
+      throw e;
+    }
+  }
 
   /** Uso interno pelo inbound de e-mail (Fase 9) — NÃO é rota; devolve o registro cru. */
   findByEmail(email: string) {
@@ -50,17 +84,23 @@ export class UsersService {
     return publicUsers(list);
   }
 
-  async createInternal(dto: CreateInternalDto) {
-    const user = await this.prisma.user.create({
-      data: {
-        name: dto.name,
-        email: dto.email,
-        role: dto.role,
-        type: 'INTERNAL',
-        passwordHash: await hashPassword(dto.password),
-        active: true,
-      },
-    });
+  async createInternal(dto: CreateInternalDto, actor: CurrentUserData) {
+    if (dto.groupId !== undefined)
+      await this.assertCanSetGroup(actor, { type: 'INTERNAL' });
+    const passwordHash = await hashPassword(dto.password);
+    const user = await this.withGroupCheck(() =>
+      this.prisma.user.create({
+        data: {
+          name: dto.name,
+          email: dto.email,
+          role: dto.role,
+          type: 'INTERNAL',
+          passwordHash,
+          active: true,
+          groupId: dto.groupId,
+        },
+      }),
+    );
     return publicUser(user);
   }
 
@@ -107,11 +147,16 @@ export class UsersService {
       user.type === 'INTERNAL'
         ? `${process.env.APP_URL}/app`
         : `${process.env.PORTAL_URL}/portal`;
-    await this.mail.sendInvite(user, `${base}/definir-senha?token=${inviteToken}`);
+    await this.mail.sendInvite(
+      user,
+      `${base}/definir-senha?token=${inviteToken}`,
+    );
   }
 
   async setPassword(token: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { inviteToken: token } });
+    const user = await this.prisma.user.findUnique({
+      where: { inviteToken: token },
+    });
     if (!user || !user.inviteSentAt) {
       throw new BadRequestException('Convite inválido.');
     }
@@ -136,14 +181,25 @@ export class UsersService {
     return publicUser(updated);
   }
 
-  async update(id: string, dto: UpdateUserDto) {
+  async update(id: string, dto: UpdateUserDto, actor: CurrentUserData) {
     const found = await this.prisma.user.findUnique({ where: { id } });
     if (!found) throw new NotFoundException('Usuário não encontrado.');
-    const data: { name?: string; active?: boolean; phone?: string | null } = {};
+    const data: {
+      name?: string;
+      active?: boolean;
+      phone?: string | null;
+      groupId?: string | null;
+    } = {};
+    if (dto.groupId !== undefined) {
+      await this.assertCanSetGroup(actor, found);
+      data.groupId = dto.groupId;
+    }
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.active !== undefined) data.active = dto.active;
     if (dto.phone !== undefined) data.phone = this.phoneOrThrow(dto.phone);
-    const updated = await this.prisma.user.update({ where: { id }, data });
+    const updated = await this.withGroupCheck(() =>
+      this.prisma.user.update({ where: { id }, data }),
+    );
     return publicUser(updated);
   }
 }

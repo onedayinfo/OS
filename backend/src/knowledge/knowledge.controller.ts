@@ -1,11 +1,13 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen, SkipScreen } from '../common/screen.decorator.js';
 import { CurrentUser } from '../common/current-user.decorator.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { KnowledgeService } from './knowledge.service.js';
 import { CreateArticleDto } from './dto/create-article.dto.js';
 import { UpdateArticleDto } from './dto/update-article.dto.js';
 
+@Screen('base-conhecimento')
 @Controller('knowledge-articles')
 export class KnowledgeController {
   constructor(private readonly knowledge: KnowledgeService) {}
@@ -27,6 +29,7 @@ export class KnowledgeController {
   }
 
   // Precisa vir ANTES de `:id` — senão "suggestions" seria lido como um id.
+  @SkipScreen()
   @Get('suggestions')
   @Roles('ADMIN', 'AGENT')
   suggestions(@Query('ticketId') ticketId: string) {

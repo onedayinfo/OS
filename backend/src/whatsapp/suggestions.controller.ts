@@ -1,10 +1,12 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen } from '../common/screen.decorator.js';
 import { CurrentUser } from '../common/current-user.decorator.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { SuggestionsService } from './suggestions.service.js';
 import { AcceptSuggestionDto } from './dto/suggestion.dto.js';
 
+@Screen('triagem')
 @Controller('whatsapp/suggestions')
 @Roles('ADMIN', 'AGENT')
 export class SuggestionsController {

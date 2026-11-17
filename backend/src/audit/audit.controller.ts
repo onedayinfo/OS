@@ -1,9 +1,11 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen } from '../common/screen.decorator.js';
 import { AuditQueryDto } from './dto/audit-query.dto.js';
 import { AuditService } from './audit.service.js';
 
 /** Consulta do log de auditoria: restrita a ADMIN. */
+@Screen('config')
 @Controller('audit')
 @Roles('ADMIN')
 export class AuditController {

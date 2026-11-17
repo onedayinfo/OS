@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen } from '../common/screen.decorator.js';
 import { StorageService } from '../storage/storage.service.js';
 import { describeStorageError } from '../storage/s3.driver.js';
 import type { UploadedFile as UF } from '../attachments/storage.util.js';
@@ -32,6 +33,7 @@ const LOGO_MIMES = new Set([
   'image/svg+xml',
 ]);
 
+@Screen('config')
 @Controller('settings')
 @Roles('ADMIN')
 export class SettingsController {

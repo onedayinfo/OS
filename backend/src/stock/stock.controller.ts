@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen, SkipScreen } from '../common/screen.decorator.js';
 import { CurrentUser } from '../common/current-user.decorator.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { StockService } from './stock.service.js';
@@ -10,11 +11,13 @@ import { UpdateStockBalanceDto } from './dto/update-stock-balance.dto.js';
 import { CreateStockEntryDto } from './dto/create-stock-entry.dto.js';
 import { CreateStockTransferDto } from './dto/create-stock-transfer.dto.js';
 
+@Screen('estoque')
 @Controller()
 @Roles('ADMIN', 'AGENT')
 export class StockController {
   constructor(private readonly stock: StockService) {}
 
+  @SkipScreen()
   @Get('warehouses')
   listWarehouses() {
     return this.stock.listWarehouses();

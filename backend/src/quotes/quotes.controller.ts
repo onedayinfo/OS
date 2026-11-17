@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen, SkipScreen } from '../common/screen.decorator.js';
 import { CurrentUser } from '../common/current-user.decorator.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { QuotesService } from './quotes.service.js';
@@ -7,11 +8,13 @@ import { CreateQuoteDto } from './dto/create-quote.dto.js';
 import { UpdateQuoteDto } from './dto/update-quote.dto.js';
 import { ListQuotesDto } from './dto/list-quotes.dto.js';
 
+@Screen('orcamentos')
 @Controller('quotes')
 @Roles('ADMIN', 'AGENT')
 export class QuotesController {
   constructor(private readonly quotes: QuotesService) {}
 
+  @SkipScreen()
   @Get()
   findAll(@Query() query: ListQuotesDto) {
     return this.quotes.findAll(query);

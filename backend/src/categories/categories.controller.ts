@@ -1,9 +1,11 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen, SkipScreen } from '../common/screen.decorator.js';
 import { CategoriesService } from './categories.service.js';
 import { CreateCategoryDto } from './dto/create-category.dto.js';
 import { UpdateCategoryDto } from './dto/update-category.dto.js';
 
+@Screen('config')
 @Controller('categories')
 export class CategoriesController {
   constructor(private readonly categories: CategoriesService) {}
@@ -18,6 +20,7 @@ export class CategoriesController {
    * Qualquer usuário autenticado (o `JwtAuthGuard` global já exige login).
    * O portal do cliente precisa listar categorias para o form de abrir chamado.
    */
+  @SkipScreen()
   @Get()
   findAll() {
     return this.categories.findAll();

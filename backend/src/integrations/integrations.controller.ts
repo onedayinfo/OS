@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, R
 import type { Response } from 'express';
 import { Public } from '../common/public.decorator.js';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen } from '../common/screen.decorator.js';
 import { IntegrationsService, extractToken } from './integrations.service.js';
 import { CreateIntegrationDto, UpdateIntegrationDto } from './dto/integration.dto.js';
 
@@ -27,6 +28,7 @@ export class IntegrationEventsController {
 }
 
 @Roles('ADMIN')
+@Screen('config')
 @Controller('integrations')
 export class IntegrationsController {
   constructor(private readonly integrations: IntegrationsService) {}

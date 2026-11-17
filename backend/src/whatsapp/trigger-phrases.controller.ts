@@ -1,13 +1,16 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen, SkipScreen } from '../common/screen.decorator.js';
 import { TriggerPhrasesService } from './trigger-phrases.service.js';
 import { ApplyDefaultsDto, CreatePhraseDto, UpdatePhraseDto } from './dto/phrase.dto.js';
 
+@Screen('config')
 @Controller('whatsapp/phrases')
 @Roles('ADMIN', 'AGENT')
 export class TriggerPhrasesController {
   constructor(private readonly phrases: TriggerPhrasesService) {}
 
+  @SkipScreen()
   @Get()
   list(@Query('clientId') clientId?: string) {
     return this.phrases.list(clientId || null);
