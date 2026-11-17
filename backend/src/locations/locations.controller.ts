@@ -1,10 +1,12 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen, SkipScreen } from '../common/screen.decorator.js';
 import { PaginationDto } from '../common/pagination.dto.js';
 import { LocationsService } from './locations.service.js';
 import { CreateLocationDto } from './dto/create-location.dto.js';
 import { UpdateLocationDto } from './dto/update-location.dto.js';
 
+@Screen('clientes')
 @Controller('locations')
 @Roles('ADMIN', 'AGENT')
 export class LocationsController {
@@ -15,6 +17,7 @@ export class LocationsController {
     return this.locations.create(dto);
   }
 
+  @SkipScreen()
   @Get()
   findAll(@Query('clientId') clientId: string | undefined, @Query() query: PaginationDto) {
     return this.locations.findAll(clientId, query);

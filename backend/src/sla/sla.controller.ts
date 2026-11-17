@@ -1,8 +1,10 @@
 import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen } from '../common/screen.decorator.js';
 import { SlaService } from './sla.service.js';
 import { UpdateSlaDto } from './dto/update-sla.dto.js';
 
+@Screen('config')
 @Controller('sla')
 export class SlaController {
   constructor(private readonly sla: SlaService) {}

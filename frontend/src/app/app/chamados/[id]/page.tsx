@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
+import { useSession } from '@/lib/auth';
+import { canSee } from '@/lib/screens';
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
@@ -204,6 +206,7 @@ const STATUS_TONE = {
 
 export default function TicketDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
+  const { user } = useSession();
   const { data: ticket, isLoading, isError } = useTicket(id);
   const { data: agents } = useQuery({
     queryKey: ['users', 'INTERNAL'],
@@ -399,7 +402,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
 
           <TicketMaterialUsages ticketId={id} />
 
-          <TicketQuotes ticketId={id} />
+          {canSee(user, 'orcamentos') && <TicketQuotes ticketId={id} />}
 
           <TicketSatisfaction ticket={ticket} />
 

@@ -19,7 +19,7 @@ describe('respostas de User não vazam passwordHash nem inviteToken', () => {
       },
     };
     const mail = { sendInvite: vi.fn().mockResolvedValue(undefined) };
-    const service = new UsersService(prisma as any, mail as any);
+    const service = new UsersService(prisma as any, mail as any, {} as any);
 
     const result = await service.createContact('cli1', {
       name: 'Contato',
@@ -55,7 +55,7 @@ describe('respostas de User não vazam passwordHash nem inviteToken', () => {
         ]),
       },
     };
-    const service = new UsersService(prisma as any, { sendInvite: vi.fn() } as any);
+    const service = new UsersService(prisma as any, { sendInvite: vi.fn() } as any, {} as any);
 
     const [row] = await service.findAll({});
     expect(row).not.toHaveProperty('passwordHash');
@@ -97,19 +97,19 @@ describe('UsersService.update não permite escalonamento de papel', () => {
         ),
       },
     };
-    return { prisma, service: new UsersService(prisma as any, { sendInvite: vi.fn() } as any) };
+    return { prisma, service: new UsersService(prisma as any, { sendInvite: vi.fn() } as any, {} as any) };
   };
 
   it('ignora role no body (whitelist do DTO): update é chamado sem role', async () => {
     const { prisma, service } = build();
-    await service.update('u1', { role: 'ADMIN' } as any);
+    await service.update('u1', { role: 'ADMIN' } as any, {} as any);
     const data = prisma.user.update.mock.calls[0][0].data;
     expect(data).not.toHaveProperty('role');
   });
 
   it('active: false funciona', async () => {
     const { prisma, service } = build();
-    await service.update('u1', { active: false } as any);
+    await service.update('u1', { active: false } as any, {} as any);
     const data = prisma.user.update.mock.calls[0][0].data;
     expect(data).toEqual({ active: false });
   });
@@ -124,7 +124,7 @@ describe('UsersService.createContact', () => {
     };
     const mail = { sendInvite: vi.fn().mockResolvedValue(undefined) };
     process.env.PORTAL_URL = 'http://portal.local';
-    const service = new UsersService(prisma as any, mail as any);
+    const service = new UsersService(prisma as any, mail as any, {} as any);
 
     await service.createContact('cli1', {
       name: 'Contato',
@@ -154,7 +154,7 @@ describe('UsersService.forgotPassword', () => {
       },
     };
     const mail = { sendInvite: vi.fn().mockResolvedValue(undefined) };
-    return { prisma, mail, service: new UsersService(prisma as any, mail as any) };
+    return { prisma, mail, service: new UsersService(prisma as any, mail as any, {} as any) };
   };
 
   it('e-mail inexistente: 204 sem gerar token nem enviar', async () => {
@@ -213,7 +213,7 @@ describe('UsersService.setPassword', () => {
         update: vi.fn().mockResolvedValue({}),
       },
     };
-    return { prisma, service: new UsersService(prisma as any, { sendInvite: vi.fn() } as any) };
+    return { prisma, service: new UsersService(prisma as any, { sendInvite: vi.fn() } as any, {} as any) };
   };
 
   it('rejeita token com inviteSentAt > 7 dias', async () => {

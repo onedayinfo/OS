@@ -14,6 +14,10 @@ export const E2E_ADMIN_EMAIL = 'admin@e2e.test';
 export const E2E_ADMIN_PASSWORD = 'e2e12345';
 export const E2E_AGENT_EMAIL = 'agente@e2e.test';
 export const E2E_AGENT_PASSWORD = 'e2e12345';
+export const E2E_RESTRICTED_EMAIL = 'admin-restrito@e2e.test';
+export const E2E_RESTRICTED_PASSWORD = 'e2e12345';
+export const E2E_GROUP_NAME = 'Grupo E2E sem CRM';
+const E2E_GROUP_SCREENS = ['dashboard', 'agenda', 'triagem', 'campo', 'clientes', 'ativos', 'contratos', 'orcamentos', 'catalogo', 'estoque', 'base-conhecimento', 'config'];
 export const E2E_ASSET_TYPE = 'Câmera E2E';
 export const E2E_CLIENT_ID = 'e2e-client';
 const E2E_DOMAIN = 'e2e.test';
@@ -45,7 +49,7 @@ async function cleanup(prisma: InstanceType<typeof PrismaClient>): Promise<void>
   // travariam o deleteMany de User abaixo se não somem antes.
   const e2eUserIds = (
     await prisma.user.findMany({
-      where: { email: { in: [E2E_EMAIL, E2E_ADMIN_EMAIL, E2E_AGENT_EMAIL] } },
+      where: { email: { in: [E2E_EMAIL, E2E_ADMIN_EMAIL, E2E_AGENT_EMAIL, E2E_RESTRICTED_EMAIL] } },
       select: { id: true },
     })
   ).map((u) => u.id);
@@ -57,7 +61,8 @@ async function cleanup(prisma: InstanceType<typeof PrismaClient>): Promise<void>
   await prisma.opportunityNote.deleteMany({ where: { opportunity: { title: { startsWith: 'Lead E2E' } } } });
   await prisma.opportunity.deleteMany({ where: { title: { startsWith: 'Lead E2E' } } });
   await prisma.client.deleteMany({ where: { name: { startsWith: 'Lead E2E' } } });
-  await prisma.user.deleteMany({ where: { email: { in: [E2E_EMAIL, E2E_ADMIN_EMAIL, E2E_AGENT_EMAIL] } } });
+  await prisma.user.deleteMany({ where: { email: { in: [E2E_EMAIL, E2E_ADMIN_EMAIL, E2E_AGENT_EMAIL, E2E_RESTRICTED_EMAIL] } } });
+  await prisma.userGroup.deleteMany({ where: { name: E2E_GROUP_NAME } }); // depois dos usuários
   await prisma.client.deleteMany({ where: { id: E2E_CLIENT_ID } });
   await prisma.assetType.deleteMany({ where: { name: E2E_ASSET_TYPE } });
 }
@@ -111,6 +116,26 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
       type: 'INTERNAL',
       role: 'AGENT',
       active: true,
+    },
+  });
+
+  const group = await prisma.userGroup.upsert({
+    where: { name: E2E_GROUP_NAME },
+    update: { screens: E2E_GROUP_SCREENS },
+    create: { name: E2E_GROUP_NAME, screens: E2E_GROUP_SCREENS },
+  });
+  const restrictedHash = await bcrypt.hash(E2E_RESTRICTED_PASSWORD, 10);
+  await prisma.user.upsert({
+    where: { email: E2E_RESTRICTED_EMAIL },
+    update: { passwordHash: restrictedHash, active: true, role: 'ADMIN', type: 'INTERNAL', clientId: null, groupId: group.id },
+    create: {
+      name: 'Admin Restrito E2E',
+      email: E2E_RESTRICTED_EMAIL,
+      passwordHash: restrictedHash,
+      type: 'INTERNAL',
+      role: 'ADMIN',
+      active: true,
+      groupId: group.id,
     },
   });
 

@@ -19,6 +19,7 @@ import StorageTab from './tabs/storage-tab';
 import AppearanceTab from './tabs/appearance-tab';
 import BackupTab from './tabs/backup-tab';
 import AuditTab from './tabs/audit-tab';
+import GroupsTab, { type UserGroup } from './tabs/groups-tab';
 import IntegrationsTab from './tabs/integrations-tab';
 import ImprovementsTab from './tabs/improvements-tab';
 
@@ -282,30 +283,47 @@ function SlaTab() {
 
 function UsersTab() {
   const qc = useQueryClient();
+  const { user: me } = useSession();
+  const fullAdmin = me?.role === 'ADMIN' && !me.groupId;
+  const { data: groups } = useQuery({
+    queryKey: ['user-groups'],
+    queryFn: () => api<UserGroup[]>('/user-groups'),
+    enabled: fullAdmin,
+  });
   const [form, setForm] = useState({
     name: '',
     email: '',
     role: 'AGENT' as 'ADMIN' | 'AGENT',
     password: '',
+    groupId: '',
   });
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['users', 'INTERNAL'] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['users', 'INTERNAL'] });
+    qc.invalidateQueries({ queryKey: ['user-groups'] }); // memberCount
+  };
 
   const { data } = useQuery({
     queryKey: ['users', 'INTERNAL'],
     queryFn: () => api<PublicUser[]>('/users?type=INTERNAL'),
   });
   const create = useMutation({
-    mutationFn: (body: typeof form) => api('/users/internal', { method: 'POST', body }),
+    mutationFn: (body: typeof form) =>
+      api('/users/internal', {
+        method: 'POST',
+        body: { ...body, groupId: fullAdmin && body.groupId ? body.groupId : undefined },
+      }),
     onSuccess: () => {
       invalidate();
-      setForm({ name: '', email: '', role: 'AGENT', password: '' });
+      setForm({ name: '', email: '', role: 'AGENT', password: '', groupId: '' });
       toast.success('Usuário criado.');
     },
     onError: errToast,
   });
   const patch = useMutation({
-    mutationFn: (v: { id: string; active: boolean }) =>
-      api(`/users/${v.id}`, { method: 'PATCH', body: { active: v.active } }),
+    mutationFn: (v: { id: string; active?: boolean; groupId?: string | null }) => {
+      const { id, ...body } = v;
+      return api(`/users/${id}`, { method: 'PATCH', body });
+    },
     onSuccess: () => {
       invalidate();
       toast.success('Usuário atualizado.');
@@ -349,6 +367,21 @@ function UsersTab() {
           <option value="AGENT">Agente</option>
           <option value="ADMIN">Admin</option>
         </Select>
+        {fullAdmin && (
+          <Select
+            className="w-56"
+            aria-label="Grupo"
+            value={form.groupId}
+            onChange={(e) => setForm((f) => ({ ...f, groupId: e.target.value }))}
+          >
+            <option value="">Sem grupo (acesso total do papel)</option>
+            {groups?.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </Select>
+        )}
         <Input
           placeholder="Senha inicial"
           type="password"
@@ -368,6 +401,7 @@ function UsersTab() {
               <th className="px-3 py-2 font-medium">Nome</th>
               <th className="px-3 py-2 font-medium">E-mail</th>
               <th className="px-3 py-2 font-medium">Papel</th>
+              {fullAdmin && <th className="px-3 py-2 font-medium">Grupo</th>}
               <th className="px-3 py-2 font-medium">Situação</th>
               <th className="px-3 py-2 font-medium">Ações</th>
             </tr>
@@ -378,6 +412,24 @@ function UsersTab() {
                 <td className="px-3 py-2">{u.name}</td>
                 <td className="px-3 py-2 text-muted-foreground">{u.email}</td>
                 <td className="px-3 py-2">{u.role === 'ADMIN' ? 'Admin' : 'Agente'}</td>
+                {fullAdmin && (
+                  <td className="px-3 py-2">
+                    <Select
+                      className="w-56"
+                      aria-label="Grupo"
+                      value={u.groupId ?? ''}
+                      disabled={u.id === me?.id || patch.isPending}
+                      onChange={(e) => patch.mutate({ id: u.id, groupId: e.target.value || null })}
+                    >
+                      <option value="">Sem grupo (acesso total do papel)</option>
+                      {groups?.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+                    </Select>
+                  </td>
+                )}
                 <td className="px-3 py-2">
                   <Badge tone={u.active ? 'green' : 'neutral'}>
                     {u.active ? 'Ativo' : 'Inativo'}
@@ -548,22 +600,28 @@ export default function ConfigPage() {
   const [tab, setTab] = useState('categorias');
   const { user } = useSession();
   const isAdmin = user?.role === 'ADMIN';
+  const isFullAdmin = isAdmin && !user?.groupId;
 
   const tabs = [
     { value: 'categorias', label: 'Categorias' },
     { value: 'sla', label: 'SLA' },
     { value: 'usuarios', label: 'Usuários internos' },
+    ...(isFullAdmin
+      ? [
+          { value: 'grupos', label: 'Grupos' },
+          { value: 'email', label: 'E-mail' },
+          { value: 'armazenamento', label: 'Armazenamento' },
+          { value: 'backup', label: 'Backup' },
+        ]
+      : []),
     ...(isAdmin
       ? [
           { value: 'tipos-ativo', label: 'Tipos de ativo' },
           { value: 'checklists', label: 'Checklists' },
-          { value: 'email', label: 'E-mail' },
           { value: 'whatsapp', label: 'WhatsApp' },
           { value: 'integracoes', label: 'Integrações' },
           { value: 'melhorias', label: 'Sugestões de melhoria' },
-          { value: 'armazenamento', label: 'Armazenamento' },
           { value: 'aparencia', label: 'Aparência' },
-          { value: 'backup', label: 'Backup' },
           { value: 'auditoria', label: 'Auditoria' },
         ]
       : []),
@@ -576,15 +634,16 @@ export default function ConfigPage() {
       {tab === 'categorias' && <CategoriesTab />}
       {tab === 'sla' && <SlaTab />}
       {tab === 'usuarios' && <UsersTab />}
+      {tab === 'grupos' && isFullAdmin && <GroupsTab />}
       {tab === 'tipos-ativo' && isAdmin && <AssetTypesTab />}
       {tab === 'checklists' && isAdmin && <ChecklistTemplatesTab />}
-      {tab === 'email' && isAdmin && <EmailTab />}
+      {tab === 'email' && isFullAdmin && <EmailTab />}
       {tab === 'whatsapp' && isAdmin && <WhatsappTab />}
       {tab === 'integracoes' && isAdmin && <IntegrationsTab />}
       {tab === 'melhorias' && isAdmin && <ImprovementsTab />}
-      {tab === 'armazenamento' && isAdmin && <StorageTab />}
+      {tab === 'armazenamento' && isFullAdmin && <StorageTab />}
       {tab === 'aparencia' && isAdmin && <AppearanceTab />}
-      {tab === 'backup' && isAdmin && <BackupTab />}
+      {tab === 'backup' && isFullAdmin && <BackupTab />}
       {tab === 'auditoria' && isAdmin && <AuditTab />}
     </div>
   );

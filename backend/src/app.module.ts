@@ -38,6 +38,7 @@ import { CrmModule } from './crm/crm.module.js';
 import { WhatsappModule } from './whatsapp/whatsapp.module.js';
 import { AgentModule } from './agent/agent.module.js';
 import { IntegrationsModule } from './integrations/integrations.module.js';
+import { UserGroupsModule } from './user-groups/user-groups.module.js';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { IntegrationsModule } from './integrations/integrations.module.js';
     WhatsappModule,
     AgentModule,
     IntegrationsModule,
+    UserGroupsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

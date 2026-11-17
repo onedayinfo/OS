@@ -12,6 +12,7 @@ export function publicUser(u: User) {
     type: u.type,
     role: u.role,
     clientId: u.clientId,
+    groupId: u.groupId,
     phone: u.phone,
     active: u.active,
     lastLoginAt: u.lastLoginAt,

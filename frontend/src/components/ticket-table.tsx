@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/auth';
+import { canSee } from '@/lib/screens';
 import { useDashboardOverview } from '@/lib/dashboard';
 import {
   PRIORITY_LABELS,
@@ -158,7 +159,7 @@ export function TicketTable({ clientId, summary = false }: { clientId?: string; 
   const { data, isLoading, isError } = useTickets(query);
 
   const counts = useQueueCounts(user?.id, summary);
-  const overview = useDashboardOverview(summary);
+  const overview = useDashboardOverview(summary && canSee(user, 'dashboard'));
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],

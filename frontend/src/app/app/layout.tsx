@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth';
+import { canSee, screenForPath } from '@/lib/screens';
 import { AppShell } from '@/components/app-shell';
 
 // Telas de acesso ficam sob /app mas não passam pela guarda de sessão.
@@ -14,17 +15,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const isPublic = PUBLIC_PATHS.includes(pathname);
   const allowed = user?.type === 'INTERNAL';
+  const screen = screenForPath(pathname);
+  const blocked = allowed && !!screen && !canSee(user, screen);
 
   useEffect(() => {
     if (isPublic || loading) return;
     if (!allowed) router.replace('/app/login');
-  }, [isPublic, loading, allowed, router]);
+    else if (blocked) router.replace('/app?semAcesso=1');
+  }, [isPublic, loading, allowed, blocked, router]);
 
   if (isPublic) {
     return <div className="min-h-screen bg-muted/30">{children}</div>;
   }
 
-  if (loading || !allowed) {
+  if (loading || !allowed || blocked) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
         Carregando…

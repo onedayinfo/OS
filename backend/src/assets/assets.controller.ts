@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen, SkipScreen } from '../common/screen.decorator.js';
 import type { UploadedFile as UF } from '../attachments/storage.util.js';
 import { ImprovementsService } from '../agent/improvements.service.js';
 import { AssetsService } from './assets.service.js';
@@ -20,6 +21,7 @@ import { CreateAssetDto } from './dto/create-asset.dto.js';
 import { UpdateAssetDto } from './dto/update-asset.dto.js';
 import { ListAssetsDto } from './dto/list-assets.dto.js';
 
+@Screen('ativos')
 @Controller('assets')
 @Roles('ADMIN', 'AGENT')
 export class AssetsController {
@@ -51,6 +53,7 @@ export class AssetsController {
     return this.assets.create(dto);
   }
 
+  @SkipScreen()
   @Get()
   async findAll(@Query() query: ListAssetsDto) {
     const r = await this.assets.findAll(query);

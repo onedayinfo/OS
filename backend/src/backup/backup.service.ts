@@ -25,6 +25,7 @@ export const TABLE_ORDER_V1 = [
  */
 export const TABLE_ORDER = [
   'client',
+  'userGroup',
   'user',
   'category',
   'slaPolicy',

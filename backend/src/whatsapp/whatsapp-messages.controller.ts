@@ -1,14 +1,17 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen, SkipScreen } from '../common/screen.decorator.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { dayRange, groupConversations, todaySp } from './conversations.util.js';
 
+@Screen('config')
 @Controller('whatsapp/messages')
 @Roles('ADMIN', 'AGENT')
 export class WhatsappMessagesController {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Mensagens de WhatsApp que originaram/foram anexadas a um chamado. */
+  @SkipScreen()
   @Get()
   byTicket(@Query('ticketId') ticketId?: string) {
     if (!ticketId) throw new BadRequestException('ticketId é obrigatório.');
@@ -24,6 +27,7 @@ export class WhatsappMessagesController {
   }
 
   /** Conversas de um dia (padrão: hoje, fuso de São Paulo) agrupadas por cliente > grupo. */
+  @Screen('triagem')
   @Get('conversations')
   async conversations(@Query('date') date?: string) {
     const day = date ?? todaySp();

@@ -1,13 +1,16 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen, SkipScreen } from '../common/screen.decorator.js';
 import { WhatsappGroupsService } from './whatsapp-groups.service.js';
 import { CreateGroupDto, UpdateGroupDto } from './dto/group.dto.js';
 
+@Screen('config')
 @Controller('whatsapp/groups')
 @Roles('ADMIN', 'AGENT')
 export class WhatsappGroupsController {
   constructor(private readonly groups: WhatsappGroupsService) {}
 
+  @SkipScreen()
   @Get()
   list(@Query('clientId') clientId?: string) {
     if (!clientId) throw new BadRequestException('clientId é obrigatório.');

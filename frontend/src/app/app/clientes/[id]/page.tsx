@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, ApiError } from '@/lib/api';
+import { useSession } from '@/lib/auth';
+import { canSee } from '@/lib/screens';
 import type { Paged, PublicUser } from '@/lib/tickets';
 import {
   ASSET_STATUS_LABELS,
@@ -438,6 +440,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
   const { id } = params;
   const qc = useQueryClient();
   const [tab, setTab] = useState('dados');
+  const { user } = useSession();
 
   const { data: client, isLoading } = useQuery({
     queryKey: ['client', id],
@@ -481,9 +484,9 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
           { value: 'dados', label: 'Dados' },
           { value: 'contatos', label: 'Contatos' },
           { value: 'locais', label: 'Locais' },
-          { value: 'ativos', label: 'Ativos' },
-          { value: 'contratos', label: 'Contratos' },
-          { value: 'oportunidades', label: 'Oportunidades' },
+          ...(canSee(user, 'ativos') ? [{ value: 'ativos', label: 'Ativos' }] : []),
+          ...(canSee(user, 'contratos') ? [{ value: 'contratos', label: 'Contratos' }] : []),
+          ...(canSee(user, 'crm') ? [{ value: 'oportunidades', label: 'Oportunidades' }] : []),
           { value: 'whatsapp', label: 'WhatsApp' },
           { value: 'agente', label: 'Agente' },
           { value: 'chamados', label: 'Chamados' },
@@ -517,12 +520,12 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
 
       {tab === 'locais' && <LocationsTab clientId={id} />}
 
-      {tab === 'ativos' && <ClientAssetsTab clientId={id} />}
+      {tab === 'ativos' && canSee(user, 'ativos') && <ClientAssetsTab clientId={id} />}
 
-      {tab === 'contratos' && <ContractsTab clientId={id} />}
+      {tab === 'contratos' && canSee(user, 'contratos') && <ContractsTab clientId={id} />}
 
-      {tab === 'oportunidades' && <OpportunitiesTab clientId={id} />}
-      {tab === 'whatsapp' && <WhatsappClientTab clientId={id} />}
+      {tab === 'oportunidades' && canSee(user, 'crm') && <OpportunitiesTab clientId={id} />}
+      {tab === 'whatsapp' && <WhatsappClientTab clientId={id} readOnly={!canSee(user, 'config')} />}
       {tab === 'agente' && <ClientAgentTab clientId={id} />}
 
       {tab === 'chamados' && (

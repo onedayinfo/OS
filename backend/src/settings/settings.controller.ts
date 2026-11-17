@@ -13,12 +13,16 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { CurrentUser, type CurrentUserData } from '../common/current-user.decorator.js';
+import { assertFullAdmin } from '../user-groups/assert-full-admin.js';
+import { UserGroupsService } from '../user-groups/user-groups.service.js';
 import { Roles } from '../common/roles.decorator.js';
+import { Screen } from '../common/screen.decorator.js';
 import { StorageService } from '../storage/storage.service.js';
 import { describeStorageError } from '../storage/s3.driver.js';
 import type { UploadedFile as UF } from '../attachments/storage.util.js';
 import { isEncryptionKeySet } from './crypto.util.js';
-import { SETTING_KEYS } from './settings.keys.js';
+import { SECRET_KEYS, SETTING_KEYS } from './settings.keys.js';
 import { SettingsService } from './settings.service.js';
 import { UpdateSettingsDto } from './dto/update-settings.dto.js';
 
@@ -32,6 +36,7 @@ const LOGO_MIMES = new Set([
   'image/svg+xml',
 ]);
 
+@Screen('config')
 @Controller('settings')
 @Roles('ADMIN')
 export class SettingsController {
@@ -40,6 +45,7 @@ export class SettingsController {
   constructor(
     private readonly settings: SettingsService,
     private readonly storage: StorageService,
+    private readonly groups: UserGroupsService,
   ) {}
 
   @Get()
@@ -48,10 +54,14 @@ export class SettingsController {
   }
 
   @Put()
-  async update(@Body() dto: UpdateSettingsDto) {
+  async update(@Body() dto: UpdateSettingsDto, @CurrentUser() actor: CurrentUserData) {
     const entries = Object.entries(dto.values ?? {});
     for (const [key] of entries) {
       if (!KNOWN.has(key)) throw new BadRequestException(`Configuração desconhecida: ${key}.`);
+    }
+    // Chaves sensíveis (segredos, e-mail, armazenamento) só o admin pleno altera.
+    if (entries.some(([k]) => SECRET_KEYS.has(k) || k.startsWith('storage.') || k === 'mail.from')) {
+      await assertFullAdmin(this.groups, actor.id);
     }
     for (const [key, value] of entries) {
       await this.settings.set(key, String(value ?? ''));
