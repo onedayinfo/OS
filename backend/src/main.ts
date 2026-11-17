@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
+import { AuditLogger } from './audit/audit.logger.js';
 import { setupRateLimit } from './common/rate-limit.js';
 
 async function bootstrap() {
@@ -13,7 +14,8 @@ async function bootstrap() {
   // InboundController).
   // `bodyParser: false`: registramos os parsers à mão (abaixo) para dar 2 MB só a
   // /api/agent/checkin (inventário de software), mantendo o padrão do Nest (100kb) no resto.
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true, bodyParser: false });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true, bodyParser: false, bufferLogs: true });
+  app.useLogger(app.get(AuditLogger));
   app.setGlobalPrefix('api');
   // Atrás do Cloudflare Tunnel → cloudflared → container `frontend` (proxy do
   // Next). Confia em 1 hop de proxy para `req.ip` / `X-Forwarded-For` valerem.

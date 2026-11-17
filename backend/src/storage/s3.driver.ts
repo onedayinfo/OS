@@ -91,3 +91,28 @@ export class S3StorageDriver implements StorageDriver {
       .map((k) => k.slice(this.prefix.length));
   }
 }
+
+/**
+ * Mensagem legível de um erro do SDK S3. O `message` sozinho costuma vir vazio
+ * ("UnknownError") quando o endpoint devolve algo que não é XML (ex.: proxy na
+ * frente do MinIO respondendo 502) — então juntamos código, HTTP do endpoint e
+ * causa de rede (ENOTFOUND, ECONNREFUSED, certificado...).
+ */
+export function describeStorageError(err: unknown): string {
+  const e = (err ?? {}) as {
+    name?: string;
+    message?: string;
+    Code?: string;
+    code?: string;
+    $metadata?: { httpStatusCode?: number };
+    cause?: { code?: string; message?: string };
+  };
+  const parts = [e.Code ?? e.name, e.message].filter(
+    (p, i, a) => p && p !== 'Error' && a.indexOf(p) === i,
+  );
+  const http = e.$metadata?.httpStatusCode;
+  if (http) parts.push(`endpoint respondeu HTTP ${http}`);
+  const net = e.code ?? e.cause?.code;
+  if (net) parts.push(`rede: ${net}${e.cause?.message ? ` (${e.cause.message})` : ''}`);
+  return parts.join(' — ') || 'erro desconhecido';
+}

@@ -6,6 +6,7 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Logger,
   Post,
   Put,
   UploadedFile,
@@ -14,6 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Roles } from '../common/roles.decorator.js';
 import { StorageService } from '../storage/storage.service.js';
+import { describeStorageError } from '../storage/s3.driver.js';
 import type { UploadedFile as UF } from '../attachments/storage.util.js';
 import { isEncryptionKeySet } from './crypto.util.js';
 import { SETTING_KEYS } from './settings.keys.js';
@@ -33,6 +35,8 @@ const LOGO_MIMES = new Set([
 @Controller('settings')
 @Roles('ADMIN')
 export class SettingsController {
+  private readonly logger = new Logger(SettingsController.name);
+
   constructor(
     private readonly settings: SettingsService,
     private readonly storage: StorageService,
@@ -61,8 +65,10 @@ export class SettingsController {
       await this.storage.testConnection();
       return { ok: true };
     } catch (err) {
+      const detail = describeStorageError(err);
+      this.logger.warn(`Teste de armazenamento falhou: ${detail}`, (err as Error)?.stack);
       throw new HttpException(
-        `Falha ao acessar o armazenamento: ${(err as Error).message}`,
+        `Falha ao acessar o armazenamento: ${detail}`,
         HttpStatus.BAD_GATEWAY,
       );
     }
