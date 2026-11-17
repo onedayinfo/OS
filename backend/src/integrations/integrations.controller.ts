@@ -22,7 +22,7 @@ export class IntegrationEventsController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.integrations.ingest(extractToken(auth, headerToken), payload);
-    res.status('captured' in result ? 202 : result.created ? 201 : 200);
+    res.status('captured' in result ? 202 : 'created' in result && result.created ? 201 : 200);
     return result;
   }
 }

@@ -995,6 +995,8 @@ model Integration {
   /// Último JSON recebido (strings longas cortadas), usado como exemplo para mapear.
   lastPayload   Json?
   lastPayloadAt DateTime?
+  /// Últimos 10 eventos recebidos `[{at, payload}]`, mais recente primeiro (escolher exemplo / ver valores de status).
+  recentPayloads Json?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

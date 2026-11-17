@@ -41,3 +41,19 @@ export function flattenPaths(value: unknown, prefix = ''): { path: string; value
   }
   return prefix ? [{ path: prefix, value: value === null ? 'null' : String(value) }] : [];
 }
+
+/** Cópia de `classifyStatus` do backend (pré-visualização) — mudou lá, muda aqui. */
+export function classifyStatus(
+  m: { status?: string; problemValues?: string[]; okValues?: string[] },
+  payload: unknown,
+): { kind: 'problem' | 'ok' | 'ignore'; value: string } | null {
+  if (!m.status?.trim()) return null;
+  const value = renderTemplate(m.status, payload);
+  const norm = (v: string) => v.trim().toLowerCase();
+  const v = norm(value);
+  const ok = (m.okValues ?? []).map(norm).filter(Boolean);
+  const problem = (m.problemValues ?? []).map(norm).filter(Boolean);
+  if (v && ok.includes(v)) return { kind: 'ok', value };
+  if (v && (problem.length ? problem.includes(v) : true)) return { kind: 'problem', value };
+  return { kind: 'ignore', value };
+}

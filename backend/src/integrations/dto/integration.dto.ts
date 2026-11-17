@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsIn,
   IsOptional,
@@ -38,6 +40,22 @@ export class IntegrationMappingDto {
 
   @IsOptional() @IsIn(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
   priority?: TicketPriority;
+
+  /** Modelo do status do equipamento (ex.: `{{alarm.triggers.0.key}}`). Vazio = sem regra de status. */
+  @IsOptional() @IsString() @MaxLength(500)
+  status?: string;
+
+  /** Valores de status que abrem chamado. Vazio = qualquer valor que não normalize. */
+  @IsOptional() @IsArray() @ArrayMaxSize(50) @IsString({ each: true }) @MaxLength(200, { each: true })
+  problemValues?: string[];
+
+  /** Valores de status que encerram o chamado aberto (mesmo ID externo). */
+  @IsOptional() @IsArray() @ArrayMaxSize(50) @IsString({ each: true }) @MaxLength(200, { each: true })
+  okValues?: string[];
+
+  /** Como encerrar quando normaliza. Padrão RESOLVED. */
+  @IsOptional() @IsIn(['RESOLVED', 'CLOSED'])
+  okAction?: 'RESOLVED' | 'CLOSED';
 }
 
 export class UpdateIntegrationDto {

@@ -35,7 +35,12 @@ const INCLUDE = {
   category: { select: { id: true, name: true } },
 } as const;
 /** Lista: sem segredo e sem o exemplo (pode ser grande). */
-const LIST_VIEW = { omit: { tokenHash: true, lastPayload: true }, include: INCLUDE } as const;
+const LIST_VIEW = {
+  omit: { tokenHash: true, lastPayload: true, recentPayloads: true },
+  include: INCLUDE,
+} as const;
+/** Quantos eventos recentes guardar como exemplo. */
+const RECENT_MAX = 10;
 /** Detalhe/escrita: sem segredo, com o exemplo. */
 const VIEW = { omit: { tokenHash: true }, include: INCLUDE } as const;
 
@@ -50,7 +55,26 @@ export type EventFields = {
 
 export type IngestResult =
   | { captured: true }
-  | { ticketId: string; number: string; created: boolean };
+  | { ignored: true; reason: string }
+  | { ticketId: string; number: string; created: boolean }
+  | { ticketId: string; number: string; resolved: true };
+
+/** Classifica o evento pela regra de status: abre, normaliza ou ignora; `null` = sem regra. */
+export function classifyStatus(
+  mapping: IntegrationMappingDto,
+  payload: unknown,
+): { kind: 'problem' | 'ok' | 'ignore'; value: string } | null {
+  if (!mapping.status?.trim()) return null;
+  const value = renderTemplate(mapping.status, payload);
+  const norm = (v: string) => v.trim().toLowerCase();
+  const v = norm(value);
+  const ok = (mapping.okValues ?? []).map(norm).filter(Boolean);
+  const problem = (mapping.problemValues ?? []).map(norm).filter(Boolean);
+  if (v && ok.includes(v)) return { kind: 'ok', value };
+  // Sem lista de "problema": qualquer valor (não vazio) que não normaliza abre chamado.
+  if (v && (problem.length ? problem.includes(v) : true)) return { kind: 'problem', value };
+  return { kind: 'ignore', value };
+}
 
 /** Extrai o token de `Authorization: Bearer <t>` ou `x-webhook-token`. */
 export function extractToken(auth?: string, header?: string): string | undefined {
@@ -148,18 +172,33 @@ export class IntegrationsService {
     if (!integ || !integ.active) throw new UnauthorizedException('Token de integração inválido.');
 
     const now = new Date();
+    const sample = truncateStrings(payload ?? null);
+    const recent = Array.isArray(integ.recentPayloads) ? integ.recentPayloads : [];
     await this.prisma.integration.update({
       where: { id: integ.id },
       data: {
         lastEventAt: now,
         lastPayloadAt: now,
-        lastPayload: truncateStrings(payload ?? null) as Prisma.InputJsonValue,
+        lastPayload: sample as Prisma.InputJsonValue,
+        // ponytail: read-modify-write; eventos simultâneos podem perder um item do histórico (só exemplo).
+        recentPayloads: [{ at: now.toISOString(), payload: sample }, ...recent].slice(
+          0,
+          RECENT_MAX,
+        ) as Prisma.InputJsonValue,
       },
     });
 
     let fields: EventFields;
     if (integ.mapping) {
-      fields = applyMapping(integ.mapping as unknown as IntegrationMappingDto, payload);
+      const mapping = integ.mapping as unknown as IntegrationMappingDto;
+      fields = applyMapping(mapping, payload);
+      const status = classifyStatus(mapping, payload);
+      if (status?.kind === 'ignore') {
+        return { ignored: true, reason: `Status "${status.value}" não abre nem encerra chamado.` };
+      }
+      if (status?.kind === 'ok') {
+        return this.resolveOpen(integ, fields, status.value, mapping.okAction ?? 'RESOLVED');
+      }
       if (!fields.title) {
         throw new UnprocessableEntityException(
           'O mapeamento gerou um título vazio para este evento. Revise o campo Título da integração.',
@@ -235,6 +274,36 @@ export class IntegrationsService {
       externalId,
     });
     return { ticketId: ticket.id, number: ticket.number, created: true };
+  }
+
+  /**
+   * Equipamento normalizou: encerra o chamado aberto da integração com o mesmo
+   * ID externo. Sem ID externo ou sem chamado aberto → ignora (nunca abre).
+   */
+  private async resolveOpen(
+    integ: Integration,
+    f: EventFields,
+    statusValue: string,
+    action: 'RESOLVED' | 'CLOSED',
+  ): Promise<IngestResult> {
+    const externalId = f.externalId?.trim();
+    if (!externalId) {
+      return { ignored: true, reason: 'Evento de normalização sem ID externo para achar o chamado.' };
+    }
+    const open = await this.prisma.ticket.findFirst({
+      where: { integrationId: integ.id, externalId, status: { notIn: [...TERMINAL] } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, number: true },
+    });
+    if (!open) return { ignored: true, reason: 'Nenhum chamado aberto para este equipamento.' };
+
+    await this.events.record(this.prisma, open.id, 'INTEGRATION_EVENT', {
+      integration: integ.name,
+      title: f.title || `Status: ${statusValue}`,
+      description: `Equipamento normalizado (status "${statusValue}"); chamado encerrado automaticamente.`,
+    });
+    await this.tickets.changeStatus(open.id, action);
+    return { ticketId: open.id, number: open.number, resolved: true };
   }
 
   private async assertExists(id: string) {

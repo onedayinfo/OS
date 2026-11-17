@@ -1,5 +1,5 @@
 import { BadRequestException, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
-import { IntegrationsService, extractToken } from './integrations.service.js';
+import { IntegrationsService, extractToken, classifyStatus } from './integrations.service.js';
 import { hashToken } from '../agent/token.util.js';
 
 const INTEG = {
@@ -22,7 +22,10 @@ function make(overrides: { integ?: any; open?: any; asset?: any } = {}) {
     ticket: { findFirst: vi.fn().mockResolvedValue(overrides.open ?? null) },
     asset: { findFirst: vi.fn().mockResolvedValue(overrides.asset ?? null) },
   };
-  const tickets = { create: vi.fn().mockResolvedValue({ id: 't9', number: '000009' }) };
+  const tickets = {
+    create: vi.fn().mockResolvedValue({ id: 't9', number: '000009' }),
+    changeStatus: vi.fn().mockResolvedValue({}),
+  };
   const events = { record: vi.fn().mockResolvedValue({}) };
   const svc = new IntegrationsService(prisma as any, tickets as any, events as any);
   return { svc, prisma, tickets, events };
@@ -163,5 +166,72 @@ describe('IntegrationsService.ingest — construtor de eventos', () => {
     );
     await expect(svc.ingest('tok', [1, 2])).resolves.toEqual({ captured: true });
     await expect(svc.ingest('tok', undefined)).resolves.toEqual({ captured: true });
+  });
+});
+
+describe('regra de status (abre na desconexão, encerra na conexão)', () => {
+  const MAP = {
+    title: 'Facial {{device}} offline',
+    externalId: '{{device}}',
+    status: '{{event}}',
+    problemValues: ['disconnected'],
+    okValues: ['Connected'],
+  };
+  const ev = (event: string) => ({ device: 'FAC-01', event });
+
+  it('classifyStatus: compara sem caixa/espaços; problema vazio = qualquer outro; vazio → ignora', () => {
+    expect(classifyStatus(MAP as any, ev(' CONNECTED '))?.kind).toBe('ok');
+    expect(classifyStatus(MAP as any, ev('Disconnected'))?.kind).toBe('problem');
+    expect(classifyStatus(MAP as any, ev('rebooting'))?.kind).toBe('ignore');
+    expect(classifyStatus({ ...MAP, problemValues: [] } as any, ev('rebooting'))?.kind).toBe('problem');
+    expect(classifyStatus({ ...MAP, problemValues: [] } as any, {})?.kind).toBe('ignore');
+    expect(classifyStatus({ title: 'x' } as any, ev('x'))).toBeNull();
+  });
+
+  it('desconexão abre chamado', async () => {
+    const { svc, tickets } = make({ integ: { ...INTEG, mapping: MAP } });
+    const r = await svc.ingest('tok', ev('disconnected'));
+    expect(r).toMatchObject({ created: true });
+    expect(tickets.create.mock.calls[0][0]).toMatchObject({ title: 'Facial FAC-01 offline', externalId: 'FAC-01' });
+  });
+
+  it('conexão com chamado aberto → registra evento e resolve (padrão) sem abrir chamado', async () => {
+    const { svc, tickets, events, prisma } = make({
+      integ: { ...INTEG, mapping: MAP },
+      open: { id: 't1', number: '000001' },
+    });
+    const r = await svc.ingest('tok', ev('connected'));
+    expect(r).toEqual({ ticketId: 't1', number: '000001', resolved: true });
+    expect(tickets.create).not.toHaveBeenCalled();
+    expect(tickets.changeStatus).toHaveBeenCalledWith('t1', 'RESOLVED');
+    expect(events.record.mock.calls[0][2]).toBe('INTEGRATION_EVENT');
+    expect(prisma.ticket.findFirst.mock.calls[0][0].where).toMatchObject({ integrationId: 'i1', externalId: 'FAC-01' });
+  });
+
+  it('okAction CLOSED fecha', async () => {
+    const { svc, tickets } = make({
+      integ: { ...INTEG, mapping: { ...MAP, okAction: 'CLOSED' } },
+      open: { id: 't1', number: '000001' },
+    });
+    await svc.ingest('tok', ev('connected'));
+    expect(tickets.changeStatus).toHaveBeenCalledWith('t1', 'CLOSED');
+  });
+
+  it('conexão sem chamado aberto ou status desconhecido → ignora, nunca abre', async () => {
+    const a = make({ integ: { ...INTEG, mapping: MAP } });
+    expect(await a.svc.ingest('tok', ev('connected'))).toMatchObject({ ignored: true });
+    expect(await a.svc.ingest('tok', ev('rebooting'))).toMatchObject({ ignored: true });
+    expect(a.tickets.create).not.toHaveBeenCalled();
+    expect(a.tickets.changeStatus).not.toHaveBeenCalled();
+  });
+
+  it('guarda os últimos 10 eventos, mais recente primeiro', async () => {
+    const old = Array.from({ length: 10 }, (_, i) => ({ at: `t${i}`, payload: { i } }));
+    const { svc, prisma } = make({ integ: { ...INTEG, recentPayloads: old } });
+    await svc.ingest('tok', { novo: true });
+    const recent = prisma.integration.update.mock.calls[0][0].data.recentPayloads;
+    expect(recent).toHaveLength(10);
+    expect(recent[0].payload).toEqual({ novo: true });
+    expect(recent[9].payload).toEqual({ i: 8 });
   });
 });
