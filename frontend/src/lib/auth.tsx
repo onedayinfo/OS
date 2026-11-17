@@ -26,6 +26,9 @@ export interface SessionUser {
   type: UserType;
   role: UserRole;
   clientId: string | null;
+  groupId: string | null;
+  /** Telas liberadas pelo grupo; null = sem restrição. */
+  screens: string[] | null;
 }
 
 interface SessionContextValue {

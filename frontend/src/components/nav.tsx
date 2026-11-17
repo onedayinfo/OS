@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useSession } from '@/lib/auth';
+import { canSee, screenForPath } from '@/lib/screens';
 import { BrandMark } from '@/components/brand-mark';
 import { Icon } from '@/components/ui/icon';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -18,7 +19,7 @@ interface NavGroup {
   links: NavLink[];
 }
 
-function appGroups(role: string | undefined): NavGroup[] {
+function appGroups(role: string | undefined, screens: string[] | null | undefined): NavGroup[] {
   const privileged = role === 'ADMIN' || role === 'AGENT';
 
   const atendimento: NavLink[] = [];
@@ -45,12 +46,18 @@ function appGroups(role: string | undefined): NavGroup[] {
   if (privileged) gestao.push({ href: '/app/base-conhecimento', label: 'Base de conhecimento', icon: 'menu_book' });
   gestao.push({ href: '/app/config', label: 'Configurações', icon: 'settings' });
 
+  const visible = (links: NavLink[]) =>
+    links.filter((l) => {
+      const key = screenForPath(l.href);
+      return !key || canSee({ screens: screens ?? null }, key);
+    });
+
   return [
-    { label: 'Atendimento', links: atendimento },
-    { label: 'Cadastros e ativos', links: cadastros },
-    { label: 'Suprimentos e vendas', links: vendas },
-    { label: 'Gestão', links: gestao },
-  ];
+    { label: 'Atendimento', links: visible(atendimento) },
+    { label: 'Cadastros e ativos', links: visible(cadastros) },
+    { label: 'Suprimentos e vendas', links: visible(vendas) },
+    { label: 'Gestão', links: visible(gestao) },
+  ].filter((g) => g.links.length > 0);
 }
 
 function isActive(pathname: string, href: string): boolean {
@@ -80,7 +87,7 @@ export function AppNav({ open, onClose }: { open: boolean; onClose: () => void }
           </div>
 
           <nav className="flex flex-col gap-5 px-2 py-2">
-            {appGroups(user?.role).map((group) => (
+            {appGroups(user?.role, user?.screens).map((group) => (
               <div key={group.label} className="flex flex-col gap-0.5">
                 <div className="label-mono px-3 py-1 text-nav-label">{group.label}</div>
                 {group.links.map((l) => {

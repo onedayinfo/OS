@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label';
 
 const errToast = (e: unknown) => toast.error(e instanceof ApiError ? e.message : 'Falha na operação.');
 
-export function WhatsappClientTab({ clientId }: { clientId: string }) {
+/** `readOnly`: sem a tela Configurações, só leitura. */
+export function WhatsappClientTab({ clientId, readOnly = false }: { clientId: string; readOnly?: boolean }) {
   const { data: groups } = useGroups(clientId);
   const create = useCreateGroup(clientId);
   const update = useUpdateGroup(clientId);
@@ -30,6 +31,7 @@ export function WhatsappClientTab({ clientId }: { clientId: string }) {
           Cole o <b>ID do grupo</b> (algo como <code>120363000000000001@g.us</code>) copiado da Evolution. Só
           os grupos cadastrados aqui são lidos; qualquer pessoa do grupo conta, conhecida ou não.
         </p>
+        {!readOnly && (
         <form
           className="flex flex-wrap items-end gap-2"
           onSubmit={(e) => {
@@ -63,6 +65,7 @@ export function WhatsappClientTab({ clientId }: { clientId: string }) {
             Adicionar grupo
           </Button>
         </form>
+        )}
 
         <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
           <table className="w-full text-sm">
@@ -71,7 +74,7 @@ export function WhatsappClientTab({ clientId }: { clientId: string }) {
                 <th className="px-3 py-2 font-medium">Apelido</th>
                 <th className="px-3 py-2 font-medium">ID</th>
                 <th className="px-3 py-2 font-medium">Situação</th>
-                <th className="px-3 py-2 font-medium">Ações</th>
+                {!readOnly && <th className="px-3 py-2 font-medium">Ações</th>}
               </tr>
             </thead>
             <tbody>
@@ -82,6 +85,7 @@ export function WhatsappClientTab({ clientId }: { clientId: string }) {
                   <td className="px-3 py-2">
                     <Badge tone={g.active ? 'green' : 'neutral'}>{g.active ? 'Lendo' : 'Pausado'}</Badge>
                   </td>
+                  {!readOnly && (
                   <td className="px-3 py-2">
                     <div className="flex gap-3">
                       <button
@@ -103,6 +107,7 @@ export function WhatsappClientTab({ clientId }: { clientId: string }) {
                       </button>
                     </div>
                   </td>
+                  )}
                 </tr>
               ))}
               {groups && groups.length === 0 && (
@@ -127,7 +132,7 @@ export function WhatsappClientTab({ clientId }: { clientId: string }) {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-[14px] font-semibold">Frases de gatilho</h2>
-        <TriggerPhrasesPanel clientId={clientId} />
+        <TriggerPhrasesPanel clientId={clientId} readOnly={readOnly} />
       </section>
     </div>
   );

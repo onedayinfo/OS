@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 import { useDashboardOverview } from '@/lib/dashboard';
 import { TicketTable } from '@/components/ticket-table';
 import { NewTicketForm } from '@/components/new-ticket-form';
@@ -16,6 +17,10 @@ export default function AppQueuePage() {
   const { data: overview } = useDashboardOverview();
 
   useEffect(() => {
+    if (searchParams.get('semAcesso') === '1') {
+      toast.error('Sem acesso a esta tela.');
+      router.replace('/app');
+    }
     if (searchParams.get('novo') === '1') {
       setCreating(true);
       router.replace('/app');

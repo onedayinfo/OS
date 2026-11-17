@@ -24,7 +24,7 @@ const errToast = (e: unknown) => toast.error(e instanceof ApiError ? e.message :
 interface Category { id: string; name: string }
 
 /** Lista/edita frases de gatilho. `clientId = null` edita o PADRÃO GLOBAL. */
-export function TriggerPhrasesPanel({ clientId }: { clientId: string | null }) {
+export function TriggerPhrasesPanel({ clientId, readOnly = false }: { clientId: string | null; readOnly?: boolean }) {
   const { data: phrases } = usePhrases(clientId);
   const { data: categories } = useQuery({ queryKey: ['categories'], queryFn: () => api<Category[]>('/categories') });
   const save = useSavePhrase(clientId);
@@ -62,6 +62,7 @@ export function TriggerPhrasesPanel({ clientId }: { clientId: string | null }) {
           Quando uma mensagem do grupo <b>começa</b> com a frase (sem diferenciar maiúsculas e acentos), o
           chamado é aberto na hora. O resto da mensagem vira a descrição.
         </p>
+        {!readOnly && (
         <div className="flex gap-2">
           {clientId && (
             <Button
@@ -79,6 +80,7 @@ export function TriggerPhrasesPanel({ clientId }: { clientId: string | null }) {
           )}
           <Button onClick={() => setEditing({ priority: 'MEDIUM' })}>Nova frase</Button>
         </div>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
@@ -89,7 +91,7 @@ export function TriggerPhrasesPanel({ clientId }: { clientId: string | null }) {
               <th className="px-3 py-2 font-medium">Categoria</th>
               <th className="px-3 py-2 font-medium">Prioridade</th>
               <th className="px-3 py-2 font-medium">Situação</th>
-              <th className="px-3 py-2 font-medium">Ações</th>
+              {!readOnly && <th className="px-3 py-2 font-medium">Ações</th>}
             </tr>
           </thead>
           <tbody>
@@ -104,6 +106,7 @@ export function TriggerPhrasesPanel({ clientId }: { clientId: string | null }) {
                 <td className="px-3 py-2">
                   <Badge tone={p.active ? 'green' : 'neutral'}>{p.active ? 'Ativa' : 'Inativa'}</Badge>
                 </td>
+                {!readOnly && (
                 <td className="px-3 py-2">
                   <div className="flex gap-3">
                     <button type="button" className="text-primary hover:underline" onClick={() => setEditing(p)}>
@@ -127,6 +130,7 @@ export function TriggerPhrasesPanel({ clientId }: { clientId: string | null }) {
                     </button>
                   </div>
                 </td>
+                )}
               </tr>
             ))}
             {phrases && phrases.length === 0 && (
