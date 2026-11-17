@@ -606,18 +606,22 @@ export default function ConfigPage() {
     { value: 'categorias', label: 'Categorias' },
     { value: 'sla', label: 'SLA' },
     { value: 'usuarios', label: 'Usuários internos' },
-    ...(isFullAdmin ? [{ value: 'grupos', label: 'Grupos' }] : []),
+    ...(isFullAdmin
+      ? [
+          { value: 'grupos', label: 'Grupos' },
+          { value: 'email', label: 'E-mail' },
+          { value: 'armazenamento', label: 'Armazenamento' },
+          { value: 'backup', label: 'Backup' },
+        ]
+      : []),
     ...(isAdmin
       ? [
           { value: 'tipos-ativo', label: 'Tipos de ativo' },
           { value: 'checklists', label: 'Checklists' },
-          { value: 'email', label: 'E-mail' },
           { value: 'whatsapp', label: 'WhatsApp' },
           { value: 'integracoes', label: 'Integrações' },
           { value: 'melhorias', label: 'Sugestões de melhoria' },
-          { value: 'armazenamento', label: 'Armazenamento' },
           { value: 'aparencia', label: 'Aparência' },
-          { value: 'backup', label: 'Backup' },
           { value: 'auditoria', label: 'Auditoria' },
         ]
       : []),
@@ -633,13 +637,13 @@ export default function ConfigPage() {
       {tab === 'grupos' && isFullAdmin && <GroupsTab />}
       {tab === 'tipos-ativo' && isAdmin && <AssetTypesTab />}
       {tab === 'checklists' && isAdmin && <ChecklistTemplatesTab />}
-      {tab === 'email' && isAdmin && <EmailTab />}
+      {tab === 'email' && isFullAdmin && <EmailTab />}
       {tab === 'whatsapp' && isAdmin && <WhatsappTab />}
       {tab === 'integracoes' && isAdmin && <IntegrationsTab />}
       {tab === 'melhorias' && isAdmin && <ImprovementsTab />}
-      {tab === 'armazenamento' && isAdmin && <StorageTab />}
+      {tab === 'armazenamento' && isFullAdmin && <StorageTab />}
       {tab === 'aparencia' && isAdmin && <AppearanceTab />}
-      {tab === 'backup' && isAdmin && <BackupTab />}
+      {tab === 'backup' && isFullAdmin && <BackupTab />}
       {tab === 'auditoria' && isAdmin && <AuditTab />}
     </div>
   );

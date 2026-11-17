@@ -13,10 +13,13 @@ function makeSvc() {
 }
 const storageOk = { testConnection: vi.fn(async () => undefined) };
 
+const groups = { isFullAdmin: vi.fn(async () => true) };
+const actor = { id: 'u0' } as any;
+
 describe('SettingsController', () => {
   it('GET devolve describe() + encryptionKeySet', async () => {
     process.env.APP_ENCRYPTION_KEY = Buffer.alloc(32, 1).toString('base64');
-    const c = new SettingsController(makeSvc() as any, storageOk as any);
+    const c = new SettingsController(makeSvc() as any, storageOk as any, groups as any);
     const res = (await c.get()) as Record<string, unknown>;
     expect(res['branding.companyName']).toBe('One Day');
     expect(res.encryptionKeySet).toBe(true);
@@ -24,24 +27,24 @@ describe('SettingsController', () => {
 
   it('PUT grava só chaves conhecidas e rejeita chave desconhecida', async () => {
     const svc = makeSvc();
-    const c = new SettingsController(svc as any, storageOk as any);
-    await c.update({ values: { 'branding.companyName': 'Nova', 'mail.from': 'a@b.com' } });
+    const c = new SettingsController(svc as any, storageOk as any, groups as any);
+    await c.update({ values: { 'branding.companyName': 'Nova', 'mail.from': 'a@b.com' } }, actor);
     expect(svc.set).toHaveBeenCalledWith('branding.companyName', 'Nova');
     expect(svc.set).toHaveBeenCalledWith('mail.from', 'a@b.com');
 
-    await expect(c.update({ values: { 'chave.fantasma': 'x' } })).rejects.toBeInstanceOf(
+    await expect(c.update({ values: { 'chave.fantasma': 'x' } }, actor)).rejects.toBeInstanceOf(
       BadRequestException,
     );
   });
 
   it('POST /storage/test propaga falha do storage como 502', async () => {
     const storageBad = { testConnection: vi.fn(async () => Promise.reject(new Error('sem bucket'))) };
-    const c = new SettingsController(makeSvc() as any, storageBad as any);
+    const c = new SettingsController(makeSvc() as any, storageBad as any, groups as any);
     await expect(c.testStorage()).rejects.toBeInstanceOf(HttpException);
   });
 
   it('POST /storage/test devolve ok quando a sonda passa', async () => {
-    const c = new SettingsController(makeSvc() as any, storageOk as any);
+    const c = new SettingsController(makeSvc() as any, storageOk as any, groups as any);
     expect(await c.testStorage()).toEqual({ ok: true });
   });
 });

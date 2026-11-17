@@ -1,6 +1,7 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { CurrentUser, type CurrentUserData } from '../common/current-user.decorator.js';
 import { Roles } from '../common/roles.decorator.js';
+import { assertFullAdmin } from './assert-full-admin.js';
 import { UserGroupsService } from './user-groups.service.js';
 import { UpdateUserGroupDto, UserGroupDto } from './dto/user-group.dto.js';
 
@@ -11,9 +12,7 @@ export class UserGroupsController {
 
   /** Só o admin pleno (sem grupo) gerencia grupos. */
   private async assertFullAdmin(user: CurrentUserData) {
-    if (!(await this.groups.isFullAdmin(user.id))) {
-      throw new ForbiddenException('Sem acesso a esta tela.');
-    }
+    await assertFullAdmin(this.groups, user.id);
   }
 
   @Get()

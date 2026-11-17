@@ -12,6 +12,11 @@ import { OpportunitiesController } from '../crm/opportunities.controller.js';
 import { OpportunitiesService } from '../crm/opportunities.service.js';
 import { DashboardController } from '../dashboard/dashboard.controller.js';
 import { DashboardService } from '../dashboard/dashboard.service.js';
+import { BackupController } from '../backup/backup.controller.js';
+import { BackupService } from '../backup/backup.service.js';
+import { SettingsController } from '../settings/settings.controller.js';
+import { SettingsService } from '../settings/settings.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { UsersController } from '../users/users.controller.js';
 import { UsersService } from '../users/users.service.js';
 import { UserGroupsController } from './user-groups.controller.js';
@@ -28,6 +33,8 @@ let prisma: PrismaClient | undefined;
 let available = false;
 let app: INestApplication | undefined;
 const id: Record<string, string> = {};
+const backupMock = { export: vi.fn(async () => ({})), import: vi.fn(async () => {}) };
+const settingsMock = { set: vi.fn(async () => {}), describe: vi.fn(async () => ({})) };
 
 async function cleanup(p: PrismaClient) {
   await p.user.deleteMany({ where: { email: { endsWith: EMAIL } } });
@@ -61,6 +68,12 @@ describe('Grupos de permissão — integração (Postgres real)', () => {
         },
       })
     ).id;
+    // Grupo sem `config`, para o caso "sem tela de configurações".
+    id.gNoCfg = (
+      await prisma.userGroup.create({
+        data: { name: `${PFX} Sem config`, screens: SCREENS.filter((s) => s !== 'config') },
+      })
+    ).id;
     id.u0 = (
       await prisma.user.create({
         data: { name: 'u0', email: `u0${EMAIL}`, role: 'ADMIN', type: 'INTERNAL', passwordHash: 'x' },
@@ -78,6 +91,18 @@ describe('Grupos de permissão — integração (Postgres real)', () => {
         },
       })
     ).id;
+    id.u2 = (
+      await prisma.user.create({
+        data: {
+          name: 'u2',
+          email: `u2${EMAIL}`,
+          role: 'ADMIN',
+          type: 'INTERNAL',
+          passwordHash: 'x',
+          groupId: id.gNoCfg,
+        },
+      })
+    ).id;
     id.client = (await prisma.client.create({ data: { name: `${PFX} Cliente` } })).id;
 
     const moduleRef = await Test.createTestingModule({
@@ -87,6 +112,8 @@ describe('Grupos de permissão — integração (Postgres real)', () => {
         DashboardController,
         UsersController,
         UserGroupsController,
+        BackupController,
+        SettingsController,
       ],
       providers: [
         OpportunitiesService,
@@ -94,6 +121,9 @@ describe('Grupos de permissão — integração (Postgres real)', () => {
         UsersService,
         UserGroupsService,
         Reflector,
+        { provide: BackupService, useValue: backupMock },
+        { provide: StorageService, useValue: { list: async () => [] } },
+        { provide: SettingsService, useValue: settingsMock },
         { provide: PrismaService, useValue: prisma },
         { provide: 'MailSender', useValue: { sendInvite: async () => {} } },
         { provide: DashboardService, useValue: { overview: async () => ({ ok: true }) } },
@@ -189,6 +219,46 @@ describe('Grupos de permissão — integração (Postgres real)', () => {
       }),
       'u1',
     ).expect(403);
+  });
+
+  it('u1 (config, com grupo) → backup export/import/list 403 e nada é executado', async (ctx) => {
+    if (!available) return ctx.skip();
+    await as(http().get('/backup/export'), 'u1').expect(403);
+    await as(http().get('/backup/list'), 'u1').expect(403);
+    await as(
+      http().post('/backup/import').field('confirm', 'RESTAURAR').attach('file', Buffer.from('{}'), 'b.json'),
+      'u1',
+    ).expect(403);
+    expect(backupMock.export).not.toHaveBeenCalled();
+    expect(backupMock.import).not.toHaveBeenCalled();
+    await as(http().get('/backup/export'), 'u0').expect(200);
+  });
+
+  it('u1 → PUT /settings: chave sensível 403; chave comum 200', async (ctx) => {
+    if (!available) return ctx.skip();
+    for (const k of ['resend.apiKey', 'mail.from', 'storage.driver']) {
+      await as(http().put('/settings').send({ values: { [k]: 'x' } }), 'u1').expect(403);
+    }
+    expect(settingsMock.set).not.toHaveBeenCalled();
+    await as(http().put('/settings').send({ values: { 'branding.companyName': 'Acme' } }), 'u1').expect(200);
+    expect(settingsMock.set).toHaveBeenCalledWith('branding.companyName', 'Acme');
+    await as(http().put('/settings').send({ values: { 'resend.apiKey': 'k' } }), 'u0').expect(200);
+  });
+
+  it('u1 não edita o admin pleno (PATCH /users/u0 → 403)', async (ctx) => {
+    if (!available) return ctx.skip();
+    await as(http().patch(`/users/${id.u0}`).send({ active: false }), 'u1').expect(403);
+    const u0 = await prisma!.user.findUnique({ where: { id: id.u0 } });
+    expect(u0?.active).toBe(true);
+  });
+
+  it('u2 (grupo sem config) → POST /users/internal e PATCH /users/:id 403', async (ctx) => {
+    if (!available) return ctx.skip();
+    await as(
+      http().post('/users/internal').send({ name: 'y', email: `y${EMAIL}`, role: 'AGENT', password: 'senha-12345' }),
+      'u2',
+    ).expect(403);
+    await as(http().patch(`/users/${id.u1}`).send({ active: true }), 'u2').expect(403);
   });
 
   it('u0 (admin pleno) não coloca grupo em si mesmo → 403', async (ctx) => {

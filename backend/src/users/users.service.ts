@@ -10,6 +10,7 @@ import { UpdateUserDto } from './dto/update-user.dto.js';
 import { publicUser, publicUsers } from './user-view.js';
 import { normalizePhone } from '../common/phone.util.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
+import { assertFullAdmin } from '../user-groups/assert-full-admin.js';
 import { UserGroupsService } from '../user-groups/user-groups.service.js';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -32,9 +33,7 @@ export class UsersService {
 
   /** Só o admin pleno (sem grupo) atribui/remove grupo; só INTERNAL tem grupo. */
   private async assertCanSetGroup(actor: CurrentUserData, target: { type: string }) {
-    if (!(await this.groups.isFullAdmin(actor.id))) {
-      throw new ForbiddenException('Sem acesso a esta tela.');
-    }
+    await assertFullAdmin(this.groups, actor.id);
     if (target.type !== 'INTERNAL') {
       throw new BadRequestException('Grupos são só para usuários internos.');
     }
@@ -173,6 +172,8 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto, actor: CurrentUserData) {
     const found = await this.prisma.user.findUnique({ where: { id } });
     if (!found) throw new NotFoundException('Usuário não encontrado.');
+    // Admin pleno só é editado por admin pleno (ex.: desativar o dono do sistema).
+    if (found.role === 'ADMIN' && !found.groupId) await assertFullAdmin(this.groups, actor.id);
     const data: { name?: string; active?: boolean; phone?: string | null; groupId?: string | null } = {};
     if (dto.groupId !== undefined) {
       await this.assertCanSetGroup(actor, found);

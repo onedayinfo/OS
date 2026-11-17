@@ -15,11 +15,14 @@ import { CurrentUser } from '../common/current-user.decorator.js';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
 import { Roles } from '../common/roles.decorator.js';
 import { Screen } from '../common/screen.decorator.js';
+import { assertFullAdmin } from '../user-groups/assert-full-admin.js';
+import { UserGroupsService } from '../user-groups/user-groups.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import type { UploadedFile as UF } from '../attachments/storage.util.js';
 import { BackupService } from './backup.service.js';
 import { ImportBackupDto } from './dto/import-backup.dto.js';
 
+// Backup contém a tabela de usuários (e grupos): só admin pleno, senão dá para se promover.
 @Screen('config')
 @Controller('backup')
 @Roles('ADMIN')
@@ -29,10 +32,12 @@ export class BackupController {
   constructor(
     private readonly backup: BackupService,
     private readonly storage: StorageService,
+    private readonly groups: UserGroupsService,
   ) {}
 
   @Get('export')
-  async export(@Res() res: Response) {
+  async export(@Res() res: Response, @CurrentUser() actor: CurrentUserData) {
+    await assertFullAdmin(this.groups, actor.id);
     const file = await this.backup.export();
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -47,6 +52,7 @@ export class BackupController {
     @Body() dto: ImportBackupDto,
     @CurrentUser() actor: CurrentUserData,
   ) {
+    await assertFullAdmin(this.groups, actor.id);
     if (dto.confirm !== 'RESTAURAR') {
       throw new BadRequestException('Digite RESTAURAR para confirmar a restauração total.');
     }
@@ -63,7 +69,8 @@ export class BackupController {
   }
 
   @Get('list')
-  async list() {
+  async list(@CurrentUser() actor: CurrentUserData) {
+    await assertFullAdmin(this.groups, actor.id);
     const names = await this.storage.list('backups/');
     return names
       .sort()

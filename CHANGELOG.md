@@ -16,6 +16,10 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 - **Admin pleno**: ADMIN sem grupo mantém acesso total e é o único que gerencia grupos.
   Usuários que saem de um grupo excluído ficam sem grupo.
 
+### Segurança
+- Backup, chaves sensíveis (segredos, e-mail e armazenamento) e edição de usuários só pelo admin pleno.
+- Restaurar um backup anterior à 0.21.0 deixa todos os usuários sem grupo (sem restrição de telas).
+
 ### Infraestrutura
 - Migração `add_user_groups` (tabela `UserGroup` e `User.groupId`). Nenhuma variável de ambiente nova.
 
