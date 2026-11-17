@@ -32,39 +32,39 @@ export function WhatsappClientTab({ clientId, readOnly = false }: { clientId: st
           os grupos cadastrados aqui são lidos; qualquer pessoa do grupo conta, conhecida ou não.
         </p>
         {!readOnly && (
-        <form
-          className="flex flex-wrap items-end gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!externalId.trim()) return;
-            create.mutate(
-              { externalId, name: name || undefined },
-              {
-                onSuccess: () => {
-                  setExternalId('');
-                  setName('');
-                  toast.success('Grupo cadastrado.');
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!externalId.trim()) return;
+              create.mutate(
+                { externalId, name: name || undefined },
+                {
+                  onSuccess: () => {
+                    setExternalId('');
+                    setName('');
+                    toast.success('Grupo cadastrado.');
+                  },
+                  onError: errToast,
                 },
-                onError: errToast,
-              },
-            );
-          }}
-        >
-          <div className="flex min-w-[260px] flex-1 flex-col gap-1.5">
-            <Label htmlFor="wg-id">ID do grupo</Label>
-            <Input id="wg-id" value={externalId} onChange={(e) => setExternalId(e.target.value)} />
-          </div>
-          <div className="flex min-w-[180px] flex-col gap-1.5">
-            <Label htmlFor="wg-name">Apelido (opcional)</Label>
-            <Input id="wg-name" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <Button type="button" variant="outline" onClick={() => setPicking(true)}>
-            Escolher da Evolution
-          </Button>
-          <Button type="submit" disabled={create.isPending}>
-            Adicionar grupo
-          </Button>
-        </form>
+              );
+            }}
+          >
+            <div className="flex min-w-[260px] flex-1 flex-col gap-1.5">
+              <Label htmlFor="wg-id">ID do grupo</Label>
+              <Input id="wg-id" value={externalId} onChange={(e) => setExternalId(e.target.value)} />
+            </div>
+            <div className="flex min-w-[180px] flex-col gap-1.5">
+              <Label htmlFor="wg-name">Apelido (opcional)</Label>
+              <Input id="wg-name" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <Button type="button" variant="outline" onClick={() => setPicking(true)}>
+              Escolher da Evolution
+            </Button>
+            <Button type="submit" disabled={create.isPending}>
+              Adicionar grupo
+            </Button>
+          </form>
         )}
 
         <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
@@ -86,27 +86,27 @@ export function WhatsappClientTab({ clientId, readOnly = false }: { clientId: st
                     <Badge tone={g.active ? 'green' : 'neutral'}>{g.active ? 'Lendo' : 'Pausado'}</Badge>
                   </td>
                   {!readOnly && (
-                  <td className="px-3 py-2">
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        className="text-primary hover:underline"
-                        onClick={() => update.mutate({ id: g.id, active: !g.active }, { onError: errToast })}
-                      >
-                        {g.active ? 'Pausar' : 'Retomar'}
-                      </button>
-                      <button
-                        type="button"
-                        className="text-destructive hover:underline"
-                        onClick={() => {
-                          if (confirm('Remover o grupo apaga também as mensagens gravadas dele. Continuar?'))
-                            remove.mutate(g.id, { onError: errToast });
-                        }}
-                      >
-                        Remover
-                      </button>
-                    </div>
-                  </td>
+                    <td className="px-3 py-2">
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          className="text-primary hover:underline"
+                          onClick={() => update.mutate({ id: g.id, active: !g.active }, { onError: errToast })}
+                        >
+                          {g.active ? 'Pausar' : 'Retomar'}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-destructive hover:underline"
+                          onClick={() => {
+                            if (confirm('Remover o grupo apaga também as mensagens gravadas dele. Continuar?'))
+                              remove.mutate(g.id, { onError: errToast });
+                          }}
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    </td>
                   )}
                 </tr>
               ))}

@@ -84,8 +84,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       body: { email, password },
     });
     setAccessToken(data.accessToken);
-    setUser(data.user);
-    return data.user;
+    // /auth/login não traz groupId/screens: /auth/me é a fonte única da sessão.
+    const me = await api<SessionUser>('/auth/me');
+    setUser(me);
+    return me;
   }, []);
 
   const logout = useCallback(async () => {

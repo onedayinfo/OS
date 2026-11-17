@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { useSession } from '@/lib/auth';
+import { canSee } from '@/lib/screens';
 import { useDashboardOverview } from '@/lib/dashboard';
 import { TicketTable } from '@/components/ticket-table';
 import { NewTicketForm } from '@/components/new-ticket-form';
@@ -13,8 +15,9 @@ import { Icon } from '@/components/ui/icon';
 export default function AppQueuePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useSession();
   const [creating, setCreating] = useState(false);
-  const { data: overview } = useDashboardOverview();
+  const { data: overview } = useDashboardOverview(canSee(user, 'dashboard'));
 
   useEffect(() => {
     if (searchParams.get('semAcesso') === '1') {

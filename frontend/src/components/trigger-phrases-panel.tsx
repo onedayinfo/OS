@@ -63,23 +63,23 @@ export function TriggerPhrasesPanel({ clientId, readOnly = false }: { clientId: 
           chamado é aberto na hora. O resto da mensagem vira a descrição.
         </p>
         {!readOnly && (
-        <div className="flex gap-2">
-          {clientId && (
-            <Button
-              variant="outline"
-              disabled={defaults.isPending}
-              onClick={() =>
-                defaults.mutate(undefined, {
-                  onSuccess: (r) => toast.success(r.created ? `${r.created} frase(s) copiada(s).` : 'Nada novo para copiar.'),
-                  onError: errToast,
-                })
-              }
-            >
-              Aplicar frases padrão
-            </Button>
-          )}
-          <Button onClick={() => setEditing({ priority: 'MEDIUM' })}>Nova frase</Button>
-        </div>
+          <div className="flex gap-2">
+            {clientId && (
+              <Button
+                variant="outline"
+                disabled={defaults.isPending}
+                onClick={() =>
+                  defaults.mutate(undefined, {
+                    onSuccess: (r) => toast.success(r.created ? `${r.created} frase(s) copiada(s).` : 'Nada novo para copiar.'),
+                    onError: errToast,
+                  })
+                }
+              >
+                Aplicar frases padrão
+              </Button>
+            )}
+            <Button onClick={() => setEditing({ priority: 'MEDIUM' })}>Nova frase</Button>
+          </div>
         )}
       </div>
 
@@ -107,29 +107,29 @@ export function TriggerPhrasesPanel({ clientId, readOnly = false }: { clientId: 
                   <Badge tone={p.active ? 'green' : 'neutral'}>{p.active ? 'Ativa' : 'Inativa'}</Badge>
                 </td>
                 {!readOnly && (
-                <td className="px-3 py-2">
-                  <div className="flex gap-3">
-                    <button type="button" className="text-primary hover:underline" onClick={() => setEditing(p)}>
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      className="text-primary hover:underline"
-                      onClick={() => save.mutate({ id: p.id, phrase: p.phrase, active: !p.active }, { onError: errToast })}
-                    >
-                      {p.active ? 'Desativar' : 'Ativar'}
-                    </button>
-                    <button
-                      type="button"
-                      className="text-destructive hover:underline"
-                      onClick={() => {
-                        if (confirm(`Apagar a frase "${p.phrase}"?`)) remove.mutate(p.id, { onError: errToast });
-                      }}
-                    >
-                      Apagar
-                    </button>
-                  </div>
-                </td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-3">
+                      <button type="button" className="text-primary hover:underline" onClick={() => setEditing(p)}>
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        className="text-primary hover:underline"
+                        onClick={() => save.mutate({ id: p.id, phrase: p.phrase, active: !p.active }, { onError: errToast })}
+                      >
+                        {p.active ? 'Desativar' : 'Ativar'}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-destructive hover:underline"
+                        onClick={() => {
+                          if (confirm(`Apagar a frase "${p.phrase}"?`)) remove.mutate(p.id, { onError: errToast });
+                        }}
+                      >
+                        Apagar
+                      </button>
+                    </div>
+                  </td>
                 )}
               </tr>
             ))}
