@@ -59,6 +59,7 @@ export interface PublicUser {
   clientId: string | null;
   active: boolean;
   phone?: string | null;
+  groupId?: string | null;
 }
 
 export interface Attachment {
