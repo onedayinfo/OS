@@ -3,6 +3,13 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.21.1] - 2026-11-17
+
+### Corrigido
+- Modais: digitar num campo não manda mais o foco para o botão de fechar (afetava o nome do
+  grupo em Configurações → Grupos). O foco automático agora só acontece ao abrir o modal e vai
+  para o primeiro campo do conteúdo.
+
 ## [0.21.0] - 2026-11-17
 
 ### Adicionado

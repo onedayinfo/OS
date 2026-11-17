@@ -17,23 +17,27 @@ export function Dialog({
   children: React.ReactNode;
   className?: string;
 }) {
-  const panelRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // onClose costuma ser uma arrow inline (nova a cada render): guardado em ref para
+  // o efeito rodar só ao abrir — senão cada tecla digitada no modal refocava o campo.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     }
     document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const first = panelRef.current?.querySelector<HTMLElement>('input, select, textarea, button');
+    const first = bodyRef.current?.querySelector<HTMLElement>('input, select, textarea, button');
     first?.focus();
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -45,7 +49,6 @@ export function Dialog({
       }}
     >
       <div
-        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -67,7 +70,9 @@ export function Dialog({
             </svg>
           </button>
         </div>
-        <div className="overflow-y-auto px-6 py-5">{children}</div>
+        <div ref={bodyRef} className="overflow-y-auto px-6 py-5">
+          {children}
+        </div>
       </div>
     </div>
   );
