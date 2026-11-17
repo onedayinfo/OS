@@ -8,6 +8,7 @@ import { LoginDto } from './dto/login.dto.js';
 import { UsersService } from '../users/users.service.js';
 import { SetPasswordDto } from '../users/dto/set-password.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import { UserGroupsService } from '../user-groups/user-groups.service.js';
 
 const REFRESH_COOKIE = 'refreshToken';
 
@@ -36,6 +37,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly users: UsersService,
+    private readonly groups: UserGroupsService,
   ) {}
 
   @Public()
@@ -59,8 +61,12 @@ export class AuthController {
 
   // Sem @Public: exige o access token. Devolve o usuário logado (allowlist publicUser).
   @Get('me')
-  me(@CurrentUser() actor: CurrentUserData) {
-    return this.users.getPublicById(actor.id);
+  async me(@CurrentUser() actor: CurrentUserData) {
+    const [user, screens] = await Promise.all([
+      this.users.getPublicById(actor.id),
+      this.groups.screensFor(actor.id),
+    ]);
+    return { ...user, screens };
   }
 
   @Public()
