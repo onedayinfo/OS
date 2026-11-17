@@ -57,4 +57,21 @@ describe('AuditLogger', () => {
     logger.error('x', 'AuditService');
     expect(audit.record).not.toHaveBeenCalled();
   });
+
+  it('objeto vira JSON na message', () => {
+    const { audit, logger } = setup();
+    logger.warn({ a: 1 }, 'Ctx');
+    expect(audit.record.mock.calls[0][0].message).toBe('{"a":1}');
+  });
+
+  it('valor não serializável não lança', () => {
+    const { logger } = setup();
+    expect(() => logger.error(Object.create(null))).not.toThrow();
+  });
+
+  it('message longa é cortada em 2000', () => {
+    const { audit, logger } = setup();
+    logger.error('x'.repeat(5000));
+    expect(audit.record.mock.calls[0][0].message).toHaveLength(2000);
+  });
 });

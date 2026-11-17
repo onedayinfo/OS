@@ -1,3 +1,5 @@
+import { SECRET_KEYS } from '../settings/settings.keys.js';
+
 /** Chave sensível: contém um destes trechos ou termina em `key` (comparação em minúsculas). */
 function isSecretKey(key: string): boolean {
   const k = key.toLowerCase();
@@ -14,7 +16,7 @@ export function redact(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redact);
   if (value && typeof value === 'object') {
     return Object.fromEntries(
-      Object.entries(value).map(([k, v]) => [k, isSecretKey(k) ? '***' : redact(v)]),
+      Object.entries(value).map(([k, v]) => [k, SECRET_KEYS.has(k) || isSecretKey(k) ? '***' : redact(v)]),
     );
   }
   return value;

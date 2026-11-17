@@ -5,14 +5,17 @@ describe('redact', () => {
   it('mascara senha', () => {
     expect(redact({ email: 'a@b', password: 'x' })).toEqual({ email: 'a@b', password: '***' });
   });
-  it('mascara chaves com ponto, preservando accessKeyId', () => {
+  it('mascara chaves com ponto, incluindo accessKeyId (SECRET_KEYS)', () => {
     expect(
       redact({
         values: { 'storage.s3.secretAccessKey': 's', 'storage.s3.accessKeyId': 'AK', 'resend.apiKey': 'k' },
       }),
     ).toEqual({
-      values: { 'storage.s3.secretAccessKey': '***', 'storage.s3.accessKeyId': 'AK', 'resend.apiKey': '***' },
+      values: { 'storage.s3.secretAccessKey': '***', 'storage.s3.accessKeyId': '***', 'resend.apiKey': '***' },
     });
+  });
+  it('mascara chave de SECRET_KEYS', () => {
+    expect(redact({ values: { 'storage.s3.accessKeyId': 'AK' } })).toEqual({ values: { 'storage.s3.accessKeyId': '***' } });
   });
   it('mascara aninhado e em arrays', () => {
     expect(redact([{ token: 't' }])).toEqual([{ token: '***' }]);

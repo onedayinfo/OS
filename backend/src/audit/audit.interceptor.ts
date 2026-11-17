@@ -6,9 +6,12 @@ import {
 } from '@nestjs/common';
 import { Observable, catchError, tap, throwError } from 'rxjs';
 import type { CurrentUserData } from '../common/current-user.decorator.js';
+import { clientIp } from '../common/rate-limit.js';
 import { AuditService } from './audit.service.js';
 
 const METODOS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+// Sem usuário autenticado, só estas rotas são registradas.
+const ANONIMAS = new Set(['/api/auth/login', '/api/auth/set-password', '/api/auth/forgot-password']);
 const EXCLUIDOS = [
   '/api/agent/checkin',
   '/api/integrations/events',
@@ -29,7 +32,12 @@ export class AuditInterceptor implements NestInterceptor {
     const http = ctx.switchToHttp();
     const req = http.getRequest();
     const path: string = String(req.originalUrl ?? req.url ?? '').split('?')[0];
-    if (!METODOS.has(req.method) || EXCLUIDOS.some((p) => path.startsWith(p))) {
+    const caminho = path.toLowerCase();
+    if (
+      !METODOS.has(req.method) ||
+      EXCLUIDOS.some((p) => caminho.startsWith(p)) ||
+      (!req.user && !ANONIMAS.has(caminho))
+    ) {
       return next.handle();
     }
     const res = http.getResponse();
@@ -55,8 +63,8 @@ export class AuditInterceptor implements NestInterceptor {
         module: path.split('/')[2] ?? '',
         message: `${req.method} ${path}`,
         actorId: user?.id ?? null,
-        actorLabel: user ? null : (req.body?.email ?? null),
-        ip: req.ip ?? null,
+        actorLabel: user ? null : (typeof req.body?.email === 'string' ? req.body.email : null),
+        ip: clientIp(req),
         method: req.method,
         path,
         status,

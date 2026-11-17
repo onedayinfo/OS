@@ -8,7 +8,10 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 ### Adicionado
 - **Auditoria de ações**: tabela `audit_logs` registra cada POST, PUT, PATCH e DELETE com usuário,
   IP, status e corpo da requisição. Senhas, chaves e tokens aparecem como `***`; corpos acima de
-  4096 caracteres de JSON são cortados. Webhooks e o check-in do agente ficam fora do registro.
+  4096 caracteres de JSON são cortados. O IP gravado é o IP real do
+  cliente (cabeçalhos do proxy). Ficam fora do registro: renovação de token, webhooks, check-in do
+  agente e rotas públicas sem login; sem usuário autenticado, só login, definição de senha e
+  esqueci-a-senha são registrados.
 - **Registro de logins** com sucesso e com falha (senha errada gera linha com status 401).
 - **Logs de warn e error** do sistema gravados na mesma tabela, sem derrubar a requisição se o
   banco estiver fora do ar.

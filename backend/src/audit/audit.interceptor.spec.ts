@@ -4,7 +4,8 @@ import type { Observable } from 'rxjs';
 import { firstValueFrom, lastValueFrom, of, throwError } from 'rxjs';
 import { AuditInterceptor } from './audit.interceptor.js';
 
-function montar(req: Record<string, unknown>, statusCode = 200) {
+function montar(r: Record<string, unknown>, statusCode = 200) {
+  const req = { headers: {}, ...r };
   const record = vi.fn();
   const interceptor = new AuditInterceptor({ record } as never);
   const ctx = {
@@ -43,10 +44,33 @@ describe('AuditInterceptor', () => {
     expect(record).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['POST', '/api/Agent/checkin'],
+    ['POST', '/api/auth/logout'],
+    ['POST', '/api/public/quotes/abc/approve'],
+  ])('não registra %s %s sem usuário', async (method, originalUrl) => {
+    const { record, run } = montar({ method, originalUrl });
+    await lastValueFrom(run(of(1)));
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it('e-mail não-string vira actorLabel null', async () => {
+    const { record, run } = montar({ method: 'POST', originalUrl: '/api/auth/login', body: { email: { x: 1 } } });
+    await lastValueFrom(run(of(1)));
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({ actorLabel: null }));
+  });
+
+  it('usa o IP real do cliente (cf-connecting-ip)', async () => {
+    const { record, run } = montar({ method: 'PUT', originalUrl: '/api/x', user: { id: 'u' }, headers: { 'cf-connecting-ip': '1.2.3.4' }, ip: '10.0.0.1' });
+    await lastValueFrom(run(of(1)));
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({ ip: '1.2.3.4' }));
+  });
+
   it('upload: só name/size/mime, sem buffer', async () => {
     const { record, run } = montar({
       method: 'POST',
       originalUrl: '/api/files',
+      user: { id: 'u' },
       file: { originalname: 'a.pdf', size: 10, mimetype: 'application/pdf', buffer: Buffer.from('x') },
     });
     await lastValueFrom(run(of(1)));
@@ -54,7 +78,7 @@ describe('AuditInterceptor', () => {
   });
 
   it('record lançando não impede a resposta', async () => {
-    const { record, run } = montar({ method: 'POST', originalUrl: '/api/x' });
+    const { record, run } = montar({ method: 'POST', originalUrl: '/api/x', user: { id: 'u' } });
     record.mockImplementation(() => { throw new Error('boom'); });
     await expect(firstValueFrom(run(of('resp')))).resolves.toBe('resp');
   });
