@@ -3,6 +3,22 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.21.0] - 2026-11-17
+
+### Adicionado
+- **Grupos de usuários internos**: cada grupo define as telas que seus membros podem acessar
+  (dashboard, agenda, triagem, campo, clientes, ativos, contratos, CRM, orçamentos, catálogo,
+  estoque, base de conhecimento e configurações). Cada usuário interno pode pertencer a um grupo.
+- **Permissão por tela** aplicada no menu (itens sem acesso somem), na página (tela proibida
+  redireciona para o início com o aviso "Sem acesso a esta tela.") e na API (acesso negado).
+- **Configurações → Grupos**: aba para criar, editar e excluir grupos, com a contagem de membros;
+  e escolha do grupo no cadastro de usuários internos.
+- **Admin pleno**: ADMIN sem grupo mantém acesso total e é o único que gerencia grupos.
+  Usuários que saem de um grupo excluído ficam sem grupo.
+
+### Infraestrutura
+- Migração `add_user_groups` (tabela `UserGroup` e `User.groupId`). Nenhuma variável de ambiente nova.
+
 ## [0.20.0] - 2026-11-16
 
 ### Adicionado
