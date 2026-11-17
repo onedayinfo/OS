@@ -170,6 +170,33 @@ describe('Grupos de permissão — integração (Postgres real)', () => {
     expect(r2.body.message).toBe('Grupos são só para usuários internos.');
   });
 
+  it('u1 (admin com grupo) cria ADMIN sem groupId → herda o grupo de u1', async (ctx) => {
+    if (!available) return ctx.skip();
+    const res = await as(
+      http().post('/users/internal').send({
+        name: 'novo',
+        email: `novo${EMAIL}`,
+        role: 'ADMIN',
+        password: 'senha-12345',
+      }),
+      'u1',
+    ).expect(201);
+    const row = await prisma!.user.findUnique({ where: { id: res.body.id } });
+    expect(row?.groupId).toBe(id.g);
+    await as(
+      http().post('/users/internal').send({
+        name: 'x', email: `x${EMAIL}`, role: 'ADMIN', password: 'senha-12345', groupId: null,
+      }),
+      'u1',
+    ).expect(403);
+  });
+
+  it('u0 (admin pleno) não coloca grupo em si mesmo → 403', async (ctx) => {
+    if (!available) return ctx.skip();
+    const res = await as(http().patch(`/users/${id.u0}`).send({ groupId: id.g }), 'u0').expect(403);
+    expect(res.body.message).toBe('Você não pode restringir o próprio acesso.');
+  });
+
   it('u0 libera crm no grupo → u1 passa na hora', async (ctx) => {
     if (!available) return ctx.skip();
     await as(http().patch(`/user-groups/${id.g}`).send({ screens: [...SCREENS] }), 'u0').expect(200);

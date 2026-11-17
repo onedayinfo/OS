@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import type { UserType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -25,10 +19,10 @@ export class UsersService {
   /** Vazio limpa (null); preenchido mas curto demais é erro, não apagamento silencioso. */
   private phoneOrThrow(raw: string | null | undefined): string | null {
     const p = normalizePhone(raw);
-    if (!p && raw && raw.trim())
-      throw new BadRequestException('Telefone inválido.');
+    if (!p && raw && raw.trim()) throw new BadRequestException('Telefone inválido.');
     return p;
   }
+
 
   constructor(
     private readonly prisma: PrismaService,
@@ -37,10 +31,7 @@ export class UsersService {
   ) {}
 
   /** Só o admin pleno (sem grupo) atribui/remove grupo; só INTERNAL tem grupo. */
-  private async assertCanSetGroup(
-    actor: CurrentUserData,
-    target: { type: string },
-  ) {
+  private async assertCanSetGroup(actor: CurrentUserData, target: { type: string }) {
     if (!(await this.groups.isFullAdmin(actor.id))) {
       throw new ForbiddenException('Sem acesso a esta tela.');
     }
@@ -55,8 +46,7 @@ export class UsersService {
       return await fn();
     } catch (e) {
       const code = (e as { code?: string }).code;
-      if (code === 'P2003' || code === 'P2025')
-        throw new BadRequestException('Grupo não encontrado.');
+      if (code === 'P2003' || code === 'P2025') throw new BadRequestException('Grupo não encontrado.');
       throw e;
     }
   }
@@ -85,22 +75,26 @@ export class UsersService {
   }
 
   async createInternal(dto: CreateInternalDto, actor: CurrentUserData) {
-    if (dto.groupId !== undefined)
-      await this.assertCanSetGroup(actor, { type: 'INTERNAL' });
+    if (dto.groupId !== undefined) await this.assertCanSetGroup(actor, { type: 'INTERNAL' });
+    // Quem tem grupo não cria admin pleno: o criado herda o grupo do autor.
+    const groupId =
+      dto.groupId !== undefined
+        ? dto.groupId
+        : (await this.groups.isFullAdmin(actor.id))
+          ? undefined
+          : (await this.prisma.user.findUnique({ where: { id: actor.id }, select: { groupId: true } }))?.groupId;
     const passwordHash = await hashPassword(dto.password);
-    const user = await this.withGroupCheck(() =>
-      this.prisma.user.create({
-        data: {
-          name: dto.name,
-          email: dto.email,
-          role: dto.role,
-          type: 'INTERNAL',
-          passwordHash,
-          active: true,
-          groupId: dto.groupId,
-        },
-      }),
-    );
+    const user = await this.withGroupCheck(() => this.prisma.user.create({
+      data: {
+        name: dto.name,
+        email: dto.email,
+        role: dto.role,
+        type: 'INTERNAL',
+        passwordHash,
+        active: true,
+        groupId,
+      },
+    }));
     return publicUser(user);
   }
 
@@ -147,16 +141,11 @@ export class UsersService {
       user.type === 'INTERNAL'
         ? `${process.env.APP_URL}/app`
         : `${process.env.PORTAL_URL}/portal`;
-    await this.mail.sendInvite(
-      user,
-      `${base}/definir-senha?token=${inviteToken}`,
-    );
+    await this.mail.sendInvite(user, `${base}/definir-senha?token=${inviteToken}`);
   }
 
   async setPassword(token: string, password: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { inviteToken: token },
-    });
+    const user = await this.prisma.user.findUnique({ where: { inviteToken: token } });
     if (!user || !user.inviteSentAt) {
       throw new BadRequestException('Convite inválido.');
     }
@@ -184,22 +173,19 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto, actor: CurrentUserData) {
     const found = await this.prisma.user.findUnique({ where: { id } });
     if (!found) throw new NotFoundException('Usuário não encontrado.');
-    const data: {
-      name?: string;
-      active?: boolean;
-      phone?: string | null;
-      groupId?: string | null;
-    } = {};
+    const data: { name?: string; active?: boolean; phone?: string | null; groupId?: string | null } = {};
     if (dto.groupId !== undefined) {
       await this.assertCanSetGroup(actor, found);
+      if (id === actor.id && dto.groupId !== null) {
+        throw new ForbiddenException('Você não pode restringir o próprio acesso.');
+      }
       data.groupId = dto.groupId;
     }
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.active !== undefined) data.active = dto.active;
     if (dto.phone !== undefined) data.phone = this.phoneOrThrow(dto.phone);
-    const updated = await this.withGroupCheck(() =>
-      this.prisma.user.update({ where: { id }, data }),
-    );
+    const write = () => this.prisma.user.update({ where: { id }, data });
+    const updated = await (dto.groupId !== undefined ? this.withGroupCheck(write) : write());
     return publicUser(updated);
   }
 }

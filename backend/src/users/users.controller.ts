@@ -1,16 +1,5 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
-import {
-  CurrentUser,
-  type CurrentUserData,
-} from '../common/current-user.decorator.js';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { CurrentUser, type CurrentUserData } from '../common/current-user.decorator.js';
 import { Roles } from '../common/roles.decorator.js';
 import { UsersService } from './users.service.js';
 import { CreateInternalDto } from './dto/create-internal.dto.js';
@@ -24,10 +13,7 @@ export class UsersController {
 
   @Post('internal')
   @Roles('ADMIN')
-  createInternal(
-    @Body() dto: CreateInternalDto,
-    @CurrentUser() actor: CurrentUserData,
-  ) {
+  createInternal(@Body() dto: CreateInternalDto, @CurrentUser() actor: CurrentUserData) {
     return this.users.createInternal(dto, actor);
   }
 
@@ -37,11 +23,7 @@ export class UsersController {
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserDto,
-    @CurrentUser() actor: CurrentUserData,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() actor: CurrentUserData) {
     return this.users.update(id, dto, actor);
   }
 }
