@@ -3,6 +3,25 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.20.0] - 2026-11-16
+
+### Adicionado
+- **Auditoria de ações**: tabela `audit_logs` registra cada POST, PUT, PATCH e DELETE com usuário,
+  IP, status e corpo da requisição. Senhas, chaves e tokens aparecem como `***`; corpos acima de
+  4096 caracteres de JSON são cortados. Webhooks e o check-in do agente ficam fora do registro.
+- **Registro de logins** com sucesso e com falha (senha errada gera linha com status 401).
+- **Logs de warn e error** do sistema gravados na mesma tabela, sem derrubar a requisição se o
+  banco estiver fora do ar.
+- **Retenção configurável**: limpeza diária às 03:30 apaga registros mais antigos que
+  `audit.retentionDays` (padrão 90 dias).
+- **Consulta da auditoria** (apenas ADMIN) em `GET /api/audit`, com filtros, e lista de módulos em
+  `GET /api/audit/modules`.
+- **Configurações → Auditoria**: aba para consultar os registros.
+
+### Alterado
+- Teste de conexão do S3 mostra mensagem detalhada (código do erro, HTTP do endpoint e causa de
+  rede) e registra o resultado no log.
+
 ## [0.19.0] - 2026-11-16
 
 ### Adicionado
