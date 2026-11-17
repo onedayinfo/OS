@@ -122,6 +122,7 @@ model User {
   type         UserType
   role         UserRole
   clientId     String?
+  groupId      String?
   phone        String?
   active       Boolean   @default(true)
   inviteToken  String?   @unique
@@ -131,6 +132,7 @@ model User {
   updatedAt    DateTime  @updatedAt
 
   client               Client?              @relation(fields: [clientId], references: [id])
+  group                UserGroup?           @relation(fields: [groupId], references: [id], onDelete: SetNull)
   ticketsRequested     Ticket[]             @relation("TicketRequester")
   ticketsAssigned      Ticket[]             @relation("TicketAssignee")
   comments             TicketComment[]
@@ -145,6 +147,19 @@ model User {
   auditLogs            AuditLog[]
 
   @@map("users")
+}
+
+/// Grupo de usuários internos: restringe as telas visíveis (sem grupo = acesso total do papel).
+model UserGroup {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  screens   String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members User[]
+
+  @@map("user_groups")
 }
 
 model Client {
