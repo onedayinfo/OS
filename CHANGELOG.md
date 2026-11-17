@@ -3,6 +3,17 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.22.0] - 2026-11-17
+
+### Adicionado
+- Integrações: **status do equipamento** no mapeamento. Um campo do evento (ex.:
+  `{{alarm.triggers.0.key}}`) decide a ação: valores de queda **abrem** chamado; valores de volta
+  **encerram sozinhos** o chamado aberto do mesmo equipamento (mesmo ID externo), como Resolvido
+  (padrão) ou Fechado. Volta sem chamado aberto e valores fora das listas são ignorados (nunca
+  abrem chamado). Lista de "abre" vazia = qualquer valor que não normalize.
+- O OS guarda os **últimos 10 eventos** de cada integração: em "Mapear campos" dá para escolher
+  qual usar como exemplo e ver os valores de status que já chegaram.
+
 ## [0.21.1] - 2026-11-17
 
 ### Corrigido
